@@ -1,0 +1,36 @@
+# Afterburn: orange-on-black cyber. Brand orange #f59145 on olive-black #0c0d0b,
+# made for JetBrains Mono. github.com/silverwulf212/omarchy-afterburn-theme
+mode = "dark"
+
+accent = "#f59145"
+selection = "#3d2614"
+muted = "#2b2a28"
+
+background = "#0c0d0b"
+dark_background = "#090a08"
+darker_background = "#060705"
+lighter_background = "#181917"
+
+foreground = "#e8e4dc"
+dark_foreground = "#5e5b55"
+light_foreground = "#a4a4a4"
+bright_foreground = "#fafafa"
+
+red = "#ff6467"
+yellow = "#f3ca3e"
+orange = "#ff7a1a"
+green = "#f7b57a"
+cyan = "#d9c4a5"
+blue = "#f59145"
+magenta = "#e8703a"
+brown = "#7a3e16"
+
+bright_red = "#ff8a8c"
+bright_yellow = "#ffdc70"
+bright_green = "#ffd2a6"
+bright_cyan = "#f2e4cf"
+bright_blue = "#ffab6b"
+bright_magenta = "#ff8c52"
+
+hyprland_active_border = "rgba(f59145ee) rgba(ff5a1fee) rgba(ffc48aee) 45deg"
+hyprland_inactive_border = "rgba(2b2a28aa)"

@@ -1,0 +1,31 @@
+#!/bin/bash
+# Afterburn extras: an Omarchy theme-set hook, installed by extras/install.sh.
+# On afterburn: restore the orange glow (Omarchy drops a cloned theme's .lua),
+# and switch Ghostty cursor-fx to embers if cursor-fx is installed.
+# On any other theme: put the previous cursor-fx effect back.
+set -u
+THEME="${1:-}"
+EXTRAS="$HOME/.config/omarchy/themes/afterburn/extras"
+CURRENT="$HOME/.local/state/omarchy/current/theme"
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/afterburn/prev-cursor-fx"
+GHOSTTY="$HOME/.config/ghostty/config"
+
+cursor_now() { grep -oP '^config-file\s*=\s*cursor-effects/\K[^.]+' "$GHOSTTY" 2>/dev/null || echo off; }
+
+if [[ $THEME == afterburn ]]; then
+  if [[ -f $EXTRAS/hyprland-glow.lua && -d $CURRENT ]]; then
+    cp "$EXTRAS/hyprland-glow.lua" "$CURRENT/hyprland.lua"
+    hyprctl reload >/dev/null 2>&1 || true
+  fi
+  if command -v cursor-fx >/dev/null; then
+    cur=$(cursor_now)
+    if [[ $cur != embers ]]; then
+      mkdir -p "$(dirname "$STATE")" && echo "$cur" > "$STATE"
+      cursor-fx embers >/dev/null 2>&1 || true
+    fi
+  fi
+elif [[ -f $STATE ]] && command -v cursor-fx >/dev/null; then
+  cursor-fx "$(cat "$STATE")" >/dev/null 2>&1 || true
+  rm -f "$STATE"
+fi
+exit 0
