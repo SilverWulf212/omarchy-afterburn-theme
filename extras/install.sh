@@ -18,7 +18,8 @@ YES=false; [[ ${1:-} == --yes || ${1:-} == -y ]] && YES=true
 o() { printf '\033[38;2;245;145;69m%s\033[0m\n' "$*"; }
 ok() { printf '  \033[38;2;245;145;69m✓\033[0m %s\n' "$*"; }
 skip() { printf '  \033[2m· %s\033[0m\n' "$*"; }
-ask() { $YES && return 0; read -rp "  $1 [Y/n] " a; [[ -z $a || $a =~ ^[Yy] ]]; }
+# EOF (no terminal / closed stdin) counts as No, so nothing changes unasked.
+ask() { $YES && return 0; local a; read -rp "  $1 [Y/n] " a || { echo; return 1; }; [[ -z $a || $a =~ ^[Yy] ]]; }
 
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/afterburn"
 
@@ -74,7 +75,7 @@ fi
 FONT="JetBrainsMono Nerd Font"
 if [[ $(omarchy font current 2>/dev/null) == "$FONT" ]]; then
   ok "font: $FONT"
-elif ! fc-list | grep -q "$FONT"; then
+elif ! fc-list | grep -F "$FONT" >/dev/null; then
   skip "font $FONT not installed; keeping your current font"
 elif ask "Switch your system font to $FONT, the font Afterburn is designed around?"; then
   omarchy font current > "$STATE_DIR/prev-font" 2>/dev/null || true
@@ -106,4 +107,8 @@ mv -f "$HOOKS/afterburn-theme-set-hook" "$HOOKS/$HOOK_NAME"
 ok "glow hook installed"
 
 omarchy theme set afterburn >/dev/null
-echo; o "  ❯ afterburn is live. Open a new Ghostty window (Super + Return) and type."; echo
+if command -v cursor-fx >/dev/null; then
+  echo; o "  ❯ afterburn is live. Open a new Ghostty window (Super + Return) and type."; echo
+else
+  echo; o "  ❯ afterburn is live."; echo
+fi
