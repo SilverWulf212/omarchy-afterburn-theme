@@ -1,22 +1,20 @@
 #!/bin/bash
 # Afterburn extras: an Omarchy theme-set hook, installed by extras/install.sh.
-# On afterburn: restore the orange glow (Omarchy drops a cloned theme's .lua),
-# and switch Ghostty cursor-fx to embers if cursor-fx is installed.
-# On any other theme: put the previous cursor-fx effect back.
+# On afterburn: switch Ghostty cursor-fx to embers (if installed), regenerate and reload
+# the glow with `afterburn apply` (Omarchy drops a cloned theme's .lua), and (re)start the watcher.
+# On any other theme: stop the watcher and put the previous cursor-fx effect back.
 set -u
 THEME="${1:-}"
 EXTRAS="$HOME/.config/omarchy/themes/afterburn/extras"
 CURRENT="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/current/theme"
 STATE="${XDG_STATE_HOME:-$HOME/.local/state}/afterburn/prev-cursor-fx"
 GHOSTTY="$HOME/.config/ghostty/config"
+AFTERBURN="$(command -v afterburn 2>/dev/null || echo "$HOME/.local/bin/afterburn")"
 
 cursor_now() { grep -oP '^config-file\s*=\s*\??cursor-effects/\K[^.]+' "$GHOSTTY" 2>/dev/null || echo off; }
 
 if [[ $THEME == afterburn ]]; then
-  if [[ -f $EXTRAS/hyprland-glow.lua && -d $CURRENT ]]; then
-    cp "$EXTRAS/hyprland-glow.lua" "$CURRENT/hyprland.lua"
-    hyprctl reload >/dev/null 2>&1 || true
-  fi
+  # Cursor first: afterburn apply may put cursor-fx off in quiet mode, and must see the saved previous effect.
   if command -v cursor-fx >/dev/null; then
     cur=$(cursor_now)
     if [[ $cur != embers ]]; then
@@ -24,8 +22,18 @@ if [[ $THEME == afterburn ]]; then
       cursor-fx embers >/dev/null 2>&1 || true
     fi
   fi
-elif [[ -f $STATE ]] && command -v cursor-fx >/dev/null; then
-  cursor-fx "$(cat "$STATE")" >/dev/null 2>&1 || true
-  rm -f "$STATE"
+  if [[ -x $AFTERBURN ]]; then
+    "$AFTERBURN" apply >/dev/null 2>&1 || true
+  elif [[ -f $EXTRAS/hyprland-glow.lua && -d $CURRENT ]]; then
+    cp "$EXTRAS/hyprland-glow.lua" "$CURRENT/hyprland.lua"
+    hyprctl reload >/dev/null 2>&1 || true
+  fi
+  systemctl --user restart afterburn-watch.service >/dev/null 2>&1 || true
+else
+  systemctl --user stop afterburn-watch.service >/dev/null 2>&1 || true
+  if [[ -f $STATE ]] && command -v cursor-fx >/dev/null; then
+    cursor-fx "$(cat "$STATE")" >/dev/null 2>&1 || true
+    rm -f "$STATE"
+  fi
 fi
 exit 0

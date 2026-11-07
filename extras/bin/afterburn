@@ -1,0 +1,389 @@
+#!/bin/bash
+# afterburn: knobs for the Afterburn theme. Installed to ~/.local/bin by extras/install.sh.
+#
+#   afterburn status                  show settings, heat level, quiet/saver, cursor effect
+#   afterburn get [KEY]               print one setting (or all)
+#   afterburn set KEY VALUE           validate, save to the conf, re-apply the glow
+#   afterburn apply                   regenerate hyprland.lua from the conf and reload Hyprland
+#   afterburn level cool|normal|hot   heat level (border, shadow, optional wallpaper swap)
+#   afterburn quiet on|off            fullscreen mode: no shadow, no spin, cursor-fx off
+#   afterburn saver on|off            battery mode: no shadow, no spin, cursor-fx subtle
+#   afterburn laptop auto|on|off      LAPTOP_MODE; on/off also switch saver
+#   afterburn colors [--menu]         palette: swatches on a tty, Omarchy menu otherwise
+#   afterburn locate ZIP              US ZIP -> LAT/LON for the weather heat source
+#
+# Config: ${XDG_CONFIG_HOME:-~/.config}/afterburn/afterburn.conf (KEY=VALUE, sourced)
+# State:  ${XDG_STATE_HOME:-~/.local/state}/afterburn/  (level, quiet, saver, prev-cursor-fx, weather.json)
+set -u
+
+CONF_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/afterburn"
+CONF="$CONF_DIR/afterburn.conf"
+STATE_ROOT="${XDG_STATE_HOME:-$HOME/.local/state}"
+STATE="$STATE_ROOT/afterburn"
+OMARCHY_CUR="$STATE_ROOT/omarchy/current"
+CUR_THEME="$OMARCHY_CUR/theme"
+CUR_BG_LINK="$OMARCHY_CUR/background"
+THEME_DIR="$HOME/.config/omarchy/themes/afterburn"
+GLOW_TEMPLATE="$THEME_DIR/extras/hyprland-glow.lua"
+GHOSTTY="$HOME/.config/ghostty/config"
+
+KEYS="ROTATE DIM HEAT_SOURCE EVENING_HOURS ZIP LAT LON HOT_F COOL_F HEAT_WALLPAPERS FULLSCREEN_QUIET LAPTOP_MODE FAIL_FX"
+
+die() { echo "afterburn: $*" >&2; exit 1; }
+
+usage() {
+  sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+write_default_conf() {
+  mkdir -p "$CONF_DIR"
+  cat > "$CONF" <<'EOF'
+ROTATE=slow          # off|slow|medium|fast  (border gradient turn: 60s|20s|8s per turn)
+DIM=0.08             # dim_inactive strength, 0 = off
+HEAT_SOURCE=time     # off|time|pressure|weather
+EVENING_HOURS=19-07  # time source: cool inside this window
+ZIP=                 # weather source (US only); LAT/LON filled by `afterburn locate`
+LAT=
+LON=
+HOT_F=90
+COOL_F=50
+HEAT_WALLPAPERS=yes  # swap wallpaper to the level's variant
+FULLSCREEN_QUIET=yes
+LAPTOP_MODE=auto     # auto|on|off
+FAIL_FX=random       # random|burn|cascade|dissolve|off
+EOF
+}
+
+# Read the conf (we wrote it, so sourcing is fine) and fill any missing key with its default.
+load_conf() {
+  [[ -f $CONF ]] || write_default_conf
+  # shellcheck disable=SC1090
+  . "$CONF"
+  : "${ROTATE:=slow}" "${DIM:=0.08}" "${HEAT_SOURCE:=time}" "${EVENING_HOURS:=19-07}"
+  : "${ZIP:=}" "${LAT:=}" "${LON:=}" "${HOT_F:=90}" "${COOL_F:=50}"
+  : "${HEAT_WALLPAPERS:=yes}" "${FULLSCREEN_QUIET:=yes}" "${LAPTOP_MODE:=auto}" "${FAIL_FX:=random}"
+}
+
+valid_key() {
+  [[ " $KEYS " == *" ${1:-} "* ]] || die "unknown key '${1:-}' (keys: $KEYS)"
+}
+
+# Check a value against its key's rule. Exits with a hint if it is wrong.
+validate() {
+  local k=$1 v=$2 re hint
+  case $k in
+    ROTATE)          re='^(off|slow|medium|fast)$';          hint='off|slow|medium|fast' ;;
+    DIM)             re='^(0|1|0?\.[0-9]+|1\.0*)$';          hint='0 to 1, e.g. 0.08' ;;
+    HEAT_SOURCE)     re='^(off|time|pressure|weather)$';     hint='off|time|pressure|weather' ;;
+    EVENING_HOURS)   re='^[0-9]{1,2}-[0-9]{1,2}$';           hint='START-END hours, e.g. 19-07' ;;
+    ZIP)             re='^([0-9]{5})?$';                     hint='5-digit US ZIP or empty' ;;
+    LAT)             re='^(-?[0-9]{1,2}(\.[0-9]+)?)?$';      hint='latitude or empty (use afterburn locate)' ;;
+    LON)             re='^(-?[0-9]{1,3}(\.[0-9]+)?)?$';      hint='longitude or empty (use afterburn locate)' ;;
+    HOT_F|COOL_F)    re='^[0-9]{1,3}$';                      hint='whole degrees F' ;;
+    HEAT_WALLPAPERS|FULLSCREEN_QUIET) re='^(yes|no)$';       hint='yes|no' ;;
+    LAPTOP_MODE)     re='^(auto|on|off)$';                   hint='auto|on|off' ;;
+    FAIL_FX)         re='^(random|burn|cascade|dissolve|off)$'; hint='random|burn|cascade|dissolve|off' ;;
+    *) die "unknown key '$k'" ;;
+  esac
+  [[ $v =~ $re ]] || die "bad value for $k: '$v' (allowed: $hint)"
+}
+
+# Rewrite one KEY=VALUE line in place (keeps its trailing comment), or append it.
+set_key() {
+  local k=$1 v=$2
+  [[ -f $CONF ]] || write_default_conf
+  if grep -q "^$k=" "$CONF"; then
+    sed -i -E "s/^$k=[^ #]*/$k=$v/" "$CONF"
+  else
+    printf '%s=%s\n' "$k" "$v" >> "$CONF"
+  fi
+}
+
+state_get() { cat "$STATE/$1" 2>/dev/null || echo "$2"; }
+state_set() { mkdir -p "$STATE"; printf '%s\n' "$2" > "$STATE/$1"; }
+flag_on()   { [[ $(state_get "$1" off) == on ]]; }
+effective_quiet() { flag_on quiet || flag_on saver; }
+
+# Only touch Hyprland and cursor-fx while Afterburn is the active theme.
+is_afterburn() { [[ $(cat "$OMARCHY_CUR/theme.name" 2>/dev/null) == afterburn ]]; }
+
+# Heat level table (from docs spec). Sets L_* for the named level.
+level_vals() {
+  case $1 in
+    cool)   L_BORDER='rgba(7a3e16ee) rgba(e8703aee) rgba(ff5a1fcc) 45deg'
+            L_RANGE=8;  L_SHADOW='rgba(e8703a33)'; L_WALL=extras/heat-wallpapers/cool ;;
+    normal) L_BORDER='rgba(f59145ee) rgba(ff5a1fee) rgba(ffc48aee) 45deg'
+            L_RANGE=14; L_SHADOW='rgba(f5914555)'; L_WALL=backgrounds ;;
+    hot)    L_BORDER='rgba(ffc48aff) rgba(fff1e0ff) rgba(ff5a1fff) 45deg'
+            L_RANGE=22; L_SHADOW='rgba(ffb37a77)'; L_WALL=extras/heat-wallpapers/hot ;;
+    *) die "level must be cool|normal|hot" ;;
+  esac
+}
+
+# Write the generated Hyprland Lua into Omarchy's current theme dir.
+# Quiet or saver: spin and shadow are forced off in the file itself.
+write_lua() {
+  [[ -f $GLOW_TEMPLATE ]] || die "missing $GLOW_TEMPLATE (is the afterburn theme installed?)"
+  [[ -d $CUR_THEME ]] || die "no Omarchy current theme dir at $CUR_THEME (run: omarchy theme set afterburn)"
+
+  local rot=$ROTATE shadow=true spin speed dim_on
+  if effective_quiet; then rot=off; shadow=false; fi
+  case $rot in
+    off)    spin='hl.animation({ leaf = "borderangle", enabled = false })' ;;
+    # speed is Hyprland's animation duration in deciseconds: 600 = one turn per 60 s.
+    slow)   spin='hl.animation({ leaf = "borderangle", enabled = true, speed = 600, bezier = "linear", style = "loop" })' ;;
+    medium) spin='hl.animation({ leaf = "borderangle", enabled = true, speed = 200, bezier = "linear", style = "loop" })' ;;
+    fast)   spin='hl.animation({ leaf = "borderangle", enabled = true, speed = 80,  bezier = "linear", style = "loop" })' ;;
+  esac
+  if [[ $DIM == 0 ]]; then dim_on=false; else dim_on=true; fi
+
+  {
+    cat "$GLOW_TEMPLATE"
+    cat <<EOF
+
+-- ---- generated by 'afterburn apply' from $CONF. Edit the conf, then run afterburn apply. ----
+hl.config({
+  decoration = {
+    dim_inactive = $dim_on,
+    dim_strength = $DIM,
+    shadow = { enabled = $shadow },
+  },
+})
+$spin
+EOF
+  } > "$CUR_THEME/hyprland.lua"
+}
+
+# Push one heat level into the running compositor (no config reload needed).
+live_level() {
+  level_vals "$1"
+  hyprctl keyword general:col.active_border "$L_BORDER" >/dev/null 2>&1 || true
+  hyprctl keyword decoration:shadow:range "$L_RANGE" >/dev/null 2>&1 || true
+  hyprctl keyword decoration:shadow:color "$L_SHADOW" >/dev/null 2>&1 || true
+  hyprctl keyword decoration:shadow:enabled true >/dev/null 2>&1 || true
+}
+
+# Regenerate the Lua, reload Hyprland (which resets live keywords), then re-apply the level.
+apply_visuals() {
+  write_lua
+  hyprctl reload >/dev/null 2>&1 || true
+  if effective_quiet; then
+    cfx_sync
+  else
+    live_level "$(state_get level normal)"
+  fi
+}
+
+cmd_apply() {
+  load_conf
+  if ! is_afterburn; then
+    echo "afterburn: current theme is not afterburn; settings saved, nothing applied"
+    return 0
+  fi
+  apply_visuals
+}
+
+# cursor-fx helpers. The previous effect is saved once, before we first change it.
+cfx_now() {
+  grep -oP '^config-file\s*=\s*\??cursor-effects/\K[^.]+' "$GHOSTTY" 2>/dev/null || echo off
+}
+
+cfx_sync() {
+  command -v cursor-fx >/dev/null 2>&1 || return 0
+  local want
+  if flag_on quiet; then want=off
+  elif flag_on saver; then want='subtle on'
+  else want=""
+  fi
+  if [[ -n $want ]]; then
+    mkdir -p "$STATE"
+    [[ -f $STATE/prev-cursor-fx ]] || cfx_now > "$STATE/prev-cursor-fx"
+    cursor-fx $want >/dev/null 2>&1 || true
+  elif [[ -f $STATE/prev-cursor-fx ]]; then
+    cursor-fx "$(cat "$STATE/prev-cursor-fx")" >/dev/null 2>&1 || true
+    rm -f "$STATE/prev-cursor-fx"
+  fi
+}
+
+cmd_set() {
+  [[ $# -eq 2 ]] || die "usage: afterburn set KEY VALUE"
+  load_conf
+  valid_key "$1"
+  validate "$1" "$2"
+  set_key "$1" "$2"
+  echo "$1=$2"
+  cmd_apply
+}
+
+cmd_get() {
+  load_conf
+  if [[ $# -eq 0 ]]; then
+    local k
+    for k in $KEYS; do echo "$k=${!k}"; done
+    return 0
+  fi
+  valid_key "$1"
+  echo "${!1}"
+}
+
+cmd_status() {
+  load_conf
+  local theme level
+  theme=$(cat "$OMARCHY_CUR/theme.name" 2>/dev/null || echo unknown)
+  level=$(state_get level normal)
+  echo "theme:    $theme"
+  echo "level:    $level"
+  echo "quiet:    $(state_get quiet off)"
+  echo "saver:    $(state_get saver off)"
+  if command -v cursor-fx >/dev/null 2>&1; then
+    echo "cursor:   $(cfx_now)"
+  else
+    echo "cursor:   (cursor-fx not installed)"
+  fi
+  echo
+  echo "config: $CONF"
+  local k
+  for k in $KEYS; do printf '  %-16s %s\n' "$k" "${!k}"; done
+}
+
+swap_wallpaper() {
+  level_vals "$1"
+  local cur base target
+  cur=$(readlink -f "$CUR_BG_LINK" 2>/dev/null) || return 0
+  [[ -n $cur ]] || return 0
+  base=$(basename -- "$cur")
+  target="$THEME_DIR/$L_WALL/$base"
+  [[ -f $target ]] || return 0
+  [[ $(realpath -m "$target") == "$cur" ]] && return 0
+  omarchy-theme-bg-set "$target" >/dev/null 2>&1 || true
+}
+
+cmd_level() {
+  case ${1:-} in
+    "") state_get level normal; return 0 ;;
+    cool|normal|hot) ;;
+    *) die "usage: afterburn level cool|normal|hot" ;;
+  esac
+  state_set level "$1"
+  is_afterburn || return 0
+  effective_quiet && return 0
+  load_conf
+  live_level "$1"
+  if [[ $HEAT_WALLPAPERS == yes ]]; then swap_wallpaper "$1"; fi
+}
+
+cmd_mode() { # quiet|saver on|off
+  local name=$1 v=${2:-}
+  case $v in on|off) ;; *) die "usage: afterburn $name on|off" ;; esac
+  state_set "$name" "$v"
+  echo "$name: $v"
+  if is_afterburn; then
+    load_conf
+    # Turning a mode off must restore the cursor here; turning one on is handled inside apply_visuals.
+    effective_quiet || cfx_sync
+    apply_visuals
+  fi
+}
+
+cmd_laptop() {
+  local v=${1:-}
+  case $v in auto|on|off) ;; *) die "usage: afterburn laptop auto|on|off" ;; esac
+  load_conf
+  set_key LAPTOP_MODE "$v"
+  case $v in
+    on)  cmd_mode saver on ;;
+    off) cmd_mode saver off ;;
+    auto) echo "laptop: auto (afterburn-watch decides from the power source)" ;;
+  esac
+}
+
+# Palette: Afterburn's named colours first, then every "name = #hex" line from colors.toml.
+palette() {
+  printf '%s %s\n' ember '#ff5a1f' flare '#ffc48a' rust '#7a3e16' ash '#5e5b55'
+  [[ -f $THEME_DIR/colors.toml ]] &&
+    sed -n -E 's/^([a-z_]+) = "(#[0-9a-fA-F]{6})"$/\1 \2/p' "$THEME_DIR/colors.toml"
+}
+
+copy_hex() {
+  command -v wl-copy >/dev/null 2>&1 || { echo "afterburn: wl-copy not found, cannot copy" >&2; return 1; }
+  printf '%s' "$1" | wl-copy
+}
+
+# tty: truecolor swatches, then a number to copy.
+pick_tty() {
+  local -a names=() hexes=()
+  local name hex i rgb n
+  while read -r name hex; do
+    names+=("$name"); hexes+=("$hex")
+  done < <(palette)
+  for i in "${!names[@]}"; do
+    hex=${hexes[$i]#\#}
+    rgb="$((0x${hex:0:2}));$((0x${hex:2:2}));$((0x${hex:4:2}))"
+    printf '%3d  \033[48;2;%sm      \033[0m  %-10s %s\n' "$((i + 1))" "$rgb" "${names[$i]}" "${hexes[$i]}"
+  done
+  read -rp "Pick a number to copy (Enter to quit): " n || { echo; return 0; }
+  [[ -z $n ]] && return 0
+  [[ $n =~ ^[0-9]+$ ]] && (( n >= 1 && n <= ${#hexes[@]} )) || die "no colour $n"
+  if copy_hex "${hexes[$((n - 1))]}"; then
+    echo "copied ${hexes[$((n - 1))]} (${names[$((n - 1))]})"
+  fi
+}
+
+# Launcher: Omarchy's menu (omarchy-menu-select summons the shell menu and prints the pick).
+pick_menu() {
+  command -v omarchy-menu-select >/dev/null 2>&1 || die "omarchy-menu-select not found"
+  local -a lines=()
+  local name hex sel rc
+  while read -r name hex; do
+    lines+=("$(printf '%-10s  %s' "$name" "$hex")")
+  done < <(palette)
+  sel=$(printf '%s\n' "${lines[@]}" | omarchy-menu-select "Afterburn colors")
+  rc=$?
+  (( rc == 1 )) && return 0   # 1 = cancelled, nothing to do
+  (( rc == 0 )) || die "menu failed (exit $rc)"
+  read -r name _ <<< "$sel"
+  hex=$(grep -oE '#[0-9a-fA-F]{6}' <<< "$sel" | head -1)
+  [[ -n $hex ]] || die "no colour in menu pick: $sel"
+  if copy_hex "$hex"; then
+    command -v notify-send >/dev/null 2>&1 && notify-send "Copied $name $hex" || echo "Copied $name $hex"
+  fi
+}
+
+cmd_colors() {
+  if [[ ${1:-} != --menu && -t 1 ]]; then pick_tty; else pick_menu; fi
+}
+
+cmd_locate() {
+  local zip=${1:-} json lat lon
+  [[ $zip =~ ^[0-9]{5}$ ]] || die "usage: afterburn locate 5-digit-US-ZIP"
+  command -v jq >/dev/null 2>&1 || die "jq is required for locate"
+  json=$(curl -fsS --max-time 10 "https://api.zippopotam.us/us/$zip") || die "ZIP lookup failed (network, or unknown ZIP)"
+  lat=$(jq -r '.places[0].latitude // empty' <<< "$json")
+  lon=$(jq -r '.places[0].longitude // empty' <<< "$json")
+  [[ -n $lat && -n $lon ]] || die "ZIP $zip not found"
+  lat=$(printf '%.4f' "$lat")
+  lon=$(printf '%.4f' "$lon")
+  load_conf
+  set_key ZIP "$zip"
+  set_key LAT "$lat"
+  set_key LON "$lon"
+  mkdir -p "$STATE" && rm -f "$STATE/weather.json"
+  echo "ZIP $zip -> LAT $lat, LON $lon"
+}
+
+cmd="${1:-status}"
+shift || true
+case $cmd in
+  apply)  cmd_apply ;;
+  set)    cmd_set "$@" ;;
+  get)    cmd_get "$@" ;;
+  status) cmd_status ;;
+  level)  cmd_level "$@" ;;
+  quiet)  cmd_mode quiet "${1:-}" ;;
+  saver)  cmd_mode saver "${1:-}" ;;
+  laptop) cmd_laptop "$@" ;;
+  colors) cmd_colors "$@" ;;
+  locate) cmd_locate "$@" ;;
+  -h|--help|help) usage ;;
+  *) usage >&2; exit 2 ;;
+esac

@@ -1,0 +1,10 @@
+[Unit]
+Description=Afterburn watcher (fullscreen quiet, battery saver, heat level)
+After=graphical-session.target
+
+[Service]
+ExecStart=%h/.local/bin/afterburn-watch
+Restart=on-failure
+
+[Install]
+WantedBy=graphical-session.target

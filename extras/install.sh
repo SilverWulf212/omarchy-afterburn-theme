@@ -3,6 +3,9 @@
 #   1. Ghostty terminal (installed and made default if needed)
 #   2. cursor-fx animated cursors by Avarce (MIT), set to "embers" while Afterburn is active
 #   3. The orange window glow (Omarchy drops .lua from installed themes; a theme-set hook restores it)
+#   4. The subtle pack (optional): slow border turn, dimmed background windows, heat levels,
+#      quiet fullscreen, battery saver, red prompt with a fail flash, the `afterburn` CLI
+#   5. The animated lock screen (optional, asked separately)
 # Run:  ~/.config/omarchy/themes/afterburn/extras/install.sh        (asks before each step)
 #       ~/.config/omarchy/themes/afterburn/extras/install.sh --yes  (no questions)
 # Undo: ~/.config/omarchy/themes/afterburn/extras/uninstall.sh
@@ -38,10 +41,19 @@ cat <<'EOF'
     and, if ~/.pi/agent exists, adds a pi extension and turns on showHardwareCursor.
     Anything it replaces is copied to ~/ghostty-savepoints/ first.
   • SYSTEM HOOK: adds ~/.config/omarchy/hooks/theme-set.d/50-afterburn-extras, which runs
-    on every theme change: it adds the glow on Afterburn and swaps your cursor effect.
+    on every theme change: it adds the glow on Afterburn, swaps your cursor effect and
+    applies the subtle pack's settings.
   • GPU / BATTERY: cursor shaders make Ghostty redraw constantly. `cursor-fx off` stops it.
   • MOTION: cursor effects animate and flash. If motion bothers you, skip cursor-fx
     or run `cursor-fx subtle on`.
+  • SUBTLE PACK (optional): links afterburn and afterburn-watch into ~/.local/bin, writes
+    ~/.config/afterburn/afterburn.conf, installs and starts a user systemd service
+    (afterburn-watch), adds one guarded line to ~/.bashrc, changes error_symbol in
+    ~/.config/starship.toml (backup in ~/.local/state/afterburn/), and copies a desktop
+    entry to ~/.local/share/applications/. Its heat source "weather" is the only option
+    that calls the network: api.weather.gov, and api.zippopotam.us once to find your ZIP.
+  • LOCK SCREEN (optional, asked separately): clones Omarchy's lock screen plugin and adds
+    an ember layer. The clone stops getting Omarchy's lock-screen updates until you uninstall.
 
   Full details: https://github.com/silverwulf212/omarchy-afterburn-theme#what-the-full-stack-changes
 EOF
@@ -105,6 +117,106 @@ fi
 omarchy hook install theme-set "$HERE/afterburn-theme-set-hook" >/dev/null
 mv -f "$HOOKS/afterburn-theme-set-hook" "$HOOKS/$HOOK_NAME"
 ok "glow hook installed"
+
+# 4. Subtle pack (optional). Config keys and commands: see the README's "Subtle pack" section.
+CONF_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+CONF="$CONF_HOME/afterburn/afterburn.conf"
+BIN="$HOME/.local/bin"
+UNIT_DIR="$CONF_HOME/systemd/user"
+APPS_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
+STARSHIP="$CONF_HOME/starship.toml"
+BASHRC="$HOME/.bashrc"
+FAIL_SH='$HOME/.config/omarchy/themes/afterburn/extras/afterburn-fail.bash'
+conf_set() { sed -i -E "s/^$1=[^ #]*/$1=$2/" "$CONF"; }
+
+echo
+if ask "Add the subtle pack? (slow-turning border, dimmed background windows, heat levels, quiet fullscreen, battery saver, red prompt with a fail flash, afterburn colors)"; then
+  mkdir -p "$BIN" "$UNIT_DIR" "$APPS_DIR"
+  for f in afterburn afterburn-watch; do ln -sfn "$HERE/bin/$f" "$BIN/$f"; done
+  ok "afterburn and afterburn-watch linked into ~/.local/bin"
+
+  # Writes the default conf if there is none. An existing conf keeps its settings.
+  "$BIN/afterburn" get >/dev/null
+
+  # Heat source. EOF counts as off, and --yes picks time (no network).
+  HEAT=time
+  if ! $YES; then
+    read -rp "  Heat source: [t]ime (default), [p]ressure (CPU load), [w]eather (US ZIP; calls NWS), [o]ff: " a || a=o
+    case ${a:-} in
+      p*|P*) HEAT=pressure ;;
+      w*|W*) HEAT=weather ;;
+      o*|O*) HEAT=off ;;
+    esac
+  fi
+  if [[ $HEAT == weather ]]; then
+    read -rp "  US ZIP code (sent once to api.zippopotam.us to find your coordinates): " zip || zip=""
+    if [[ $zip =~ ^[0-9]{5}$ ]] && "$BIN/afterburn" locate "$zip" >/dev/null 2>&1; then
+      ok "location saved for the weather heat source"
+    else
+      skip "no ZIP lookup, so the heat source is time instead"
+      HEAT=time
+    fi
+  fi
+  conf_set HEAT_SOURCE "$HEAT"
+  ok "heat source: $HEAT"
+
+  # Red error symbol in starship.toml. The original is backed up once, before the first edit.
+  if [[ -f $STARSHIP ]]; then
+    [[ -f $STATE_DIR/starship.toml.bak ]] || cp -p "$STARSHIP" "$STATE_DIR/starship.toml.bak"
+    awk -v line='error_symbol = "[❯](bold red)"' '
+      function close_character() { if (sec == "character" && !done) { print line; done = 1 } }
+      /^\[/ { close_character(); sec = $0; sub(/^\[/, "", sec); sub(/\].*$/, "", sec); print; next }
+      sec == "character" && /^error_symbol[ \t]*=/ { print line; done = 1; next }
+      { print }
+      END { if (!done) { if (sec == "character") print line; else { print ""; print "[character]"; print line } } }
+    ' "$STARSHIP" > "$STATE_DIR/starship.tmp" \
+      && cat "$STATE_DIR/starship.tmp" > "$STARSHIP" && rm -f "$STATE_DIR/starship.tmp" \
+      && ok "prompt: failed command shows a red ❯ (backup in $STATE_DIR/starship.toml.bak)" \
+      || skip "couldn't edit $STARSHIP; prompt unchanged"
+  else
+    skip "no $STARSHIP, so the prompt symbol is unchanged"
+  fi
+
+  # One guarded line in ~/.bashrc, sourced only when the file exists.
+  if ! grep -q '# afterburn$' "$BASHRC" 2>/dev/null; then
+    if [[ -s $BASHRC && -n $(tail -c1 "$BASHRC") ]]; then
+      echo >> "$BASHRC"
+      : > "$STATE_DIR/bashrc-newline"   # uninstall.sh drops this newline again
+    fi
+    echo "[[ -f \"$FAIL_SH\" ]] && source \"$FAIL_SH\"  # afterburn" >> "$BASHRC"
+  fi
+  ok "~/.bashrc: one guarded line sources the fail effect"
+
+  # User service: the watcher handles fullscreen quiet, battery saver and the heat level.
+  cp "$HERE/afterburn-watch.service" "$UNIT_DIR/afterburn-watch.service"
+  systemctl --user daemon-reload >/dev/null 2>&1 || true
+  if systemctl --user enable --now afterburn-watch.service >/dev/null 2>&1; then
+    ok "watcher service enabled (user unit: afterburn-watch)"
+  else
+    skip "couldn't start the watcher; run: systemctl --user enable --now afterburn-watch.service"
+  fi
+
+  cp "$HERE/afterburn-colors.desktop" "$APPS_DIR/afterburn-colors.desktop"
+  ok "subtle pack installed. Try: afterburn status"
+else
+  skip "skipped the subtle pack. Re-run this script any time to add it"
+fi
+
+# 5. Animated lock screen (optional, asked separately). The script clones Omarchy's lock plugin.
+LOCK="$HERE/lock/lock-embers.sh"
+echo
+if [[ ! -f $LOCK ]]; then
+  skip "lock screen: $LOCK not found, skipped"
+elif ask "Animate the lock screen with embers? (clones Omarchy's lock plugin; it stops getting Omarchy's lock-screen updates until you uninstall)"; then
+  if bash "$LOCK" install; then
+    : > "$STATE_DIR/lock-embers"
+    ok "lock screen animated with embers"
+  else
+    skip "lock screen: the install did not finish (see the messages above)"
+  fi
+else
+  skip "kept the stock lock screen"
+fi
 
 omarchy theme set afterburn >/dev/null
 if command -v cursor-fx >/dev/null; then
