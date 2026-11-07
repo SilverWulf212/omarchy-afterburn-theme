@@ -86,7 +86,7 @@ cat <<'EOF'
   • LOCK SCREEN (optional, asked separately): clones Omarchy's lock screen plugin and adds
     an ember layer. The clone stops getting Omarchy's lock-screen updates until you uninstall.
   • COLOUR EDITIONS (optional, asked separately): copies the Voltage, Cyber, Overdrive,
-    Redline and Phantom themes from this theme's editions/ folder to
+    Redline and Phantom themes from this theme's .editions/ folder to
     ~/.config/omarchy/themes/afterburn-<name>. A folder that already exists is never touched.
     uninstall.sh removes only the ones it created.
   • BOOT/LOGIN SCREEN (optional, default No, needs sudo): runs Omarchy's
@@ -292,7 +292,8 @@ else
   skip "kept the stock lock screen"
 fi
 
-# 6. Colour editions (optional, asked separately). Each editions/<name>/ is a complete Omarchy theme;
+# 6. Colour editions (optional, asked separately). Each .editions/<name>/ is a complete Omarchy theme
+# (the folder is hidden so Omarchy's theme staging, which globs `*`, does not copy it on every switch);
 # the installer copies it to ~/.config/omarchy/themes/afterburn-<name>. A folder that is already there
 # is never touched or recorded, so uninstall.sh can only ever remove what this script made.
 THEME_ROOT="$(dirname "$HERE")"
@@ -309,16 +310,16 @@ add_missing() {
 EDITIONS=(voltage cyber overdrive redline phantom)
 echo
 AVAILABLE=()
-for e in "${EDITIONS[@]}"; do [[ -f $THEME_ROOT/editions/$e/colors.toml ]] && AVAILABLE+=("$e"); done
+for e in "${EDITIONS[@]}"; do [[ -f $THEME_ROOT/.editions/$e/colors.toml ]] && AVAILABLE+=("$e"); done
 if (( ${#AVAILABLE[@]} == 0 )); then
-  skip "colour editions: no editions/ folder in $THEME_ROOT (this copy of the theme has none), skipped"
+  skip "colour editions: no .editions/ folder in $THEME_ROOT (this copy of the theme has none), skipped"
 elif ask "Install colour editions (Voltage, Cyber, Overdrive, Redline, Phantom)? (copies each to ~/.config/omarchy/themes/afterburn-<name>; the extras follow the edition you pick)"; then
   for e in "${AVAILABLE[@]}"; do
     dest="$THEMES_HOME/afterburn-$e"
     if [[ -e $dest || -L $dest ]]; then
       if grep -qxF "$e" "$STATE_DIR/editions" 2>/dev/null; then
         # Ours: add what this release has and the copy lacks (a new wallpaper set, say). Never overwrites.
-        added=$(add_missing "$THEME_ROOT/editions/$e" "$dest")
+        added=$(add_missing "$THEME_ROOT/.editions/$e" "$dest")
         if (( added )); then ok "afterburn-$e already installed; added $added new files"; else ok "afterburn-$e already installed"; fi
       else
         skip "afterburn-$e: $dest already exists and is not ours, left alone"
@@ -329,7 +330,7 @@ elif ask "Install colour editions (Voltage, Cyber, Overdrive, Redline, Phantom)?
     # Record first, so uninstall.sh also cleans up a copy that stops halfway.
     echo "$e" >> "$STATE_DIR/editions"
     CHANGED+=("edition theme $dest")
-    cp -a "$THEME_ROOT/editions/$e" "$dest"
+    cp -a "$THEME_ROOT/.editions/$e" "$dest"
     ok "edition installed: afterburn-$e"
   done
 else

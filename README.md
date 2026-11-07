@@ -51,7 +51,7 @@ You get the colors, the ember-gradient borders, the wallpapers and the icons. Th
 | **Network calls** | Only if you choose the weather heat source: `api.weather.gov` (station and observations, at most every 20 minutes) and `api.zippopotam.us` (one ZIP lookup when you enter your ZIP). No other option makes a network call. | Choose another `HEAT_SOURCE`, or run `uninstall.sh`. |
 | **Shell and prompt** | Adds one guarded line to `~/.bashrc` that sources the fail flash, and sets `error_symbol` in `~/.config/starship.toml` so a failed command shows a red `❯`. Only the original `error_symbol` line is remembered, and a whole-file copy is kept in `~/.local/state/afterburn/` as a safety copy. If you have no starship.toml, the prompt is left alone. | `uninstall.sh` removes the line and puts the original `error_symbol` back, only if that line is still Afterburn's. Other edits to your starship.toml are kept. |
 | **Lock screen** (asked separately) | Clones Omarchy's lock plugin with its official clone command and adds an ember layer to the clone. The clone does not get Omarchy's lock-screen updates until you uninstall. | `uninstall.sh` runs `lock-embers.sh uninstall`. |
-| **Colour editions** (asked separately) | Copies each `editions/<name>/` folder of the installed theme to `~/.config/omarchy/themes/afterburn-<name>`. A folder that is already there is **never** overwritten, and the installer records only what it created. On a re-run, a folder it created gets only the files it lacks (a newer release's wallpapers, say); nothing existing is changed. If `editions/` is missing, the step is skipped. | `uninstall.sh` removes only the folders the installer created. If one is your active theme, it switches you to base `afterburn` first. |
+| **Colour editions** (asked separately) | Copies each `.editions/<name>/` folder of the installed theme to `~/.config/omarchy/themes/afterburn-<name>`. A folder that is already there is **never** overwritten, and the installer records only what it created. On a re-run, a folder it created gets only the files it lacks (a newer release's wallpapers, say); nothing existing is changed. If `.editions/` is missing, the step is skipped. | `uninstall.sh` removes only the folders the installer created. If one is your active theme, it switches you to base `afterburn` first. |
 | **Boot and login screen** (asked separately, default No) | Runs Omarchy's `omarchy-plymouth-set-by-theme <theme>` for the current theme, which changes the boot splash and the login screen. **Needs `sudo`.** `--yes` skips it. The installer records that it did this. | `omarchy-plymouth-reset` (needs `sudo`), which `uninstall.sh` offers to run, or prints the command if it gets no answer. |
 | **State files** | `~/.local/state/afterburn/` (your previous terminal and cursor effect, the starship backup, the colours the fail flash uses, and markers for the lock screen, bashrc, editions and boot screen) and `~/.local/share/afterburn/` (the cursor-fx checkout). | `uninstall.sh` |
 
@@ -93,7 +93,7 @@ Because it is a clone, the lock screen **stops getting Omarchy's lock-screen upd
 
 ## Editions
 
-The same theme in five more colours. Each edition is a complete Omarchy theme with its own colours, wallpapers, icons and boot image. See [`editions/README.md`](editions/README.md) for previews and the details.
+The same theme in five more colours. Each edition is a complete Omarchy theme with its own colours, wallpapers, icons and boot image. They live in the hidden folder `.editions/` of the repo (Omarchy skips dot folders when it stages a theme, so switching to the base theme does not copy them). See [`.editions/README.md`](.editions/README.md) for previews and the details.
 
 | Edition | Theme name | Colour |
 |---|---|---|
@@ -103,7 +103,7 @@ The same theme in five more colours. Each edition is a complete Omarchy theme wi
 | Redline | `afterburn-redline` | red |
 | Phantom | `afterburn-phantom` | violet |
 
-The installer's edition question (step 6) copies them next to the base theme. Switch with the Omarchy theme menu or `omarchy theme set afterburn-voltage`. `omarchy theme install` alone installs only the base theme: the editions sit in its `editions/` folder as plain theme directories, so without the installer, copy one to `~/.config/omarchy/themes/afterburn-<name>` yourself (you get its colours, wallpapers and icons, but not the glow and the other extras).
+The installer's edition question (step 6) copies them next to the base theme. Switch with the Omarchy theme menu or `omarchy theme set afterburn-voltage`. `omarchy theme install` alone installs only the base theme: the editions sit in its hidden `.editions/` folder as plain theme directories, so without the installer, copy one to `~/.config/omarchy/themes/afterburn-<name>` yourself (you get its colours, wallpapers and icons, but not the glow and the other extras).
 
 With the extras installed, **every** edition gets the same treatment as base Afterburn, in its own colours: the glow and the slow-turning border, the heat levels, the red-prompt fail flash, `afterburn colors`, the lock-screen embers and the watcher. The colours are read from the active theme's `colors.toml` on every theme change (the cool level's middle stop comes from the `afterburn_cool` key each edition carries). The heat wallpapers follow the edition too: every edition has its own cool and hot set in `heat-wallpapers/`, so `afterburn level hot` swaps a still for its hot version in the edition's colours. A copy of an edition without that folder keeps its wallpaper.
 
@@ -135,7 +135,7 @@ Six still wallpapers at 3440×1440, plus three live loops. Press **Super + Ctrl 
 
 **Live loops** (`backgrounds/7-nozzle-live.mp4`, `8-ember-live.mp4`, `9-horizon-live.mp4`) play natively through Omarchy's OWE wallpaper engine, so they need no install step. They pause in fullscreen and follow OWE's battery policy. Heat levels change the borders and glow but keep the live loops as they are.
 
-**Heat variants:** 12 in total, six cool and six hot, in `extras/heat-wallpapers/cool/` and `extras/heat-wallpapers/hot/`. Each has the same file name as its still. With `HEAT_WALLPAPERS=yes`, `afterburn level cool` or `hot` swaps a still wallpaper for its variant, and `afterburn level normal` swaps it back. Each colour edition has its own 12 in `editions/<name>/heat-wallpapers/`, made from these by `tools/make-editions.sh`.
+**Heat variants:** 12 in total, six cool and six hot, in `extras/heat-wallpapers/cool/` and `extras/heat-wallpapers/hot/`. Each has the same file name as its still. With `HEAT_WALLPAPERS=yes`, `afterburn level cool` or `hot` swaps a still wallpaper for its variant, and `afterburn level normal` swaps it back. Each colour edition has its own 12 in `.editions/<name>/heat-wallpapers/`, made from these by `tools/make-editions.sh`.
 
 `4`–`6` are AI-generated images (made with OpenAI's image model through Codex, then upscaled). `1`–`3` are generated in code. To re-render them, or change the text on `prompt`:
 

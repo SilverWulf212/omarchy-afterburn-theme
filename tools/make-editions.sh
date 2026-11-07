@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
 # Rebuild every Afterburn colour edition from the base theme files.
 #
-# Writes editions/<name>/ (one complete Omarchy theme dir per edition, with its
-# own cool/hot heat wallpapers in heat-wallpapers/) and editions/README.md, plus
+# Writes .editions/<name>/ (one complete Omarchy theme dir per edition, with its
+# own cool/hot heat wallpapers in heat-wallpapers/) and .editions/README.md, plus
 # the base unlock.png and preview-unlock.png at the repo root. Everything under
-# editions/ is derived: the script builds a fresh tree and swaps it in, so never
+# .editions/ is derived: the script builds a fresh tree and swaps it in, so never
 # hand-edit those files. Change this script. The output is byte-for-byte
 # repeatable, so rerunning it only changes git where its inputs or rules changed.
+#
+# The folder is hidden on purpose: Omarchy stages an installed theme with a `*` glob,
+# which skips dot entries, so the ~125 MB of editions are not copied into current/theme
+# every time you switch to the base theme. The installer copies them from here.
 #
 # Method: hue-rotate, don't repaint. The Codex art keeps its shapes and
 # lighting; only the warm colours move around the wheel. Neutrals (backgrounds,
@@ -233,8 +237,8 @@ relabel() {
 make_unlock unlock.png "#$BASE_ACCENT" ""
 make_preview unlock.png preview-unlock.png
 
-# Build in a scratch dir next to editions/ and swap it in at the end, so a failed run (a missing
-# codec, Ctrl-C) never leaves a half-wiped editions/ behind.
+# Build in a scratch dir next to .editions/ and swap it in at the end, so a failed run (a missing
+# codec, Ctrl-C) never leaves a half-wiped .editions/ behind.
 STAGE=$(mktemp -d "$ROOT/.editions-build.XXXXXX")
 trap 'rm -rf "$STAGE"' EXIT
 
@@ -303,9 +307,9 @@ done
   printf '%s\n' "${rows[@]}"
 } > "$STAGE/README.md"
 
-rm -rf editions
+rm -rf .editions
 chmod 755 "$STAGE"
-mv "$STAGE" editions
+mv "$STAGE" .editions
 trap - EXIT
 
-echo "done: editions/ regenerated from base files"
+echo "done: .editions/ regenerated from base files"

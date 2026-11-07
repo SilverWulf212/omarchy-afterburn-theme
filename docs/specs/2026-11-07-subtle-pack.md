@@ -30,6 +30,8 @@ State dir: `${XDG_STATE_HOME:-$HOME/.local/state}/afterburn/` (files: `level`, `
 | normal | `rgba(f59145ee) rgba(ff5a1fee) rgba(ffc48aee) 45deg` | 14 | `rgba(f5914555)` | `backgrounds/<name>.jpg` |
 | hot | `rgba(ffc48aff) rgba(fff1e0ff) rgba(ff5a1fff) 45deg` | 22 | `rgba(ffb37a77)` | `extras/heat-wallpapers/hot/<name>.jpg` |
 
+The table is the base theme (orange). Each colour edition carries its own `afterburn_cool` colour (the cool border's middle stop) and its own set at `.editions/<name>/heat-wallpapers/{cool,hot}/<same name>.jpg`, installed to `~/.config/omarchy/themes/afterburn-<name>/heat-wallpapers/`. `.editions/` is a hidden folder so Omarchy's theme staging (a `*` glob) does not copy it on every switch to the base theme.
+
 Sources: **time**: inside EVENING_HOURS = cool else normal. **pressure**: `/proc/pressure/cpu` `some avg10` <5 cool, 5–35 normal, >35 hot; change only after 2 equal readings in a row. **weather**: NWS. `GET https://api.weather.gov/points/$LAT,$LON` → `properties.observationStations` (first station) and `forecastHourly`; latest obs `/stations/<id>/observations/latest` → `temperature.value` (°C, convert), `textDescription`. Header `User-Agent: afterburn-theme (github.com/silverwulf212/omarchy-afterburn-theme)`. Fetch at most every 20 min, cache to `weather.json`; on network failure keep last level. Map: temp ≥ HOT_F hot, ≤ COOL_F cool, else normal; rain/drizzle/showers/snow/thunder in description → cool; hourly forecast period 0 `isDaytime=false` → one level cooler.
 
 ## Components and owners
