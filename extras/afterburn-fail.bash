@@ -17,11 +17,13 @@ if [[ $- == *i* && -t 1 && -z ${__AFTERBURN_FAIL_HOOKED-} ]]; then
 
   __AFB_FRAMES=8
   __AFB_DELAY=0.05
+  # Base theme colours. An edition's colours replace these from palette.env (see below).
   __AFB_FLARE=$'\e[38;2;255;196;138m'   # #ffc48a
   __AFB_EMBER=$'\e[38;2;255;90;31m'     # #ff5a1f
   __AFB_RUST=$'\e[38;2;122;62;22m'      # #7a3e16
   __AFB_ASH=$'\e[38;2;94;91;85m'        # #5e5b55
   __AFB_BURN=("$__AFB_FLARE" "$__AFB_EMBER" "$__AFB_RUST" "$__AFB_ASH")
+  __AFTERBURN_PAL_MTIME=${__AFTERBURN_PAL_MTIME-}
   __AFB_CASCADE=('▀' '▄' '_' '.')
   __AFB_DISSOLVE=('▓' '▒' '░')
 
@@ -41,6 +43,30 @@ if [[ $- == *i* && -t 1 && -z ${__AFTERBURN_FAIL_HOOKED-} ]]; then
         __AFTERBURN_FAIL_FX=$v
       fi
     done < "$conf"
+  }
+
+  # Colours of the active Afterburn theme or edition, written by the theme-set hook to
+  # ${XDG_STATE_HOME:-~/.local/state}/afterburn/palette.env (FLARE=, EMBER=, RUST=, ASH= as 6-digit hex).
+  # Re-read only when the file's mtime changes; no file means the base colours.
+  __afterburn_fail_load_palette() {
+    local pal=${XDG_STATE_HOME:-$HOME/.local/state}/afterburn/palette.env
+    local mtime k v
+    mtime=$(stat -c %Y -- "$pal" 2>/dev/null) || mtime=missing
+    [[ $mtime == "$__AFTERBURN_PAL_MTIME" ]] && return 0
+    __AFTERBURN_PAL_MTIME=$mtime
+    __AFB_FLARE=$'\e[38;2;255;196;138m' __AFB_EMBER=$'\e[38;2;255;90;31m'
+    __AFB_RUST=$'\e[38;2;122;62;22m' __AFB_ASH=$'\e[38;2;94;91;85m'
+    if [[ -r $pal ]]; then
+      while IFS='=' read -r k v || [[ -n $k ]]; do
+        [[ $v =~ ^[0-9a-fA-F]{6}$ ]] || continue
+        v=$'\e[38;2;'$((16#${v:0:2}))';'$((16#${v:2:2}))';'$((16#${v:4:2}))'m'
+        case $k in
+          FLARE) __AFB_FLARE=$v ;; EMBER) __AFB_EMBER=$v ;;
+          RUST) __AFB_RUST=$v ;; ASH) __AFB_ASH=$v ;;
+        esac
+      done < "$pal"
+    fi
+    __AFB_BURN=("$__AFB_FLARE" "$__AFB_EMBER" "$__AFB_RUST" "$__AFB_ASH")
   }
 
   # $1 exit code, $2 effect name, $3 command text (already truncated).
@@ -88,6 +114,7 @@ if [[ $- == *i* && -t 1 && -z ${__AFTERBURN_FAIL_HOOKED-} ]]; then
     if (( rc != 0 && rc != 130 && rc != 148 )) \
        && [[ $- == *i* && -t 1 && -z ${NO_MOTION+x} ]]; then
       __afterburn_fail_load_conf
+      __afterburn_fail_load_palette
       local line cmd fx
       line=$(builtin history 1 2>/dev/null)
       read -r _ cmd <<<"$line"        # drop the history number

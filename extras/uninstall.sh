@@ -1,7 +1,9 @@
 #!/bin/bash
 # Remove Afterburn extras: the hook, your old cursor effect, your old default terminal,
 # the subtle pack (links, watcher service, ~/.bashrc line, starship prompt, desktop entry,
-# afterburn.conf) and the lock-screen embers if the installer added them.
+# afterburn.conf), the lock-screen embers and the colour editions if the installer added them.
+# The boot/login screen is put back with Omarchy's omarchy-plymouth-reset if the installer set it
+# (it needs sudo, so you are asked; or the exact command is printed).
 # Ghostty and cursor-fx stay installed; how to remove them is printed at the end.
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -24,6 +26,31 @@ if [[ -s $STATE_DIR/prev-terminal ]]; then
 fi
 if [[ -s $STATE_DIR/prev-font ]]; then
   omarchy font set "$(cat "$STATE_DIR/prev-font")" >/dev/null && echo "  ✓ font restored to $(cat "$STATE_DIR/prev-font")"
+fi
+
+# Colour editions: remove only the afterburn-<name> folders the installer copied (listed in the state
+# dir). A folder of the same name that the installer did not create is never in that list.
+THEMES_HOME="$HOME/.config/omarchy/themes"
+if [[ -s $STATE_DIR/editions ]]; then
+  cur=$(cat "${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/current/theme.name" 2>/dev/null || true)
+  while IFS= read -r e || [[ -n $e ]]; do
+    [[ $e =~ ^[a-z]+$ ]] || continue          # the state file is data: only plain edition names
+    dir="$THEMES_HOME/afterburn-$e"
+    [[ -d $dir && ! -L $dir ]] || continue
+    if [[ $cur == "afterburn-$e" ]]; then
+      # Decision: switch to the base theme first, so the desktop is never left on a theme that is gone.
+      omarchy theme set afterburn >/dev/null 2>&1 || true
+      cur=$(cat "${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/current/theme.name" 2>/dev/null || true)
+      if [[ $cur == afterburn ]]; then
+        echo "  ✓ switched from afterburn-$e to afterburn"
+      else
+        echo "  · afterburn-$e is your active theme and could not be switched, so it was kept."
+        echo "    Switch theme (omarchy theme set <name>), then remove it: rm -rf $dir"
+        continue
+      fi
+    fi
+    rm -rf "$dir" && echo "  ✓ edition removed: afterburn-$e"
+  done < "$STATE_DIR/editions"
 fi
 
 # Lock screen: only if the installer added the embers (marker written on a successful install).
@@ -84,9 +111,33 @@ if grep -q '# afterburn$' "$HOME/.bashrc" 2>/dev/null; then
 fi
 APPS_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 rm -f "$APPS_DIR/afterburn-colors.desktop"
-rm -rf "$CONF_HOME/afterburn"
+# Only the file the installer wrote; then the folder, if nothing else is in it.
+rm -f "$CONF_HOME/afterburn/afterburn.conf"
+rmdir "$CONF_HOME/afterburn" 2>/dev/null || true
+# The cursor-fx checkout is the one thing the installer puts in ~/.local/share/afterburn.
+DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+rm -rf "$HOME/.local/share/afterburn/ghostty-cursor-fx"
+rmdir "$HOME/.local/share/afterburn" 2>/dev/null || true
 # Remove the directories the installer created, but only if they are now empty.
-rmdir "$BIN" "$CONF_HOME/systemd/user" "$CONF_HOME/systemd" "$APPS_DIR" "${XDG_DATA_HOME:-$HOME/.local/share}" 2>/dev/null || true
+rmdir "$BIN" "$CONF_HOME/systemd/user" "$CONF_HOME/systemd" "$APPS_DIR" "$DATA_HOME" 2>/dev/null || true
+
+# Boot/login screen: only if the installer set it. omarchy-plymouth-reset needs sudo, so ask (default Yes,
+# it is the undo of something you chose); with no answer (no terminal), print the exact command.
+PLYMOUTH_NOTE=""
+if [[ -s $STATE_DIR/plymouth ]]; then
+  if command -v omarchy-plymouth-reset >/dev/null &&
+     { read -rp "  Restore Omarchy's default boot and login screen now? (runs omarchy-plymouth-reset, needs sudo) [Y/n] " a || { echo; false; }; } &&
+     [[ -z $a || $a =~ ^[Yy] ]]; then
+    if omarchy-plymouth-reset; then
+      echo "  ✓ boot/login screen restored"
+    else
+      PLYMOUTH_NOTE="the boot/login screen reset did not finish. Run: omarchy-plymouth-reset"
+    fi
+  else
+    PLYMOUTH_NOTE="the boot/login screen is still set to Afterburn. Restore it with: omarchy-plymouth-reset   (needs sudo)"
+  fi
+  [[ -n $PLYMOUTH_NOTE ]] && echo "  · $PLYMOUTH_NOTE"
+fi
 
 rm -f "$D/50-afterburn-extras"
 # The whole-file starship backup stays in the state dir as a safety copy. Nothing restores from it.
@@ -96,7 +147,6 @@ if [[ -f $STATE_DIR/starship.toml.bak ]]; then
 else
   rm -rf "$STATE_DIR"
 fi
-rm -rf "$HOME/.local/share/afterburn"
 echo "  ✓ Afterburn hook removed"
 cat <<'EOF'
 

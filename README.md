@@ -20,8 +20,10 @@ The second half shows a summary of what it will change, then asks before each st
 3. **Glow**: the orange halo around the focused window
 4. **Subtle pack** (optional): a slow-turning border, dimmed background windows, heat levels, quiet fullscreen, battery saver, a red prompt with a fail flash, and the `afterburn` command. See [Subtle pack](#subtle-pack)
 5. **Lock screen** (optional, asked separately): embers on the lock screen. See [Lock screen](#lock-screen)
+6. **Colour editions** (optional, asked separately): Voltage, Cyber, Overdrive, Redline and Phantom, the same theme in other colours. See [Editions](#editions)
+7. **Boot and login screen** (optional, needs `sudo`, default No): sets Omarchy's boot splash and login screen to the current theme. See [Boot and login screen](#boot-and-login-screen)
 
-Add `--yes` to answer yes to every question. The exception is the heat source, which becomes `time`, so `--yes` never makes a network call. To undo, run `~/.config/omarchy/themes/afterburn/extras/uninstall.sh`. Switching to another theme also puts your previous cursor effect back.
+Add `--yes` to answer yes to every question. Two exceptions: the heat source becomes `time`, so `--yes` never makes a network call, and the boot and login screen is never changed by `--yes` because it needs `sudo`. To undo, run `~/.config/omarchy/themes/afterburn/extras/uninstall.sh`. Switching to another theme also puts your previous cursor effect back.
 
 ## Install: theme only
 
@@ -43,18 +45,22 @@ You get the colors, the ember-gradient borders, the wallpapers and the icons. Th
 | **Third-party code** | Clones [ghostty-cursor-fx](https://github.com/Avarce/ghostty-cursor-fx) by Avarce (MIT), pinned to commit `252df6c`, and runs its `install.sh`. Read that repo before you trust it, as with any script from the internet. | See the commands that `uninstall.sh` prints. |
 | **Ghostty config** | cursor-fx writes `~/.config/ghostty/shaders/`, `~/.config/ghostty/cursor-effects/` and `~/.local/bin/cursor-fx`, and adds a `config-file = cursor-effects/…` line to `~/.config/ghostty/config`. It backs up anything it replaces to `~/ghostty-savepoints/`. | Restore from `~/ghostty-savepoints/`, or `cursor-fx off`. |
 | **pi agent** (only if `~/.pi/agent` exists) | cursor-fx adds a pi extension and sets `showHardwareCursor: true` in pi's settings. | Delete `~/.pi/agent/extensions/cursor-fx.ts`. |
-| **Omarchy hook** | Adds `~/.config/omarchy/hooks/theme-set.d/50-afterburn-extras`. It runs on **every** theme change: on Afterburn it adds the glow, sets the embers cursor, applies the subtle pack's settings and restarts the watcher. On other themes it stops the watcher and restores your previous cursor effect. | `uninstall.sh` |
+| **Omarchy hook** | Adds `~/.config/omarchy/hooks/theme-set.d/50-afterburn-extras`. It runs on **every** theme change: on Afterburn or one of its colour editions it adds the glow in that theme's colours, sets the embers cursor, recolours the lock-screen embers, applies the subtle pack's settings and restarts the watcher. On other themes it stops the watcher, restores your previous cursor effect and puts the lock embers back to orange. | `uninstall.sh` |
 | **Subtle pack** | Links `afterburn` and `afterburn-watch` into `~/.local/bin`, writes `~/.config/afterburn/afterburn.conf`, and copies the "Afterburn colors" launcher entry to `~/.local/share/applications/`. | `uninstall.sh` removes the links, the conf file and the launcher entry. |
 | **Watcher service** | Installs and starts a user systemd service, `afterburn-watch`, that handles fullscreen, battery and heat changes. | `uninstall.sh` disables and removes it. |
 | **Network calls** | Only if you choose the weather heat source: `api.weather.gov` (station and observations, at most every 20 minutes) and `api.zippopotam.us` (one ZIP lookup when you enter your ZIP). No other option makes a network call. | Choose another `HEAT_SOURCE`, or run `uninstall.sh`. |
 | **Shell and prompt** | Adds one guarded line to `~/.bashrc` that sources the fail flash, and sets `error_symbol` in `~/.config/starship.toml` so a failed command shows a red `❯`. Only the original `error_symbol` line is remembered, and a whole-file copy is kept in `~/.local/state/afterburn/` as a safety copy. If you have no starship.toml, the prompt is left alone. | `uninstall.sh` removes the line and puts the original `error_symbol` back, only if that line is still Afterburn's. Other edits to your starship.toml are kept. |
 | **Lock screen** (asked separately) | Clones Omarchy's lock plugin with its official clone command and adds an ember layer to the clone. The clone does not get Omarchy's lock-screen updates until you uninstall. | `uninstall.sh` runs `lock-embers.sh uninstall`. |
-| **State files** | `~/.local/state/afterburn/` (your previous terminal and cursor effect, the starship backup, and markers for the lock screen and bashrc) and `~/.local/share/afterburn/` (the cursor-fx checkout). | `uninstall.sh` |
+| **Colour editions** (asked separately) | Copies each `editions/<name>/` folder of the installed theme to `~/.config/omarchy/themes/afterburn-<name>`. A folder that is already there is **never** overwritten, and the installer records only what it created. If `editions/` is missing, the step is skipped. | `uninstall.sh` removes only the folders the installer created. If one is your active theme, it switches you to base `afterburn` first. |
+| **Boot and login screen** (asked separately, default No) | Runs Omarchy's `omarchy-plymouth-set-by-theme <theme>` for the current theme, which changes the boot splash and the login screen. **Needs `sudo`.** `--yes` skips it. The installer records that it did this. | `omarchy-plymouth-reset` (needs `sudo`), which `uninstall.sh` offers to run, or prints the command if it gets no answer. |
+| **State files** | `~/.local/state/afterburn/` (your previous terminal and cursor effect, the starship backup, the colours the fail flash uses, and markers for the lock screen, bashrc, editions and boot screen) and `~/.local/share/afterburn/` (the cursor-fx checkout). | `uninstall.sh` |
 
 **Also worth knowing:**
 - **GPU and battery:** while a cursor effect is on, Ghostty redraws constantly, so expect a little extra GPU use and battery drain on laptops. `cursor-fx off` turns it off.
 - **Motion and flashing:** the cursor effects animate, and some flash. If you're sensitive to motion or flashing light, skip cursor-fx or run `cursor-fx subtle on`.
 - **Uninstall doesn't remove Ghostty or cursor-fx.** It puts back your terminal and cursor settings, and prints the commands to remove the rest.
+- **Uninstall removes only what the installer created.** That covers the files in `~/.config/afterburn/` and `~/.local/share/afterburn/` (the folders go too, but only when empty) and the edition folders it copied. An `afterburn-<name>` folder you made yourself is never touched. If an edition is your active theme, `uninstall.sh` switches you to base `afterburn` first. If it can't, it keeps that folder and tells you to switch theme and delete it.
+- **The boot and login screen is not undone silently.** If you said yes to it, `uninstall.sh` asks before running `omarchy-plymouth-reset` (needs `sudo`), and prints that command if it gets no answer.
 - **No warranty.** This is a personal hobby project, provided as is under the MIT licence. The installer changes your dotfiles, so commit or back them up first if you keep them in git.
 - **Not affiliated** with Omarchy, Basecamp, Ghostty, Termix or Avarce. Their names are used here only to give credit and to say what this works with.
 
@@ -81,9 +87,33 @@ Other commands: `afterburn apply` (rebuilds the glow from the conf and reloads H
 
 The installer asks this separately (step 5). It runs `extras/lock/lock-embers.sh install`, which clones Omarchy's built-in lock plugin with its official clone command and adds an ember layer to the clone. Omarchy's own lock screen is not edited.
 
+The embers follow the active theme: orange on Afterburn, and the edition's own colours on Voltage, Cyber, Overdrive, Redline and Phantom. The theme-set hook rewrites the colours in the clone's copy of the ember layer on each theme change, and puts the orange back on any other theme.
+
 Because it is a clone, the lock screen **stops getting Omarchy's lock-screen updates** until you uninstall. To remove it, run `uninstall.sh` (or `extras/lock/lock-embers.sh uninstall`).
 
+## Editions
+
+The same theme in five more colours. Each edition is a complete Omarchy theme with its own colours, wallpapers, icons and boot image. See [`editions/README.md`](editions/README.md) for previews and the details.
+
+| Edition | Theme name | Colour |
+|---|---|---|
+| Voltage | `afterburn-voltage` | cyan |
+| Cyber | `afterburn-cyber` | green |
+| Overdrive | `afterburn-overdrive` | magenta |
+| Redline | `afterburn-redline` | red |
+| Phantom | `afterburn-phantom` | violet |
+
+The installer's edition question (step 6) copies them next to the base theme. Switch with the Omarchy theme menu or `omarchy theme set afterburn-voltage`. Without the full-stack install, `omarchy theme install` gives you the editions' colours, wallpapers and icons only.
+
+With the extras installed, **every** edition gets the same treatment as base Afterburn, in its own colours: the glow and the slow-turning border, the heat levels, the red-prompt fail flash, `afterburn colors`, the lock-screen embers and the watcher. The colours are read from the active theme's `colors.toml` on every theme change. One difference: the cool and hot heat wallpapers are the base theme's orange images, so on an edition `HEAT_WALLPAPERS` does nothing and your edition wallpaper stays.
+
+## Boot and login screen
+
+Optional, step 7 of the installer, off unless you say yes (`--yes` never does it). It runs `omarchy-plymouth-set-by-theme <theme>` for the current theme, which uses that theme's `unlock.png`, background and foreground colours for Omarchy's boot splash and login screen. It needs `sudo` and changes system files outside your home folder, so the installer says so before it asks. To undo it, run `omarchy-plymouth-reset` (also needs `sudo`). `uninstall.sh` offers to run that for you if the installer did the change, and prints the exact command if it gets no answer.
+
 ## Palette
+
+The base theme's palette. Editions swap the orange for their own colour.
 
 | | |
 |---|---|
