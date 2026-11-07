@@ -13,7 +13,7 @@
 #   afterburn locate ZIP              US ZIP -> LAT/LON for the weather heat source
 #
 # Config: ${XDG_CONFIG_HOME:-~/.config}/afterburn/afterburn.conf (KEY=VALUE, sourced)
-# State:  ${XDG_STATE_HOME:-~/.local/state}/afterburn/  (level, quiet, saver, prev-cursor-fx, weather.json)
+# State:  ${XDG_STATE_HOME:-~/.local/state}/afterburn/  (level, quiet, saver, prev-cursor-fx, cursor-pre-quiet, weather.json)
 set -u
 
 CONF_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/afterburn"
@@ -196,7 +196,10 @@ cmd_apply() {
   apply_visuals
 }
 
-# cursor-fx helpers. The previous effect is saved once, before we first change it.
+# cursor-fx helpers. quiet and saver switch the effect for a while: the one that was running is saved
+# once in cursor-pre-quiet and put back when both end. (prev-cursor-fx is a different thing: the
+# effect from before Afterburn took over, kept by the theme-set hook and restored when you leave it.)
+CFX_PRE="$STATE/cursor-pre-quiet"
 cfx_now() {
   grep -oP '^config-file\s*=\s*\??cursor-effects/\K[^.]+' "$GHOSTTY" 2>/dev/null || echo off
 }
@@ -210,11 +213,11 @@ cfx_sync() {
   fi
   if [[ -n $want ]]; then
     mkdir -p "$STATE"
-    [[ -f $STATE/prev-cursor-fx ]] || cfx_now > "$STATE/prev-cursor-fx"
+    [[ -f $CFX_PRE ]] || cfx_now > "$CFX_PRE"
     cursor-fx $want >/dev/null 2>&1 || true
-  elif [[ -f $STATE/prev-cursor-fx ]]; then
-    cursor-fx "$(cat "$STATE/prev-cursor-fx")" >/dev/null 2>&1 || true
-    rm -f "$STATE/prev-cursor-fx"
+  elif [[ -f $CFX_PRE ]]; then
+    cursor-fx "$(cat "$CFX_PRE")" >/dev/null 2>&1 || true
+    rm -f "$CFX_PRE"
   fi
 }
 
@@ -287,10 +290,13 @@ cmd_level() {
 }
 
 cmd_mode() { # quiet|saver on|off
-  local name=$1 v=${2:-}
+  local name=$1 v=${2:-} was
   case $v in on|off) ;; *) die "usage: afterburn $name on|off" ;; esac
+  was=$(state_get "$name" off)
   state_set "$name" "$v"
   echo "$name: $v"
+  # Same state again (the watcher says so at every start): no rewrite and no Hyprland reload.
+  [[ $was == "$v" ]] && return 0
   if is_afterburn; then
     load_conf
     # Turning a mode off must restore the cursor here; turning one on is handled inside apply_visuals.

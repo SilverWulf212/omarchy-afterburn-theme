@@ -11,6 +11,8 @@ THEME="${1:-}"
 EXTRAS="$HOME/.config/omarchy/themes/afterburn/extras"
 CURRENT="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/current/theme"
 STATE="${XDG_STATE_HOME:-$HOME/.local/state}/afterburn/prev-cursor-fx"
+# Written by `afterburn quiet|saver` while they hold the cursor effect off. Not the user's own effect.
+PRE_QUIET="$(dirname "$STATE")/cursor-pre-quiet"
 GHOSTTY="$HOME/.config/ghostty/config"
 LOCK_SH="$EXTRAS/lock/lock-embers.sh"
 LOCK_MARK="${XDG_STATE_HOME:-$HOME/.local/state}/afterburn/lock-embers"
@@ -39,7 +41,8 @@ if ab_is_afterburn "$THEME"; then
   if command -v cursor-fx >/dev/null; then
     cur=$(cursor_now)
     if [[ $cur != embers ]]; then
-      mkdir -p "$(dirname "$STATE")" && echo "$cur" > "$STATE"
+      # Fullscreen or battery may have switched the effect off for now: that is not your own effect, keep the saved one.
+      [[ -f $PRE_QUIET ]] || { mkdir -p "$(dirname "$STATE")" && echo "$cur" > "$STATE"; }
       cursor-fx embers >/dev/null 2>&1 || true
     fi
   fi
@@ -62,7 +65,7 @@ else
     rm -f "$STATE"
   fi
   # Drop the fullscreen and battery flags: the watcher is stopped, so it can't clear them later.
-  rm -f "$(dirname "$STATE")/quiet" "$(dirname "$STATE")/saver"
+  rm -f "$(dirname "$STATE")/quiet" "$(dirname "$STATE")/saver" "$PRE_QUIET"
   # Back to the base palette for the fail flash and the lock embers.
   rm -f "$(dirname "$STATE")/palette.env"
   if [[ -f $LOCK_MARK && -f $LOCK_SH ]]; then bash "$LOCK_SH" recolor >/dev/null 2>&1 || true; fi
