@@ -108,7 +108,7 @@ pressure_level() {  # CPU pressure avg10 (PSI): <5 cool, 5-35 normal, >35 hot
 }
 
 fetch_weather() {  # NWS: points -> first station -> latest obs; forecastHourly for day/night
-  local now pts sid obs hr get
+  local now pts sid obs hr
   now=$(date +%s); mkdir -p "$STATE"
   get() { curl -fsS -m 15 -H "User-Agent: $UA" -H 'Accept: application/geo+json' "$1"; }
   pts=$(get "https://api.weather.gov/points/$LAT,$LON") &&

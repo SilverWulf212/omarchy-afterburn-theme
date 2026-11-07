@@ -32,6 +32,9 @@ GHOSTTY="$HOME/.config/ghostty/config"
   echo "afterburn: missing $THEME_DIR/extras/afterburn-theme.sh (is the afterburn theme installed?)" >&2; exit 1; }
 
 KEYS="ROTATE DIM HEAT_SOURCE EVENING_HOURS ZIP LAT LON HOT_F COOL_F HEAT_WALLPAPERS FULLSCREEN_QUIET LAPTOP_MODE FAIL_FX"
+# What a key falls back to when it is missing, empty or fails its check.
+declare -A DEFAULT=([ROTATE]=slow [DIM]=0.08 [HEAT_SOURCE]=time [EVENING_HOURS]=19-07 [ZIP]="" [LAT]="" [LON]=""
+                    [HOT_F]=90 [COOL_F]=50 [HEAT_WALLPAPERS]=yes [FULLSCREEN_QUIET]=yes [LAPTOP_MODE]=auto [FAIL_FX]=random)
 
 die() { echo "afterburn: $*" >&2; exit 1; }
 
@@ -59,21 +62,28 @@ EOF
 }
 
 # Read the conf (we wrote it, so sourcing is fine) and fill any missing key with its default.
+# A value that fails its check is replaced too: the conf is meant to be hand-edited, and a typo
+# in DIM or ROTATE would otherwise be written into the Hyprland Lua.
 load_conf() {
   [[ -f $CONF ]] || write_default_conf
   # shellcheck disable=SC1090
   . "$CONF"
-  : "${ROTATE:=slow}" "${DIM:=0.08}" "${HEAT_SOURCE:=time}" "${EVENING_HOURS:=19-07}"
-  : "${ZIP:=}" "${LAT:=}" "${LON:=}" "${HOT_F:=90}" "${COOL_F:=50}"
-  : "${HEAT_WALLPAPERS:=yes}" "${FULLSCREEN_QUIET:=yes}" "${LAPTOP_MODE:=auto}" "${FAIL_FX:=random}"
+  local k
+  for k in $KEYS; do
+    [[ -n ${!k:-} ]] || printf -v "$k" %s "${DEFAULT[$k]}"
+    value_ok "$k" "${!k}" || {
+      echo "afterburn: ignoring $k='${!k}' in $CONF (allowed: $HINT); using '${DEFAULT[$k]}'" >&2
+      printf -v "$k" %s "${DEFAULT[$k]}"
+    }
+  done
 }
 
 valid_key() {
   [[ " $KEYS " == *" ${1:-} "* ]] || die "unknown key '${1:-}' (keys: $KEYS)"
 }
 
-# Check a value against its key's rule. Exits with a hint if it is wrong.
-validate() {
+# Is $2 allowed for key $1? Sets HINT to what is allowed.
+value_ok() {
   local k=$1 v=$2 re hint
   case $k in
     ROTATE)          re='^(off|slow|medium|fast)$';          hint='off|slow|medium|fast' ;;
@@ -89,7 +99,13 @@ validate() {
     FAIL_FX)         re='^(random|burn|cascade|dissolve|off)$'; hint='random|burn|cascade|dissolve|off' ;;
     *) die "unknown key '$k'" ;;
   esac
-  [[ $v =~ $re ]] || die "bad value for $k: '$v' (allowed: $hint)"
+  HINT=$hint
+  [[ $v =~ $re ]]
+}
+
+# Exits with a hint if the value is wrong.
+validate() {
+  value_ok "$1" "$2" || die "bad value for $1: '$2' (allowed: $HINT)"
 }
 
 # Rewrite one KEY=VALUE line in place (keeps its trailing comment), or append it.
@@ -138,7 +154,7 @@ write_lua() {
   [[ -f $GLOW_TEMPLATE ]] || die "missing $GLOW_TEMPLATE (is the afterburn theme installed?)"
   [[ -d $CUR_THEME ]] || die "no Omarchy current theme dir at $CUR_THEME (run: omarchy theme set afterburn)"
 
-  local rot=$ROTATE shadow=true spin speed dim_on
+  local rot=$ROTATE shadow=true spin dim_on
   if effective_quiet; then rot=off; shadow=false; fi
   case $rot in
     off)    spin='hl.animation({ leaf = "borderangle", enabled = false })' ;;
