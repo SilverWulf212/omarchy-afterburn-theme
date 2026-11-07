@@ -147,6 +147,11 @@ install_layer() {
   fi
 
   if ! omarchy-plugin-validate "$clone_dir"; then
+    if (( created )); then
+      say "validation failed on the clone we just made, removing it"
+      omarchy-plugin-remove "$CLONE_ID" --yes || true
+      die "aborted; omarchy.lock should be active again"
+    fi
     die "omarchy-plugin-validate failed on $clone_dir"
   fi
   say "validated $CLONE_ID"

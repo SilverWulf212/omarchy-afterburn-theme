@@ -26,6 +26,25 @@ ask() { $YES && return 0; local a; read -rp "  $1 [Y/n] " a || { echo; return 1;
 
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/afterburn"
 
+# Each step records here just before it changes something, so a failure can say what was touched.
+CHANGED=()
+FAILED_LINE=""
+trap 'FAILED_LINE=$LINENO' ERR
+on_exit() {
+  local rc=$?
+  (( rc == 0 )) && return 0
+  echo
+  o "  ✗ install stopped (exit $rc, near line ${FAILED_LINE:-?}). The steps after it did not run."
+  if (( ${#CHANGED[@]} )); then
+    echo "  Already changed:"
+    printf '    - %s\n' "${CHANGED[@]}"
+  else
+    echo "  Nothing was changed yet."
+  fi
+  echo "  Undo: $HERE/uninstall.sh"
+}
+trap on_exit EXIT
+
 echo; o "  ❯ afterburn // full stack"; echo
 cat <<'EOF'
   Before you go on, this script can change the following (it asks before each part):
@@ -66,6 +85,7 @@ echo
 if ! command -v ghostty >/dev/null; then
   if ask "Install Ghostty and make it your default terminal? (the cursor effects need it)"; then
     grep -v '^#' "$HOME/.config/xdg-terminals.list" 2>/dev/null | head -1 > "$STATE_DIR/prev-terminal" || true
+    CHANGED+=("Ghostty installed and made default terminal")
     omarchy install terminal ghostty
     ok "Ghostty installed and set as default"
   else
@@ -74,6 +94,7 @@ if ! command -v ghostty >/dev/null; then
 elif ! grep -qi ghostty <(grep -v '^#' "$HOME/.config/xdg-terminals.list" 2>/dev/null | head -1); then
   if ask "Make Ghostty your default terminal (Super + Return), replacing your current one?"; then
     grep -v '^#' "$HOME/.config/xdg-terminals.list" 2>/dev/null | head -1 > "$STATE_DIR/prev-terminal" || true
+    CHANGED+=("default terminal set to Ghostty")
     omarchy default terminal ghostty >/dev/null
     ok "Ghostty is now the default terminal"
   else
@@ -91,6 +112,7 @@ elif ! fc-list | grep -F "$FONT" >/dev/null; then
   skip "font $FONT not installed; keeping your current font"
 elif ask "Switch your system font to $FONT, the font Afterburn is designed around?"; then
   omarchy font current > "$STATE_DIR/prev-font" 2>/dev/null || true
+  CHANGED+=("system font set to $FONT")
   omarchy font set "$FONT" >/dev/null
   ok "font set to $FONT"
 else
@@ -103,6 +125,7 @@ if command -v cursor-fx >/dev/null; then
 elif ! command -v ghostty >/dev/null; then
   skip "skipped cursor-fx (needs Ghostty)"
 elif ask "Install cursor-fx, animated Ghostty cursors by Avarce (MIT)?"; then
+  CHANGED+=("cursor-fx installed (its own installer edits Ghostty config; old config in ~/ghostty-savepoints/)")
   [[ -f $HOME/.config/ghostty/config ]] || omarchy refresh config ghostty/config >/dev/null
   rm -rf "$CFX_DIR"
   git clone -q "$CFX_REPO" "$CFX_DIR"
@@ -114,6 +137,7 @@ else
 fi
 
 # 3. Glow + cursor hook
+CHANGED+=("theme-set hook added")
 omarchy hook install theme-set "$HERE/afterburn-theme-set-hook" >/dev/null
 mv -f "$HOOKS/afterburn-theme-set-hook" "$HOOKS/$HOOK_NAME"
 ok "glow hook installed"
@@ -130,8 +154,18 @@ FAIL_SH='$HOME/.config/omarchy/themes/afterburn/extras/afterburn-fail.bash'
 conf_set() { sed -i -E "s/^$1=[^ #]*/$1=$2/" "$CONF"; }
 
 echo
-if ask "Add the subtle pack? (slow-turning border, dimmed background windows, heat levels, quiet fullscreen, battery saver, red prompt with a fail flash, afterburn colors)"; then
+# Never overwrite a file of the user's own: if a name is taken by something that is not our link,
+# the whole subtle pack is skipped (the watcher unit would otherwise run their file).
+SUBTLE_BLOCKED=""
+for f in afterburn afterburn-watch; do
+  t="$BIN/$f"
+  if [[ ( -e $t || -L $t ) && $(readlink "$t" 2>/dev/null) != "$HERE/bin/$f" ]]; then SUBTLE_BLOCKED=$t; fi
+done
+if [[ -n $SUBTLE_BLOCKED ]]; then
+  skip "warning: $SUBTLE_BLOCKED already exists and is not Afterburn's link, so the subtle pack was skipped. Move it aside and re-run."
+elif ask "Add the subtle pack? (slow-turning border, dimmed background windows, heat levels, quiet fullscreen, battery saver, red prompt with a fail flash, afterburn colors)"; then
   mkdir -p "$BIN" "$UNIT_DIR" "$APPS_DIR"
+  CHANGED+=("subtle pack: links in ~/.local/bin, ~/.config/afterburn/afterburn.conf, desktop entry")
   for f in afterburn afterburn-watch; do ln -sfn "$HERE/bin/$f" "$BIN/$f"; done
   ok "afterburn and afterburn-watch linked into ~/.local/bin"
 
@@ -163,6 +197,13 @@ if ask "Add the subtle pack? (slow-turning border, dimmed background windows, he
   # Red error symbol in starship.toml. The original is backed up once, before the first edit.
   if [[ -f $STARSHIP ]]; then
     [[ -f $STATE_DIR/starship.toml.bak ]] || cp -p "$STARSHIP" "$STATE_DIR/starship.toml.bak"
+    # Remember only the original error_symbol line ("absent" if there was none). uninstall.sh puts it back.
+    [[ -f $STATE_DIR/starship-error-symbol ]] || awk '
+      /^\[/ { sec = $0; sub(/^\[/, "", sec); sub(/\].*$/, "", sec) }
+      sec == "character" && /^error_symbol[ \t]*=/ { print; found = 1; exit }
+      END { if (!found) print "absent" }
+    ' "$STARSHIP" > "$STATE_DIR/starship-error-symbol"
+    CHANGED+=("starship.toml error_symbol (safety copy of the whole file in $STATE_DIR/starship.toml.bak)")
     awk -v line='error_symbol = "[❯](bold red)"' '
       function close_character() { if (sec == "character" && !done) { print line; done = 1 } }
       /^\[/ { close_character(); sec = $0; sub(/^\[/, "", sec); sub(/\].*$/, "", sec); print; next }
@@ -179,6 +220,7 @@ if ask "Add the subtle pack? (slow-turning border, dimmed background windows, he
 
   # One guarded line in ~/.bashrc, sourced only when the file exists.
   if ! grep -q '# afterburn$' "$BASHRC" 2>/dev/null; then
+    CHANGED+=("~/.bashrc: fail-effect line appended")
     if [[ -s $BASHRC && -n $(tail -c1 "$BASHRC") ]]; then
       echo >> "$BASHRC"
       : > "$STATE_DIR/bashrc-newline"   # uninstall.sh drops this newline again
@@ -188,6 +230,7 @@ if ask "Add the subtle pack? (slow-turning border, dimmed background windows, he
   ok "~/.bashrc: one guarded line sources the fail effect"
 
   # User service: the watcher handles fullscreen quiet, battery saver and the heat level.
+  CHANGED+=("afterburn-watch user service enabled")
   cp "$HERE/afterburn-watch.service" "$UNIT_DIR/afterburn-watch.service"
   systemctl --user daemon-reload >/dev/null 2>&1 || true
   if systemctl --user enable --now afterburn-watch.service >/dev/null 2>&1; then
@@ -208,9 +251,16 @@ echo
 if [[ ! -f $LOCK ]]; then
   skip "lock screen: $LOCK not found, skipped"
 elif ask "Animate the lock screen with embers? (clones Omarchy's lock plugin; it stops getting Omarchy's lock-screen updates until you uninstall)"; then
-  if bash "$LOCK" install; then
-    : > "$STATE_DIR/lock-embers"
+  CLONE_DIR="$HOME/.config/omarchy/plugins/${USER:-$(id -un)}.lock"
+  CHANGED+=("lock screen clone $CLONE_DIR (if it exists, uninstall.sh removes it)")
+  rc=0
+  bash "$LOCK" install || rc=$?
+  # Mark whenever the clone exists, even after a failure, so uninstall.sh always undoes it.
+  if [[ -e $CLONE_DIR || -L $CLONE_DIR ]]; then : > "$STATE_DIR/lock-embers"; fi
+  if (( rc == 0 )); then
     ok "lock screen animated with embers"
+  elif (( rc == 3 )); then
+    skip "lock screen: another lock screen is active, so nothing changed"
   else
     skip "lock screen: the install did not finish (see the messages above)"
   fi
@@ -218,6 +268,7 @@ else
   skip "kept the stock lock screen"
 fi
 
+CHANGED+=("theme set to afterburn")
 omarchy theme set afterburn >/dev/null
 if command -v cursor-fx >/dev/null; then
   echo; o "  ❯ afterburn is live. Open a new Ghostty window (Super + Return) and type."; echo

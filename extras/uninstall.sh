@@ -47,22 +47,56 @@ if [[ -f $CONF_HOME/systemd/user/afterburn-watch.service ]]; then
   systemctl --user daemon-reload >/dev/null 2>&1 || true
   echo "  ✓ watcher service removed"
 fi
-if [[ -f $STATE_DIR/starship.toml.bak ]]; then
-  cat "$STATE_DIR/starship.toml.bak" > "$CONF_HOME/starship.toml" && echo "  ✓ starship prompt restored from backup"
+# Starship: put back only the original error_symbol line, and only if the line is still the one we wrote.
+STARSHIP="$CONF_HOME/starship.toml"
+OURS_SYMBOL='error_symbol = "[❯](bold red)"'
+if [[ -f $STATE_DIR/starship-error-symbol && -f $STARSHIP ]]; then
+  if grep -qxF "$OURS_SYMBOL" "$STARSHIP"; then
+    orig=$(cat "$STATE_DIR/starship-error-symbol")
+    real=$(readlink -f "$STARSHIP")
+    tmp=$(mktemp "$(dirname "$real")/.starship.XXXXXX")
+    awk -v ours="$OURS_SYMBOL" -v orig="$orig" '
+      $0 == ours && !done { done = 1; if (orig != "absent") print orig; next }
+      { print }
+    ' "$real" > "$tmp"
+    chmod --reference="$real" "$tmp"
+    mv "$tmp" "$real"
+    echo "  ✓ starship error_symbol restored"
+  else
+    echo "  · starship error_symbol changed since install; left as is"
+  fi
 fi
-APPS_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
+
+# ~/.bashrc: delete only the line(s) carrying the marker. Written to a temp file, then moved into place.
 if grep -q '# afterburn$' "$HOME/.bashrc" 2>/dev/null; then
-  sed -i '/# afterburn$/d' "$HOME/.bashrc"
-  # The installer added a newline before its line when the file had none; take it back.
-  if [[ -f $STATE_DIR/bashrc-newline ]]; then truncate -s -1 "$HOME/.bashrc"; fi
+  real=$(readlink -f "$HOME/.bashrc")
+  tmp=$(mktemp "$(dirname "$real")/.bashrc.XXXXXX")
+  if [[ -f $STATE_DIR/bashrc-newline && $(tail -n1 "$real") == *'# afterburn' ]]; then
+    # The installer added a newline before its line because the file had none, and the marker line is last:
+    # drop the marker line and that newline, so the file is byte-for-byte the original.
+    head -n -1 "$real" | head -c -1 > "$tmp"
+  else
+    grep -v '# afterburn$' "$real" > "$tmp" || true
+  fi
+  chmod --reference="$real" "$tmp"
+  mv "$tmp" "$real"
   echo "  ✓ ~/.bashrc line removed"
 fi
+APPS_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 rm -f "$APPS_DIR/afterburn-colors.desktop"
 rm -rf "$CONF_HOME/afterburn"
 # Remove the directories the installer created, but only if they are now empty.
 rmdir "$BIN" "$CONF_HOME/systemd/user" "$CONF_HOME/systemd" "$APPS_DIR" "${XDG_DATA_HOME:-$HOME/.local/share}" 2>/dev/null || true
 
-rm -f "$D/50-afterburn-extras"; rm -rf "$STATE_DIR" "$HOME/.local/share/afterburn"
+rm -f "$D/50-afterburn-extras"
+# The whole-file starship backup stays in the state dir as a safety copy. Nothing restores from it.
+if [[ -f $STATE_DIR/starship.toml.bak ]]; then
+  find "$STATE_DIR" -mindepth 1 -maxdepth 1 ! -name starship.toml.bak -exec rm -rf {} +
+  echo "  · kept a safety copy of your old starship.toml: $STATE_DIR/starship.toml.bak"
+else
+  rm -rf "$STATE_DIR"
+fi
+rm -rf "$HOME/.local/share/afterburn"
 echo "  ✓ Afterburn hook removed"
 cat <<'EOF'
 

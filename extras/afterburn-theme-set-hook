@@ -35,5 +35,7 @@ else
     cursor-fx "$(cat "$STATE")" >/dev/null 2>&1 || true
     rm -f "$STATE"
   fi
+  # Drop the fullscreen and battery flags: the watcher is stopped, so it can't clear them later.
+  rm -f "$(dirname "$STATE")/quiet" "$(dirname "$STATE")/saver"
 fi
 exit 0

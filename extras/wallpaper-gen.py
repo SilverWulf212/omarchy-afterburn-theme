@@ -1,6 +1,6 @@
 import sys, random, math
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageChops
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 OUT = sys.argv[1]
 W, H = 3440, 1440
