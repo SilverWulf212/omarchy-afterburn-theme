@@ -2,7 +2,7 @@
 
 ![Afterburn](preview.png)
 
-**Orange-on-black cyber theme for [Omarchy](https://omarchy.org).** Ember-gradient window borders with a soft orange glow, animated ember cursors in Ghostty, and three hand-built 3440×1440 wallpapers.
+**Orange-on-black cyber theme for [Omarchy](https://omarchy.org).** Ember-gradient window borders with a soft orange glow, animated ember cursors in Ghostty, and six 3440×1440 wallpapers.
 
 ## Install: the full stack (recommended)
 
@@ -63,7 +63,14 @@ You get the colors, the ember-gradient borders, the wallpapers and the icons. Th
 
 ## Wallpapers
 
-`horizon`, `prompt` and `circuit` are generated in code. To re-render them, or change the text on `prompt`:
+Six wallpapers at 3440×1440. Press **Super + Ctrl + Space** to rotate through them.
+
+| | | |
+|---|---|---|
+| `1-horizon`: grid and ember sun | `2-prompt`: glowing prompt | `3-circuit`: circuit traces |
+| `4-nozzle`: afterburner nozzle | `5-flow`: light trails over a night city | `6-ember`: macro shot of a glowing ember |
+
+`4`–`6` are AI-generated images (made with OpenAI's image model through Codex, then upscaled). `1`–`3` are generated in code. To re-render them, or change the text on `prompt`:
 
 ```bash
 uv run --with numpy --with pillow python extras/wallpaper-gen.py backgrounds
