@@ -39,7 +39,8 @@ if [[ -s $STATE_DIR/editions ]]; then
     [[ -d $dir && ! -L $dir ]] || continue
     if [[ $cur == "afterburn-$e" ]]; then
       # Decision: switch to the base theme first, so the desktop is never left on a theme that is gone.
-      omarchy theme set afterburn >/dev/null 2>&1 || true
+      # stdin is the editions list this loop is reading: keep the command away from it.
+      omarchy theme set afterburn >/dev/null 2>&1 </dev/null || true
       cur=$(cat "${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/current/theme.name" 2>/dev/null || true)
       if [[ $cur == afterburn ]]; then
         echo "  ✓ switched from afterburn-$e to afterburn"
@@ -82,8 +83,9 @@ if [[ -f $STATE_DIR/starship-error-symbol && -f $STARSHIP ]]; then
     orig=$(cat "$STATE_DIR/starship-error-symbol")
     real=$(readlink -f "$STARSHIP")
     tmp=$(mktemp "$(dirname "$real")/.starship.XXXXXX")
-    awk -v ours="$OURS_SYMBOL" -v orig="$orig" '
-      $0 == ours && !done { done = 1; if (orig != "absent") print orig; next }
+    # ENVIRON, not -v: awk -v would turn a backslash in your original line (\u2717, \\) into something else.
+    OURS="$OURS_SYMBOL" ORIG="$orig" awk '
+      $0 == ENVIRON["OURS"] && !done { done = 1; if (ENVIRON["ORIG"] != "absent") print ENVIRON["ORIG"]; next }
       { print }
     ' "$real" > "$tmp"
     chmod --reference="$real" "$tmp"
@@ -108,6 +110,8 @@ if grep -q '# afterburn$' "$HOME/.bashrc" 2>/dev/null; then
   chmod --reference="$real" "$tmp"
   mv "$tmp" "$real"
   echo "  ✓ ~/.bashrc line removed"
+  # The installer made this file (there was none): take it away again if nothing else is in it.
+  if [[ -f $STATE_DIR/bashrc-created && ! -s $real ]]; then rm -f "$real" && echo "  ✓ ~/.bashrc removed (the installer had created it, and it is empty)"; fi
 fi
 APPS_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 rm -f "$APPS_DIR/afterburn-colors.desktop"

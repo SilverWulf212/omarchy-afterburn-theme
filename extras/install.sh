@@ -13,6 +13,14 @@
 # Undo: ~/.config/omarchy/themes/afterburn/extras/uninstall.sh
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
+# The hook, the CLI and the .bashrc line all look for the extras at this path, so a copy of the theme
+# anywhere else would install links to files nothing reads. Stop before changing anything.
+EXPECTED="$HOME/.config/omarchy/themes/afterburn/extras"
+if [[ $(realpath -- "$HERE") != "$(realpath -m -- "$EXPECTED")" ]]; then
+  echo "afterburn: run this from the installed theme: $EXPECTED/install.sh" >&2
+  echo "  (this copy is at $HERE; install the theme first: omarchy theme install https://github.com/silverwulf212/omarchy-afterburn-theme)" >&2
+  exit 1
+fi
 HOOK_NAME=50-afterburn-extras
 HOOKS="$HOME/.config/omarchy/hooks/theme-set.d"
 CFX_REPO=https://github.com/Avarce/ghostty-cursor-fx.git
@@ -183,17 +191,21 @@ elif ask "Add the subtle pack? (slow-turning border, dimmed background windows, 
   # Writes the default conf if there is none. An existing conf keeps its settings.
   "$BIN/afterburn" get >/dev/null
 
-  # Heat source. EOF counts as off, and --yes picks time (no network).
-  HEAT=time
+  # Heat source: "time" on a first install, and whatever you set before on a re-run. Only an answer
+  # here changes it: Enter, EOF and --yes keep it, so a re-run never undoes your choice (and --yes never
+  # turns on the weather source, the one that calls the network).
+  HEAT=$("$BIN/afterburn" get HEAT_SOURCE)
+  a=""
   if ! $YES; then
-    read -rp "  Heat source: [t]ime (default), [p]ressure (CPU load), [w]eather (US ZIP; calls NWS), [o]ff: " a || a=o
-    case ${a:-} in
+    read -rp "  Heat source: [t]ime, [p]ressure (CPU load), [w]eather (US ZIP; calls NWS), [o]ff. Enter keeps $HEAT: " a || a=""
+    case $a in
+      t*|T*) HEAT=time ;;
       p*|P*) HEAT=pressure ;;
       w*|W*) HEAT=weather ;;
       o*|O*) HEAT=off ;;
     esac
   fi
-  if [[ $HEAT == weather ]]; then
+  if [[ $a =~ ^[Ww] ]]; then
     read -rp "  US ZIP code (sent once to api.zippopotam.us to find your coordinates): " zip || zip=""
     if [[ $zip =~ ^[0-9]{5}$ ]] && "$BIN/afterburn" locate "$zip" >/dev/null 2>&1; then
       ok "location saved for the weather heat source"
@@ -232,6 +244,7 @@ elif ask "Add the subtle pack? (slow-turning border, dimmed background windows, 
   # One guarded line in ~/.bashrc, sourced only when the file exists.
   if ! grep -q '# afterburn$' "$BASHRC" 2>/dev/null; then
     CHANGED+=("~/.bashrc: fail-effect line appended")
+    [[ -e $BASHRC ]] || : > "$STATE_DIR/bashrc-created"   # no .bashrc yet: uninstall.sh removes ours again if it ends up empty
     if [[ -s $BASHRC && -n $(tail -c1 "$BASHRC") ]]; then
       echo >> "$BASHRC"
       : > "$STATE_DIR/bashrc-newline"   # uninstall.sh drops this newline again
@@ -284,6 +297,15 @@ fi
 # is never touched or recorded, so uninstall.sh can only ever remove what this script made.
 THEME_ROOT="$(dirname "$HERE")"
 THEMES_HOME="$HOME/.config/omarchy/themes"
+# add_missing SRC DEST: copy every file under SRC that DEST does not have yet. Prints how many.
+add_missing() {
+  local f n=0
+  while IFS= read -r -d '' f; do
+    [[ -e $2/$f || -L $2/$f ]] && continue
+    mkdir -p "$(dirname "$2/$f")" && cp -a "$1/$f" "$2/$f" && n=$((n + 1))
+  done < <(cd "$1" && find . -type f -print0)
+  echo "$n"
+}
 EDITIONS=(voltage cyber overdrive redline phantom)
 echo
 AVAILABLE=()
@@ -295,7 +317,9 @@ elif ask "Install colour editions (Voltage, Cyber, Overdrive, Redline, Phantom)?
     dest="$THEMES_HOME/afterburn-$e"
     if [[ -e $dest || -L $dest ]]; then
       if grep -qxF "$e" "$STATE_DIR/editions" 2>/dev/null; then
-        ok "afterburn-$e already installed"
+        # Ours: add what this release has and the copy lacks (a new wallpaper set, say). Never overwrites.
+        added=$(add_missing "$THEME_ROOT/editions/$e" "$dest")
+        if (( added )); then ok "afterburn-$e already installed; added $added new files"; else ok "afterburn-$e already installed"; fi
       else
         skip "afterburn-$e: $dest already exists and is not ours, left alone"
       fi
