@@ -36,3 +36,6 @@ bright_magenta = "#dd9aee"
 
 hyprland_active_border = "rgba(45e6f5ee) rgba(1fffecee) rgba(8aeeffee) 45deg"
 hyprland_inactive_border = "rgba(2b2a28aa)"
+
+# Read by the Afterburn extras: middle stop of the cool heat level.
+afterburn_cool = "#3ae8e1"
