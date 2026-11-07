@@ -127,7 +127,6 @@ effective_quiet() { flag_on quiet || flag_on saver; }
 # Only touch Hyprland and cursor-fx while an Afterburn theme (base or edition) is active.
 THEME_NAME=$(ab_theme_name)
 is_afterburn() { ab_is_afterburn "$THEME_NAME"; }
-# The heat wallpapers are the base theme's orange images; editions keep their own wallpapers.
 is_base() { [[ $THEME_NAME == afterburn ]]; }
 # Colours come from the active theme's colors.toml (AB_* in afterburn-theme.sh).
 ab_load_palette "$THEME_NAME"
@@ -135,12 +134,12 @@ ab_load_palette "$THEME_NAME"
 # Heat level table (from docs spec). Sets L_* for the named level.
 level_vals() {
   case $1 in
-    cool)   L_BORDER="rgba(${AB_RUST}ee) rgba(${AB_MAGENTA}ee) rgba(${AB_EMBER}cc) 45deg"
-            L_RANGE=8;  L_SHADOW="rgba(${AB_MAGENTA}33)"; L_WALL=extras/heat-wallpapers/cool ;;
+    cool)   L_BORDER="rgba(${AB_RUST}ee) rgba(${AB_COOL}ee) rgba(${AB_EMBER}cc) 45deg"
+            L_RANGE=8;  L_SHADOW="rgba(${AB_COOL}33)" ;;
     normal) L_BORDER="rgba(${AB_ACCENT}ee) rgba(${AB_EMBER}ee) rgba(${AB_FLARE}ee) 45deg"
-            L_RANGE=14; L_SHADOW="rgba(${AB_ACCENT}55)"; L_WALL=backgrounds ;;
+            L_RANGE=14; L_SHADOW="rgba(${AB_ACCENT}55)" ;;
     hot)    L_BORDER="rgba(${AB_FLARE}ff) rgba(${AB_HOTWHITE}ff) rgba(${AB_EMBER}ff) 45deg"
-            L_RANGE=22; L_SHADOW="rgba(${AB_HOTGLOW}77)"; L_WALL=extras/heat-wallpapers/hot ;;
+            L_RANGE=22; L_SHADOW="rgba(${AB_HOTGLOW}77)" ;;
     *) die "level must be cool|normal|hot" ;;
   esac
 }
@@ -278,14 +277,25 @@ cmd_status() {
   for k in $KEYS; do printf '  %-16s %s\n' "$k" "${!k}"; done
 }
 
+# Where the wallpapers for a heat level live. Normal is the staged copy of the active theme's own
+# backgrounds (the path Omarchy links to). Cool and hot are heat-wallpapers/<level>/, with the same
+# file names as the stills: the base theme keeps them in extras/, each edition in its own folder.
+heat_wall_dir() {
+  case $1 in
+    normal) echo "$CUR_THEME/backgrounds" ;;
+    *) if is_base; then echo "$THEME_DIR/extras/heat-wallpapers/$1"
+       else echo "$HOME/.config/omarchy/themes/$THEME_NAME/heat-wallpapers/$1"; fi ;;
+  esac
+}
+
+# Swap a still wallpaper for its variant at this level. A theme without that variant, a live loop
+# and a wallpaper of your own all stay as they are.
 swap_wallpaper() {
-  is_base || return 0   # the cool and hot variants are the base theme's images
-  level_vals "$1"
   local cur base target
   cur=$(readlink -f "$CUR_BG_LINK" 2>/dev/null) || return 0
   [[ -n $cur ]] || return 0
   base=$(basename -- "$cur")
-  target="$THEME_DIR/$L_WALL/$base"
+  target="$(heat_wall_dir "$1")/$base"
   [[ -f $target ]] || return 0
   [[ $(realpath -m "$target") == "$cur" ]] && return 0
   omarchy-theme-bg-set "$target" >/dev/null 2>&1 || true

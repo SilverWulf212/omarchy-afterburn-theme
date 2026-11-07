@@ -9,8 +9,9 @@
 #
 # The three ember colours are the three stops of `hyprland_active_border` in colors.toml
 # (accent, ember, flare). Rust is `brown`, ash is `dark_foreground`, the cool-level middle
-# stop is `magenta`. Every value falls back to the base theme's, so a missing file or key
-# leaves the original orange look.
+# stop is `afterburn_cool` (an extra key the editions carry; ANSI `magenta` is a fixed violet
+# in every edition, so it cannot be used). Every value falls back to the base theme's, so a
+# missing file or key leaves the original orange look.
 
 # Theme name as Omarchy stores it (lowercase, dashes). Empty if unknown.
 ab_theme_name() {
@@ -44,13 +45,13 @@ ab_mix() {
 # Fills AB_* (6-digit lowercase hex, no #) for the named theme.
 #   AB_ACCENT AB_EMBER AB_FLARE   the three gradient stops
 #   AB_RUST AB_ASH                cooled ember, burnt-out ember
-#   AB_MAGENTA                    middle stop of the cool heat level
+#   AB_COOL                       middle stop of the cool heat level
 #   AB_INACTIVE                   unfocused border
 #   AB_HOTWHITE AB_HOTGLOW        hot-level border highlight and shadow
 ab_load_palette() {
   AB_ACCENT=f59145 AB_EMBER=ff5a1f AB_FLARE=ffc48a AB_RUST=7a3e16 AB_ASH=5e5b55
-  AB_MAGENTA=e8703a AB_INACTIVE=2b2a28
-  local f line k v stops=()
+  AB_COOL=e8703a AB_INACTIVE=2b2a28
+  local f line k v stops=() cool_set=
   f=$(ab_colors_file "${1:-}") || f=""
   if [[ -n $f ]]; then
     while IFS= read -r line || [[ -n $line ]]; do
@@ -60,7 +61,7 @@ ab_load_palette() {
         case $k in
           brown)           [[ $v =~ ^#([0-9a-f]{6})$ ]] && AB_RUST=${BASH_REMATCH[1]} ;;
           dark_foreground) [[ $v =~ ^#([0-9a-f]{6})$ ]] && AB_ASH=${BASH_REMATCH[1]} ;;
-          magenta)         [[ $v =~ ^#([0-9a-f]{6})$ ]] && AB_MAGENTA=${BASH_REMATCH[1]} ;;
+          afterburn_cool)  [[ $v =~ ^#([0-9a-f]{6})$ ]] && { AB_COOL=${BASH_REMATCH[1]}; cool_set=1; } ;;
           hyprland_active_border)
             stops=()
             while [[ $v =~ rgba\(([0-9a-f]{6})[0-9a-f]{2}\)(.*) ]]; do
@@ -74,11 +75,13 @@ ab_load_palette() {
     done < "$f"
   fi
   # Hot level: the base theme's literals are kept exactly; editions derive theirs from the stops.
+  # A non-base theme without an `afterburn_cool` key gets a cooled ember instead of the base orange.
   if [[ $AB_ACCENT$AB_EMBER$AB_FLARE == f59145ff5a1fffc48a ]]; then
     AB_HOTWHITE=fff1e0 AB_HOTGLOW=ffb37a
   else
     AB_HOTWHITE=$(ab_mix "$AB_FLARE" ffffff 75)
     AB_HOTGLOW=$(ab_mix "$AB_ACCENT" "$AB_FLARE" 60)
+    [[ -n $cool_set ]] || AB_COOL=$(ab_mix "$AB_EMBER" "$AB_RUST" 35)
   fi
 }
 
