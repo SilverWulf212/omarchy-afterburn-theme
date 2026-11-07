@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Afterburn colors
+Comment=Pick an Afterburn palette colour and copy its hex code
+Exec=afterburn colors --menu
+Terminal=false
+Categories=Utility;Graphics;
+Keywords=afterburn;colour;color;palette;hex;
