@@ -21,7 +21,7 @@ FULLSCREEN_QUIET=yes
 LAPTOP_MODE=auto     # auto|on|off
 FAIL_FX=random       # random|burn|cascade|dissolve|off
 ```
-State dir: `${XDG_STATE_HOME:-$HOME/.local/state}/afterburn/` (files: `level`, `quiet`, `saver`, `prev-cursor-fx`, `weather.json` cache).
+State dir: `${XDG_STATE_HOME:-$HOME/.local/state}/afterburn/` (files: `level`, `quiet`, `saver`, `prev-cursor-fx` (the effect from before Afterburn took over, kept by the hook), `cursor-pre-quiet` (the effect to put back when quiet and saver end), `weather.json` cache).
 
 ## Heat levels (cool / normal / hot)
 | level | active border | shadow range | shadow color | wallpaper |
@@ -39,7 +39,7 @@ Subcommands:
 - `apply`: write `$THEME_DIR/../../current/theme/hyprland.lua` equivalent: generate from `extras/hyprland-glow.lua` content plus ROTATE (`animations` → `borderangle` loop with speed; off = no loop) and DIM (`decoration.dim_inactive`/`dim_strength`) in the same `hl.config` Lua style as `extras/hyprland-glow.lua`, then `hyprctl reload`, then re-apply current level.
 - `set KEY VALUE` (validate against allowed values, rewrite conf line, then `apply`), `get [KEY]`, `status` (pretty print config + level + quiet + saver).
 - `level cool|normal|hot`: live via `hyprctl keyword general:col.active_border ...`, `decoration:shadow:range`, `decoration:shadow:color`; if HEAT_WALLPAPERS=yes swap wallpaper to the variant matching the current wallpaper's basename (find how Omarchy sets/reads the bg: inspect `/usr/bin/omarchy-theme-bg-set` and `omarchy-theme-bg-current`). Write state `level`. Skip visual changes while `quiet` or `saver` is on (still record level).
-- `quiet on|off`: on = shadow off, borderangle loop off, `cursor-fx off` (save current effect to `prev-cursor-fx` first); off = restore all and re-apply level.
+- `quiet on|off`: on = shadow off, borderangle loop off, `cursor-fx off` (save current effect to `cursor-pre-quiet` first); off = restore all and re-apply level. (An earlier draft used `prev-cursor-fx` for this too, which made the watcher's start-up `quiet off` undo the embers the hook had just set.)
 - `saver on|off`: on = shadow off, rotation off, `cursor-fx subtle on`; off = restore. `laptop auto|on|off` sets LAPTOP_MODE then `on`→`saver on`, `off`→`saver off`, `auto`→ decided by watcher.
 - `colors`: palette from `colors.toml` + names (accent, ember #ff5a1f, flare #ffc48a, etc.). If stdout is a tty and `--menu` not given: print each as truecolor swatch + name + hex, then prompt to pick a number and copy. Else (`--menu`, or launched from desktop entry): pipe `"name  #hex"` lines to Omarchy's dmenu-style launcher (inspect how `omarchy menu` scripts call walker with `--dmenu`), copy pick with `wl-copy`, `notify-send "Copied ember #ff5a1f"`. Also ship `extras/afterburn-colors.desktop` (Name=Afterburn colors, Exec=afterburn colors --menu).
 - `locate ZIP`: `curl https://api.zippopotam.us/us/$ZIP` → lat/lon (4 decimals) into conf, plus ZIP.
