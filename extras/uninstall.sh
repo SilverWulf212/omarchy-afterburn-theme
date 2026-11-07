@@ -17,6 +17,9 @@ if [[ -s $STATE_DIR/prev-terminal ]]; then
     echo "  · previous terminal was $prev; set it again with: omarchy default terminal <name>"
   fi
 fi
+if [[ -s $STATE_DIR/prev-font ]]; then
+  omarchy font set "$(cat "$STATE_DIR/prev-font")" >/dev/null && echo "  ✓ font restored to $(cat "$STATE_DIR/prev-font")"
+fi
 rm -f "$D/50-afterburn-extras"; rm -rf "$STATE_DIR" "$HOME/.local/share/afterburn"
 echo "  ✓ Afterburn hook removed"
 cat <<'EOF'

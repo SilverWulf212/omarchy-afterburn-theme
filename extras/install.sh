@@ -29,6 +29,8 @@ cat <<'EOF'
   • DEFAULT TERMINAL: installs Ghostty (pacman, needs sudo) and/or makes it your
     default terminal, replacing your current one for Super + Return and every
     "open in terminal" action. uninstall.sh puts your old default back.
+  • FONT: switches your system font to JetBrainsMono Nerd Font (terminals, bar, menus).
+    uninstall.sh puts your old font back.
   • THIRD-PARTY CODE: downloads ghostty-cursor-fx by Avarce (MIT) from GitHub, pinned
     to one tested commit, and runs its installer. It writes ~/.local/bin/cursor-fx,
     ~/.config/ghostty/shaders/ and cursor-effects/, edits ~/.config/ghostty/config,
@@ -66,6 +68,20 @@ elif ! grep -qi ghostty <(grep -v '^#' "$HOME/.config/xdg-terminals.list" 2>/dev
   fi
 else
   ok "Ghostty ready"
+fi
+
+# 1b. Font
+FONT="JetBrainsMono Nerd Font"
+if [[ $(omarchy font current 2>/dev/null) == "$FONT" ]]; then
+  ok "font: $FONT"
+elif ! fc-list | grep -q "$FONT"; then
+  skip "font $FONT not installed; keeping your current font"
+elif ask "Switch your system font to $FONT, the font Afterburn is designed around?"; then
+  omarchy font current > "$STATE_DIR/prev-font" 2>/dev/null || true
+  omarchy font set "$FONT" >/dev/null
+  ok "font set to $FONT"
+else
+  skip "kept your current font"
 fi
 
 # 2. cursor-fx
