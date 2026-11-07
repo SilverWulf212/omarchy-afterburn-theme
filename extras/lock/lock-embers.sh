@@ -1,5 +1,5 @@
 #!/bin/bash
-# lock-embers.sh install|uninstall
+# lock-embers.sh install|uninstall|recolor [FLARE EMBER RUST]
 #
 # Adds the Afterburn ember layer to Omarchy's lock screen without editing Omarchy.
 #
@@ -11,7 +11,12 @@
 # uninstall: remove the clone with omarchy-plugin-remove (which restores omarchy.lock
 #            when the clone was active), then make sure omarchy.lock is enabled.
 #
-# Both are idempotent. Re-running install on an existing clone refreshes
+# recolor [FLARE EMBER RUST]: rewrite the installed clone's EmberLayer.qml from the shipped
+#            one with the given 6-digit hex colours (the active theme's; no arguments = the base
+#            orange). Run by the theme-set hook so the embers follow the theme or edition.
+#            Does nothing unless the clone exists and is ours.
+#
+# Install and uninstall are idempotent. Re-running install on an existing clone refreshes
 # EmberLayer.qml and does not insert a second layer.
 #
 # Test hooks (for dry runs only): LOCK_EMBERS_PLUGINS_DIR and LOCK_EMBERS_OMARCHY_PATH
@@ -161,6 +166,33 @@ install_layer() {
   say "undo with: $0 uninstall"
 }
 
+# Write EmberLayer.qml into the clone with the given colours (defaults: the shipped orange).
+# Placeholders keep one replacement from being rewritten by the next.
+recolor_layer() {
+  local flare=${1:-ffc48a} ember=${2:-ff5a1f} rust=${3:-7a3e16} clone_dir="$PLUGINS_DIR/$CLONE_ID" tmp
+  local c
+  for c in "$flare" "$ember" "$rust"; do
+    [[ $c =~ ^[0-9a-fA-F]{6}$ ]] || die "recolor: '$c' is not a 6-digit hex colour"
+  done
+  [[ -f $EMBER_SRC ]] || die "missing $EMBER_SRC"
+  if [[ ! -d $clone_dir ]] || ! is_our_clone "$clone_dir"; then
+    say "no clone $CLONE_ID of ours, nothing to recolor"
+    return 0
+  fi
+  tmp=$(mktemp "$clone_dir/.EmberLayer.XXXXXX")
+  sed -e 's/ffc48a/@FLARE@/g; s/ff5a1f/@EMBER@/g; s/7a3e16/@RUST@/g' "$EMBER_SRC" |
+    sed -e "s/@FLARE@/${flare,,}/g; s/@EMBER@/${ember,,}/g; s/@RUST@/${rust,,}/g" > "$tmp"
+  if cmp -s "$tmp" "$clone_dir/EmberLayer.qml"; then
+    rm -f "$tmp"
+    say "embers already #$ember"
+    return 0
+  fi
+  chmod 0644 "$tmp"
+  mv "$tmp" "$clone_dir/EmberLayer.qml"
+  say "embers recolored (#$flare #$ember #$rust)"
+  omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
+}
+
 uninstall_layer() {
   local clone_dir="$PLUGINS_DIR/$CLONE_ID"
   if [[ -e $clone_dir || -L $clone_dir ]]; then
@@ -187,7 +219,8 @@ main() {
   case "${1:-}" in
     install) install_layer ;;
     uninstall) uninstall_layer ;;
-    *) die "usage: $(basename "$0") install|uninstall" ;;
+    recolor) shift; recolor_layer "$@" ;;
+    *) die "usage: $(basename "$0") install|uninstall|recolor [FLARE EMBER RUST]" ;;
   esac
 }
 

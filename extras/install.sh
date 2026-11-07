@@ -6,6 +6,8 @@
 #   4. The subtle pack (optional): slow border turn, dimmed background windows, heat levels,
 #      quiet fullscreen, battery saver, red prompt with a fail flash, the `afterburn` CLI
 #   5. The animated lock screen (optional, asked separately)
+#   6. Colour editions: Voltage, Cyber, Overdrive, Redline, Phantom (optional, asked separately)
+#   7. The boot/login screen set to the current theme (optional, needs sudo, default No)
 # Run:  ~/.config/omarchy/themes/afterburn/extras/install.sh        (asks before each step)
 #       ~/.config/omarchy/themes/afterburn/extras/install.sh --yes  (no questions)
 # Undo: ~/.config/omarchy/themes/afterburn/extras/uninstall.sh
@@ -23,6 +25,8 @@ ok() { printf '  \033[38;2;245;145;69m✓\033[0m %s\n' "$*"; }
 skip() { printf '  \033[2m· %s\033[0m\n' "$*"; }
 # EOF (no terminal / closed stdin) counts as No, so nothing changes unasked.
 ask() { $YES && return 0; local a; read -rp "  $1 [Y/n] " a || { echo; return 1; }; [[ -z $a || $a =~ ^[Yy] ]]; }
+# Default No, and --yes does not answer it: for steps that need sudo or change the system outside the theme.
+ask_no() { local a; read -rp "  $1 [y/N] " a || { echo; return 1; }; [[ $a =~ ^[Yy] ]]; }
 
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/afterburn"
 
@@ -73,6 +77,13 @@ cat <<'EOF'
     that calls the network: api.weather.gov, and api.zippopotam.us once to find your ZIP.
   • LOCK SCREEN (optional, asked separately): clones Omarchy's lock screen plugin and adds
     an ember layer. The clone stops getting Omarchy's lock-screen updates until you uninstall.
+  • COLOUR EDITIONS (optional, asked separately): copies the Voltage, Cyber, Overdrive,
+    Redline and Phantom themes from this theme's editions/ folder to
+    ~/.config/omarchy/themes/afterburn-<name>. A folder that already exists is never touched.
+    uninstall.sh removes only the ones it created.
+  • BOOT/LOGIN SCREEN (optional, default No, needs sudo): runs Omarchy's
+    omarchy-plymouth-set-by-theme for the current theme. It changes the boot splash and the
+    login screen. Undo with Omarchy's own: omarchy-plymouth-reset (also needs sudo).
 
   Full details: https://github.com/silverwulf212/omarchy-afterburn-theme#what-the-full-stack-changes
 EOF
@@ -268,10 +279,68 @@ else
   skip "kept the stock lock screen"
 fi
 
-CHANGED+=("theme set to afterburn")
-omarchy theme set afterburn >/dev/null
-if command -v cursor-fx >/dev/null; then
-  echo; o "  ❯ afterburn is live. Open a new Ghostty window (Super + Return) and type."; echo
+# 6. Colour editions (optional, asked separately). Each editions/<name>/ is a complete Omarchy theme;
+# the installer copies it to ~/.config/omarchy/themes/afterburn-<name>. A folder that is already there
+# is never touched or recorded, so uninstall.sh can only ever remove what this script made.
+THEME_ROOT="$(dirname "$HERE")"
+THEMES_HOME="$HOME/.config/omarchy/themes"
+EDITIONS=(voltage cyber overdrive redline phantom)
+echo
+AVAILABLE=()
+for e in "${EDITIONS[@]}"; do [[ -f $THEME_ROOT/editions/$e/colors.toml ]] && AVAILABLE+=("$e"); done
+if (( ${#AVAILABLE[@]} == 0 )); then
+  skip "colour editions: no editions/ folder in $THEME_ROOT (this copy of the theme has none), skipped"
+elif ask "Install colour editions (Voltage, Cyber, Overdrive, Redline, Phantom)? (copies each to ~/.config/omarchy/themes/afterburn-<name>; the extras follow the edition you pick)"; then
+  for e in "${AVAILABLE[@]}"; do
+    dest="$THEMES_HOME/afterburn-$e"
+    if [[ -e $dest || -L $dest ]]; then
+      if grep -qxF "$e" "$STATE_DIR/editions" 2>/dev/null; then
+        ok "afterburn-$e already installed"
+      else
+        skip "afterburn-$e: $dest already exists and is not ours, left alone"
+      fi
+      continue
+    fi
+    mkdir -p "$THEMES_HOME"
+    # Record first, so uninstall.sh also cleans up a copy that stops halfway.
+    echo "$e" >> "$STATE_DIR/editions"
+    CHANGED+=("edition theme $dest")
+    cp -a "$THEME_ROOT/editions/$e" "$dest"
+    ok "edition installed: afterburn-$e"
+  done
 else
-  echo; o "  ❯ afterburn is live."; echo
+  skip "skipped the colour editions. Re-run this script any time to add them"
+fi
+
+# Which theme the installer leaves active: the current Afterburn edition if one is active, else the base.
+FINAL_THEME=afterburn
+CUR_NAME=$(cat "${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/current/theme.name" 2>/dev/null || true)
+[[ $CUR_NAME == afterburn-* && -d $THEMES_HOME/$CUR_NAME ]] && FINAL_THEME=$CUR_NAME
+
+# 7. Boot/login screen (optional). Default No: needs sudo and changes the system outside your home folder.
+echo
+if ! command -v omarchy-plymouth-set-by-theme >/dev/null; then
+  skip "boot/login screen: omarchy-plymouth-set-by-theme not found, skipped"
+elif [[ ! -f $THEMES_HOME/$FINAL_THEME/unlock.png ]]; then
+  skip "boot/login screen: $FINAL_THEME has no unlock.png, skipped"
+elif $YES; then
+  skip "boot/login screen: --yes does not answer this one (it needs sudo). Run: omarchy-plymouth-set-by-theme $FINAL_THEME"
+elif ask_no "Set the boot and login screen to $FINAL_THEME? (needs sudo and changes Omarchy's boot splash and login screen; undo: omarchy-plymouth-reset)"; then
+  echo "$FINAL_THEME" > "$STATE_DIR/plymouth"   # recorded before the change, so uninstall.sh offers the undo
+  CHANGED+=("boot/login screen set to $FINAL_THEME (undo: omarchy-plymouth-reset)")
+  if omarchy-plymouth-set-by-theme "$FINAL_THEME"; then
+    ok "boot/login screen set to $FINAL_THEME. Undo any time: omarchy-plymouth-reset"
+  else
+    skip "boot/login screen: the change did not finish. To be safe, undo with: omarchy-plymouth-reset"
+  fi
+else
+  skip "kept the boot and login screen"
+fi
+
+CHANGED+=("theme set to $FINAL_THEME")
+omarchy theme set "$FINAL_THEME" >/dev/null
+if command -v cursor-fx >/dev/null; then
+  echo; o "  ❯ $FINAL_THEME is live. Open a new Ghostty window (Super + Return) and type."; echo
+else
+  echo; o "  ❯ $FINAL_THEME is live."; echo
 fi

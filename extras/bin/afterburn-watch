@@ -1,7 +1,7 @@
 #!/bin/bash
 # afterburn-watch: keeps Afterburn in step with the machine and the sky.
 # Long-running user service (extras/afterburn-watch.service). Acts only while
-# the active theme is afterburn. Three loops, one per concern:
+# the active theme is afterburn or an afterburn colour edition. Three loops, one per concern:
 #   fullscreen  Hyprland socket2 events      -> afterburn quiet on|off
 #   power       upower (or 30s poll)         -> afterburn saver on|off (battery = on)
 #   heat        every 60s                    -> afterburn level cool|normal|hot
@@ -25,7 +25,8 @@ load_conf() {
   [[ -f $CONF ]] && . "$CONF"
 }
 
-is_afterburn() { [[ $(cat "$THEME_FILE" 2>/dev/null) == afterburn ]]; }
+# True for the base theme and for the colour editions (afterburn-voltage, -cyber, ...).
+is_afterburn() { local t; t=$(cat "$THEME_FILE" 2>/dev/null); [[ $t == afterburn || $t == afterburn-* ]]; }
 
 # --- fullscreen: quiet while a window is fullscreen --------------------------
 # At start, quiet follows what is on screen now. A fullscreen toggle missed while the
