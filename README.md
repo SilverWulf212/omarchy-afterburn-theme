@@ -123,7 +123,7 @@ The same theme in five more colours, and each colour has a personality that show
 |---|---|---|---|---|---|---|---|
 | Afterburn (`afterburn`) | orange | The original: warm, confident, jet at full burn | heat, momentum | Orange on black. The original burn. | `embers` | `rise` | slow turn, steady glow |
 | Voltage (`afterburn-voltage`) | cyan | Restless, clever, always a little charged | alert, crackling | Live wire on black glass. | `lightning` | `spark` | fast turn |
-| Cyber (`afterburn-cyber`) | green | 3 AM hacker, quiet control | focus, flow, old-terminal comfort | Acid green. The grid is listening. | `phosphor` | `fall` | slow turn, soft glow |
+| Cyber (`afterburn-cyber`) | green | 3 AM hacker, quiet control | focus, flow, old-terminal comfort | Acid green. The grid is listening. | `cyber` (data rain) | `fall` | slow turn, soft glow |
 | Overdrive (`afterburn-overdrive`) | magenta | Showoff on a neon highway at night | fun, speed, nostalgia | Midnight highway. Magenta past the limiter. | `neon` | `pulse` | medium turn, big bloom |
 | Redline (`afterburn-redline`) | red | Dangerous, disciplined, engine at the limit | tension, adrenaline | Blood red at the limiter. Hold it. | `katana` | `burst` | still, tight glow |
 | Phantom (`afterburn-phantom`) | violet | The quiet one, barely there | calm, mystery, stealth | Here, then gone. | `hologram` | `drift` | still, wide soft haze, dim backgrounds |
@@ -131,7 +131,7 @@ The same theme in five more colours, and each colour has a personality that show
 **What only each edition has** (beyond the colours, the heat wallpapers and the lock-screen colours):
 
 - **Voltage:** the lightning cursor; the live wallpaper `live-voltage-arcgrid` (pylons and wires with energy packets, and arcs that jump every 8 s); crackling spark embers on the lock screen; a btop theme whose meters ramp teal, cyan, white-hot.
-- **Cyber:** the phosphor cursor; the live wallpaper `live-matrix-rain` (falling glyph columns, scanlines); slow falling rain on the lock screen; a phosphor btop theme and an acid-green Neovim palette.
+- **Cyber:** the data-rain `cyber` cursor (glyph rain, every typed character burns in green); the live wallpaper `live-matrix-rain` (falling glyph columns, scanlines); slow falling rain on the lock screen; a phosphor btop theme and an acid-green Neovim palette.
 - **Overdrive:** the neon-tube cursor; the live wallpaper `live-speed-streaks` (two layers of light streaks at different speeds); lock-screen embers that swell on a beat; a hot-pink Neovim palette.
 - **Redline:** the katana-slash cursor; two live wallpapers, `live-tachometer` (a gauge that sweeps to the limiter) and `live-heat-haze` (exhaust glow and rising heat); sudden sparks and stillness on the lock screen; btop meters that run brown, red, white-hot.
 - **Phantom:** the hologram cursor; the live wallpaper `live-phantom-aurora` (violet curtains, stars, drifting wisps); wisps that fade in and out on the lock screen; the heaviest dimming of background windows.
