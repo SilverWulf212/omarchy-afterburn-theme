@@ -84,7 +84,7 @@ Optional, part of the full-stack install (step 4). Every setting lives in `~/.co
 | Red prompt and fail flash | `FAIL_FX` (`random`) | A failed command gets a red `❯` in Starship and a short flash: `burn`, `cascade` or `dissolve`. `random` picks one. Interrupted commands (Ctrl-C, Ctrl-Z) don't flash. Set `NO_MOTION` in your shell to turn the flash off. | `afterburn set FAIL_FX off` |
 | Colours | none | Afterburn's named colours. In a terminal, `afterburn colors` shows swatches and copies the one you pick. The "Afterburn colors" launcher entry opens the menu and copies the hex. | `afterburn colors` |
 
-Other commands: `afterburn apply` (rebuilds the glow from the conf and reloads Hyprland), `afterburn level cool|normal|hot`, `afterburn saver on|off`. The watcher runs as a user service. Check it with `systemctl --user status afterburn-watch`.
+Other commands: `afterburn apply` (rebuilds the glow from the conf and reloads Hyprland), `afterburn level cool|normal|hot`, `afterburn saver on|off`. Battery or laptop mode turns `cursor-fx subtle` back off when it ends, but only if the saver was what turned it on (a subtle you had on yourself stays on; it is also restored when you leave Afterburn or run `uninstall.sh`). The watcher runs as a user service. Check it with `systemctl --user status afterburn-watch`.
 
 ## Lock screen
 

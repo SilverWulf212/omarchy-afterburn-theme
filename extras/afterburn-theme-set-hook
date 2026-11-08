@@ -17,6 +17,8 @@ PRE_QUIET="$(dirname "$STATE")/cursor-pre-quiet"
 # The effect this hook (or `afterburn set CURSOR_FX`) last switched on. Moving from one edition to the
 # next must not mistake it for your own effect and save it as the one to restore.
 OURS_FX="$(dirname "$STATE")/cursor-fx-set"
+# Written by `afterburn saver on` when it turned `cursor-fx subtle` on from off. Not the user's own setting.
+SUBTLE_REC="$(dirname "$STATE")/subtle-by-afterburn"
 GHOSTTY="$HOME/.config/ghostty/config"
 LOCK_SH="$EXTRAS/lock/lock-embers.sh"
 LOCK_MARK="${XDG_STATE_HOME:-$HOME/.local/state}/afterburn/lock-embers"
@@ -88,6 +90,11 @@ else
     rm -f "$STATE"
   fi
   rm -f "$OURS_FX"
+  # Battery saver turned subtle on: it goes back off now (a subtle you had on yourself has no record and stays).
+  if [[ -f $SUBTLE_REC ]] && command -v cursor-fx >/dev/null; then
+    cursor-fx subtle off >/dev/null 2>&1 || true
+  fi
+  rm -f "$SUBTLE_REC"
   # Drop the fullscreen and battery flags: the watcher is stopped, so it can't clear them later.
   rm -f "$(dirname "$STATE")/quiet" "$(dirname "$STATE")/saver" "$PRE_QUIET"
   # Back to the base palette for the fail flash and the lock embers.

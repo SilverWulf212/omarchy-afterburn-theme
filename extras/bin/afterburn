@@ -253,9 +253,17 @@ cmd_apply() {
 # cursor-fx helpers. quiet and saver switch the effect for a while: the one that was running is saved
 # once in cursor-pre-quiet and put back when both end. (prev-cursor-fx is a different thing: the
 # effect from before Afterburn took over, kept by the theme-set hook and restored when you leave it.)
+# subtle-by-afterburn is a third record: it exists only when saver turned `cursor-fx subtle` on from off, so
+# that only that case is turned off again. A subtle you had on yourself is never touched.
 CFX_PRE="$STATE/cursor-pre-quiet"
+SUBTLE_REC="$STATE/subtle-by-afterburn"
 cfx_now() {
   grep -oP '^config-file\s*=\s*\??cursor-effects/\K[^.]+' "$GHOSTTY" 2>/dev/null || echo off
+}
+
+# on, off, mixed or n/a, as `cursor-fx subtle` reports it ("Subtle version: off (cursor-fx subtle on|off)"); empty if unreadable.
+cfx_subtle_state() {
+  cursor-fx subtle 2>/dev/null | sed -n 's/^[^:]*: \(on\|off\|mixed\|n\/a\) (.*/\1/p' | head -n1
 }
 
 cfx_sync() {
@@ -268,10 +276,16 @@ cfx_sync() {
   if [[ -n $want ]]; then
     mkdir -p "$STATE"
     [[ -f $CFX_PRE ]] || cfx_now > "$CFX_PRE"
+    if [[ $want == 'subtle on' && ! -f $SUBTLE_REC && $(cfx_subtle_state) == off ]]; then : > "$SUBTLE_REC"; fi
     cursor-fx $want >/dev/null 2>&1 || true
   elif [[ -f $CFX_PRE ]]; then
     cursor-fx "$(cat "$CFX_PRE")" >/dev/null 2>&1 || true
     rm -f "$CFX_PRE"
+  fi
+  # Saver is over: put subtle back off, but only if saver was what turned it on.
+  if [[ -f $SUBTLE_REC ]] && ! flag_on saver; then
+    cursor-fx subtle off >/dev/null 2>&1 || true
+    rm -f "$SUBTLE_REC"
   fi
 }
 

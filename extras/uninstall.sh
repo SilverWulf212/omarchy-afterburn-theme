@@ -57,6 +57,11 @@ if [[ -f $STATE_DIR/prev-cursor-fx ]] && command -v cursor-fx >/dev/null; then
   cursor-fx "$(cat "$STATE_DIR/prev-cursor-fx")" >/dev/null 2>&1 && echo "  ✓ cursor effect restored"
 fi
 
+# Subtle: only if battery saver turned it on and nothing has turned it off again (a subtle you had on is left alone).
+if [[ -f $STATE_DIR/subtle-by-afterburn ]] && command -v cursor-fx >/dev/null; then
+  cursor-fx subtle off >/dev/null 2>&1 && echo "  ✓ cursor subtle mode restored"
+fi
+
 # Lock screen: only if the installer added the embers (marker written on a successful install).
 if [[ -f $STATE_DIR/lock-embers ]]; then
   if [[ -f $HERE/lock/lock-embers.sh ]] && bash "$HERE/lock/lock-embers.sh" uninstall; then
