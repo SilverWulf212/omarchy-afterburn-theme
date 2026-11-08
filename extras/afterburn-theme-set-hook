@@ -1,11 +1,12 @@
 #!/bin/bash
 # Afterburn extras: an Omarchy theme-set hook, installed by extras/install.sh.
 # On afterburn or an edition (afterburn-voltage, -cyber, -overdrive, -redline, -phantom): switch
-# Ghostty cursor-fx to embers (if installed), regenerate and reload the glow with `afterburn apply`
-# (Omarchy drops a cloned theme's .lua) in the edition's colours, recolour the lock-screen embers,
-# and (re)start the watcher.
+# Ghostty cursor-fx to the theme's effect (CURSOR_FX: your afterburn.conf, else the edition's
+# edition.conf, else embers; if installed), regenerate and reload the glow with `afterburn apply`
+# (Omarchy drops a cloned theme's .lua) in the edition's colours, recolour the lock-screen embers
+# and give them the edition's motion (EMBER_STYLE), and (re)start the watcher.
 # On any other theme: stop the watcher, put the previous cursor-fx effect back, and put the lock
-# embers back to the base orange.
+# embers back to the base orange and the rising motion.
 set -u
 THEME="${1:-}"
 EXTRAS="$HOME/.config/omarchy/themes/afterburn/extras"
@@ -13,6 +14,9 @@ CURRENT="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/current/theme"
 STATE="${XDG_STATE_HOME:-$HOME/.local/state}/afterburn/prev-cursor-fx"
 # Written by `afterburn quiet|saver` while they hold the cursor effect off. Not the user's own effect.
 PRE_QUIET="$(dirname "$STATE")/cursor-pre-quiet"
+# The effect this hook (or `afterburn set CURSOR_FX`) last switched on. Moving from one edition to the
+# next must not mistake it for your own effect and save it as the one to restore.
+OURS_FX="$(dirname "$STATE")/cursor-fx-set"
 GHOSTTY="$HOME/.config/ghostty/config"
 LOCK_SH="$EXTRAS/lock/lock-embers.sh"
 LOCK_MARK="${XDG_STATE_HOME:-$HOME/.local/state}/afterburn/lock-embers"
@@ -29,22 +33,36 @@ else
 fi
 
 if ab_is_afterburn "$THEME"; then
+  # The edition's knobs: your afterburn.conf first, then its edition.conf, then the base default.
+  WANT_FX=embers WANT_STYLE=rise
+  if declare -F ab_effective >/dev/null; then
+    ab_effective CURSOR_FX "$THEME" 2>/dev/null; WANT_FX=$AB_VAL
+    ab_effective EMBER_STYLE "$THEME" 2>/dev/null; WANT_STYLE=$AB_VAL
+  fi
   if declare -F ab_load_palette >/dev/null; then
     ab_load_palette "$THEME"
     ab_write_palette_env || true
     # Lock embers follow the theme (only when the installer put the embers there).
     if [[ -f $LOCK_MARK && -f $LOCK_SH ]]; then
-      bash "$LOCK_SH" recolor "$AB_FLARE" "$AB_EMBER" "$AB_RUST" >/dev/null 2>&1 || true
+      bash "$LOCK_SH" recolor "$AB_FLARE" "$AB_EMBER" "$AB_RUST" "$WANT_STYLE" >/dev/null 2>&1 || true
     fi
   fi
   # Cursor first: afterburn apply may put cursor-fx off in quiet mode, and must see the saved previous effect.
   if command -v cursor-fx >/dev/null; then
     cur=$(cursor_now)
-    if [[ $cur != embers ]]; then
-      # Fullscreen or battery may have switched the effect off for now: that is not your own effect, keep the saved one.
-      [[ -f $PRE_QUIET ]] || { mkdir -p "$(dirname "$STATE")" && echo "$cur" > "$STATE"; }
-      cursor-fx embers >/dev/null 2>&1 || true
+    ours=$(cat "$OURS_FX" 2>/dev/null || true)
+    if [[ -f $PRE_QUIET ]]; then
+      # Fullscreen or battery has the effect off for now. Leave it off, and make the one that comes back
+      # afterwards this theme's. What was saved is not your own effect, so it is not touched either.
+      echo "$WANT_FX" > "$PRE_QUIET"
+    elif [[ $cur != "$WANT_FX" ]]; then
+      # Save the effect to restore later, unless the current one is only the previous Afterburn theme's.
+      if [[ -z $ours || $cur != "$ours" ]]; then
+        mkdir -p "$(dirname "$STATE")" && echo "$cur" > "$STATE"
+      fi
+      cursor-fx "$WANT_FX" >/dev/null 2>&1 || true
     fi
+    mkdir -p "$(dirname "$STATE")" && echo "$WANT_FX" > "$OURS_FX"
   fi
   if [[ -x $AFTERBURN ]]; then
     "$AFTERBURN" apply >/dev/null 2>&1 || true
@@ -64,6 +82,7 @@ else
     cursor-fx "$(cat "$STATE")" >/dev/null 2>&1 || true
     rm -f "$STATE"
   fi
+  rm -f "$OURS_FX"
   # Drop the fullscreen and battery flags: the watcher is stopped, so it can't clear them later.
   rm -f "$(dirname "$STATE")/quiet" "$(dirname "$STATE")/saver" "$PRE_QUIET"
   # Back to the base palette for the fail flash and the lock embers.

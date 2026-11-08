@@ -99,3 +99,103 @@ ab_recolor_glow() {
   sed -e "s/f59145/@ACCENT@/g; s/ff5a1f/@EMBER@/g; s/ffc48a/@FLARE@/g; s/2b2a28/@INACTIVE@/g" "$1" |
     sed -e "s/@ACCENT@/$AB_ACCENT/g; s/@EMBER@/$AB_EMBER/g; s/@FLARE@/$AB_FLARE/g; s/@INACTIVE@/$AB_INACTIVE/g"
 }
+
+# ---- Edition knobs ------------------------------------------------------------------------------
+# Five settings can come from three places. First hit wins:
+#   1. a value you saved yourself in ~/.config/afterburn/afterburn.conf
+#   2. the active edition's edition.conf (shipped with the edition, never written by you)
+#   3. the built-in default (the base theme's)
+# Every value is checked before it is used; one that fails is skipped, so a typo can never reach
+# Hyprland, cursor-fx or the lock screen. edition.conf is parsed as data (KEY=VALUE lines), never
+# sourced. The lines `ROTATE=slow ...` and `DIM=0.08 ...` exactly as the first-run conf wrote them
+# are not choices, so an older conf follows the edition too.
+#   CURSOR_FX    a cursor-fx effect name                       (base: embers)
+#   ROTATE       off|slow|medium|fast                          (base: slow)
+#   DIM          0 to 1                                        (base: 0.08)
+#   GLOW_RANGE   4 to 30, the shadow range at the normal level (base: 14)
+#   EMBER_STYLE  rise|fall|drift|spark|pulse|burst             (base: rise)
+AB_EDITION_KEYS="CURSOR_FX ROTATE DIM GLOW_RANGE EMBER_STYLE"
+AB_CURSOR_FX_NAMES="cyber lightning glitch neon phosphor embers shockwave katana teleport fireworks aurora mecha hologram"
+
+ab_base_default() {
+  case ${1:-} in
+    CURSOR_FX) echo embers ;; ROTATE) echo slow ;; DIM) echo 0.08 ;;
+    GLOW_RANGE) echo 14 ;; EMBER_STYLE) echo rise ;; *) return 1 ;;
+  esac
+}
+
+# ab_valid KEY VALUE: success if VALUE is allowed for the edition key KEY.
+ab_valid() {
+  local k=${1:-} v=${2:-}
+  case $k in
+    CURSOR_FX)   [[ $v =~ ^(cyber|lightning|glitch|neon|phosphor|embers|shockwave|katana|teleport|fireworks|aurora|mecha|hologram)$ ]] ;;
+    ROTATE)      [[ $v =~ ^(off|slow|medium|fast)$ ]] ;;
+    DIM)         [[ $v =~ ^(0|1|0?\.[0-9]+|1\.0*)$ ]] ;;
+    GLOW_RANGE)  [[ $v =~ ^[1-9][0-9]?$ ]] && (( v >= 4 && v <= 30 )) ;;
+    EMBER_STYLE) [[ $v =~ ^(rise|fall|drift|spark|pulse|burst)$ ]] ;;
+    *) return 1 ;;
+  esac
+}
+
+# ab_file_value FILE KEY: print KEY's value from a KEY=VALUE file (last line wins; a trailing comment,
+# surrounding spaces and one pair of quotes are dropped). Fails if the key is absent or empty.
+ab_file_value() {
+  local line v
+  line=$(grep -E "^[[:space:]]*$2=" "$1" 2>/dev/null | tail -n1) || return 1
+  [[ -n $line ]] || return 1
+  v=${line#*=}
+  if [[ $v =~ ^[[:space:]]*\"([^\"]*)\" || $v =~ ^[[:space:]]*\'([^\']*)\' ]]; then
+    v=${BASH_REMATCH[1]}
+  else
+    v=${v%%#*}
+    v=${v#"${v%%[![:space:]]*}"}
+    v=${v%"${v##*[![:space:]]}"}
+  fi
+  [[ -n $v ]] || return 1
+  printf '%s' "$v"
+}
+
+# The user's own conf, and where it keeps its explicit values.
+ab_conf_path() { echo "${XDG_CONFIG_HOME:-$HOME/.config}/afterburn/afterburn.conf"; }
+
+# ab_conf_value KEY: the value you saved yourself, unless the line is an untouched first-run default.
+ab_conf_value() {
+  local f line
+  f=$(ab_conf_path)
+  [[ -f $f ]] || return 1
+  line=$(grep -E "^$1=" "$f" | tail -n1) || return 1
+  case $line in
+    'ROTATE=slow          # off|slow|medium|fast  (border gradient turn: 60s|20s|8s per turn)' | \
+    'DIM=0.08             # dim_inactive strength, 0 = off') return 1 ;;
+  esac
+  ab_file_value "$f" "$1"
+}
+
+# The edition.conf of a theme: your installed copy, the staged current theme, then the base theme's own
+# .editions/ copy (so an edition installed by an older release still gets its defaults).
+# Only afterburn-<edition> names qualify, and the base theme has none.
+ab_edition_file() {
+  local name=${1:-} f
+  [[ $name =~ ^afterburn-[a-z0-9]+$ ]] || return 1
+  for f in "$HOME/.config/omarchy/themes/$name/edition.conf" \
+           "${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/current/theme/edition.conf" \
+           "$HOME/.config/omarchy/themes/afterburn/.editions/${name#afterburn-}/edition.conf"; do
+    [[ -f $f ]] && { echo "$f"; return 0; }
+  done
+  return 1
+}
+
+# ab_effective KEY [THEME]: sets AB_VAL to the value to use and AB_SRC to where it came from
+# (conf, edition or default).
+ab_effective() {
+  local k=$1 theme=${2:-} v f
+  AB_VAL=$(ab_base_default "$k") AB_SRC=default
+  if v=$(ab_conf_value "$k"); then
+    if ab_valid "$k" "$v"; then AB_VAL=$v AB_SRC=conf; return 0; fi
+    echo "afterburn: ignoring $k='$v' in $(ab_conf_path) (not an allowed value)" >&2
+  fi
+  if f=$(ab_edition_file "$theme") && v=$(ab_file_value "$f" "$k") && ab_valid "$k" "$v"; then
+    AB_VAL=$v AB_SRC=edition
+  fi
+  return 0
+}
