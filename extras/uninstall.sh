@@ -12,9 +12,6 @@ STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/afterburn"
 CONF_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 BIN="$HOME/.local/bin"
 
-if [[ -f $STATE_DIR/prev-cursor-fx ]] && command -v cursor-fx >/dev/null; then
-  cursor-fx "$(cat "$STATE_DIR/prev-cursor-fx")" >/dev/null 2>&1 && echo "  ✓ cursor effect restored"
-fi
 if [[ -s $STATE_DIR/prev-terminal ]]; then
   prev=$(cat "$STATE_DIR/prev-terminal")
   name=$(basename "$prev" .desktop | sed -E 's/.*\.//; s/^(ghostty|alacritty|kitty|foot).*/\1/' | tr '[:upper:]' '[:lower:]')
@@ -52,6 +49,12 @@ if [[ -s $STATE_DIR/editions ]]; then
     fi
     rm -rf "$dir" && echo "  ✓ edition removed: afterburn-$e"
   done < "$STATE_DIR/editions"
+fi
+
+# Cursor effect: after the edition switch above, not before. Switching to the base theme runs the theme-set
+# hook, which sets that theme's effect; restoring first would let it overwrite your own effect again.
+if [[ -f $STATE_DIR/prev-cursor-fx ]] && command -v cursor-fx >/dev/null; then
+  cursor-fx "$(cat "$STATE_DIR/prev-cursor-fx")" >/dev/null 2>&1 && echo "  ✓ cursor effect restored"
 fi
 
 # Lock screen: only if the installer added the embers (marker written on a successful install).
