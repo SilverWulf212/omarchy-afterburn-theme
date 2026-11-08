@@ -1,0 +1,528 @@
+#!/bin/bash
+# afterburn: knobs for the Afterburn theme. Installed to ~/.local/bin by extras/install.sh.
+#
+#   afterburn status                  show settings, heat level, quiet/saver, cursor effect
+#   afterburn get [KEY]               print one setting (or all)
+#   afterburn set KEY VALUE           validate, save to the conf, re-apply the glow
+#   afterburn unset KEY               drop your saved value: the edition's default (else the built-in one) returns
+#   afterburn apply                   regenerate hyprland.lua from the conf and reload Hyprland
+#   afterburn level cool|normal|hot   heat level (border, shadow, optional wallpaper swap)
+#   afterburn quiet on|off            fullscreen mode: no shadow, no spin, cursor-fx off
+#   afterburn saver on|off            battery mode: no shadow, no spin, cursor-fx subtle
+#   afterburn laptop auto|on|off      LAPTOP_MODE; on/off also switch saver
+#   afterburn colors [--menu]         palette: swatches on a tty, Omarchy menu otherwise
+#   afterburn locate ZIP              US ZIP -> LAT/LON for the weather heat source
+#
+# Config: ${XDG_CONFIG_HOME:-~/.config}/afterburn/afterburn.conf (KEY=VALUE, sourced)
+#         ROTATE DIM GLOW_RANGE CURSOR_FX EMBER_STYLE: a value you save here wins; leave it out and the
+#         active edition's edition.conf decides, then the built-in default (see afterburn-theme.sh)
+# State:  ${XDG_STATE_HOME:-~/.local/state}/afterburn/  (level, quiet, saver, prev-cursor-fx, cursor-pre-quiet, weather.json)
+set -u
+
+CONF_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/afterburn"
+CONF="$CONF_DIR/afterburn.conf"
+STATE_ROOT="${XDG_STATE_HOME:-$HOME/.local/state}"
+STATE="$STATE_ROOT/afterburn"
+OMARCHY_CUR="$STATE_ROOT/omarchy/current"
+CUR_THEME="$OMARCHY_CUR/theme"
+CUR_BG_LINK="$OMARCHY_CUR/background"
+THEME_DIR="$HOME/.config/omarchy/themes/afterburn"
+GLOW_TEMPLATE="$THEME_DIR/extras/hyprland-glow.lua"
+LOCK_SH="$THEME_DIR/extras/lock/lock-embers.sh"
+GHOSTTY="$HOME/.config/ghostty/config"
+# The extras always live in the base theme dir, also while a colour edition is active.
+# shellcheck disable=SC1091
+. "$THEME_DIR/extras/afterburn-theme.sh" 2>/dev/null || {
+  echo "afterburn: missing $THEME_DIR/extras/afterburn-theme.sh (is the afterburn theme installed?)" >&2; exit 1; }
+
+KEYS="ROTATE DIM GLOW_RANGE CURSOR_FX EMBER_STYLE HEAT_SOURCE EVENING_HOURS ZIP LAT LON HOT_F COOL_F HEAT_WALLPAPERS FULLSCREEN_QUIET LAPTOP_MODE FAIL_FX"
+# Settings an edition can set a default for (see afterburn-theme.sh). Everything else is yours alone.
+EDITION_KEYS="$AB_EDITION_KEYS"
+# What a key falls back to when it is missing, empty or fails its check.
+declare -A SRC=()   # where an edition key's value came from: conf, edition or default
+declare -A DEFAULT=([ROTATE]=slow [DIM]=0.08 [GLOW_RANGE]=14 [CURSOR_FX]=embers [EMBER_STYLE]=rise [HEAT_SOURCE]=time [EVENING_HOURS]=19-07 [ZIP]="" [LAT]="" [LON]=""
+                    [HOT_F]=90 [COOL_F]=50 [HEAT_WALLPAPERS]=yes [FULLSCREEN_QUIET]=yes [LAPTOP_MODE]=auto [FAIL_FX]=random)
+
+die() { echo "afterburn: $*" >&2; exit 1; }
+
+usage() {
+  sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+write_default_conf() {
+  mkdir -p "$CONF_DIR"
+  cat > "$CONF" <<'EOF'
+# Leave a line out (or commented) and the active edition's default applies, then the built-in one.
+# Save a value here and it always wins. `afterburn unset KEY` goes back to following the edition.
+#ROTATE=slow         # off|slow|medium|fast  (border gradient turn: 60s|20s|8s per turn)
+#DIM=0.08            # dim_inactive strength, 0 = off
+#GLOW_RANGE=14       # 4-30, shadow range at the normal heat level
+#CURSOR_FX=embers    # a cursor-fx effect (cyber lightning glitch neon phosphor embers shockwave katana teleport fireworks aurora mecha hologram)
+#EMBER_STYLE=rise    # lock-screen embers: rise|fall|drift|spark|pulse|burst
+HEAT_SOURCE=time     # off|time|pressure|weather
+EVENING_HOURS=19-07  # time source: cool inside this window
+ZIP=                 # weather source (US only); LAT/LON filled by `afterburn locate`
+LAT=
+LON=
+HOT_F=90
+COOL_F=50
+HEAT_WALLPAPERS=yes  # swap wallpaper to the level's variant
+FULLSCREEN_QUIET=yes
+LAPTOP_MODE=auto     # auto|on|off
+FAIL_FX=random       # random|burn|cascade|dissolve|off
+EOF
+}
+
+# Read the conf (we wrote it, so sourcing is fine) and fill any missing key with its default.
+# A value that fails its check is replaced too: the conf is meant to be hand-edited, and a typo
+# in DIM or ROTATE would otherwise be written into the Hyprland Lua.
+load_conf() {
+  [[ -f $CONF ]] || write_default_conf
+  # shellcheck disable=SC1090
+  . "$CONF"
+  local k
+  # The edition keys are resolved by afterburn-theme.sh: your saved value, else the edition's, else the default.
+  for k in $EDITION_KEYS; do
+    ab_effective "$k" "$THEME_NAME"
+    printf -v "$k" %s "$AB_VAL"
+    SRC[$k]=$AB_SRC
+  done
+  for k in $KEYS; do
+    [[ -n ${!k:-} ]] || printf -v "$k" %s "${DEFAULT[$k]}"
+    value_ok "$k" "${!k}" || {
+      echo "afterburn: ignoring $k='${!k}' in $CONF (allowed: $HINT); using '${DEFAULT[$k]}'" >&2
+      printf -v "$k" %s "${DEFAULT[$k]}"
+    }
+  done
+}
+
+valid_key() {
+  [[ " $KEYS " == *" ${1:-} "* ]] || die "unknown key '${1:-}' (keys: $KEYS)"
+}
+
+# Is $2 allowed for key $1? Sets HINT to what is allowed.
+value_ok() {
+  local k=$1 v=$2 re hint
+  case $k in
+    ROTATE|DIM|GLOW_RANGE|CURSOR_FX|EMBER_STYLE)
+      case $k in
+        ROTATE)      HINT='off|slow|medium|fast' ;;
+        DIM)         HINT='0 to 1, e.g. 0.08' ;;
+        GLOW_RANGE)  HINT='4 to 30, e.g. 14' ;;
+        CURSOR_FX)   HINT="$AB_CURSOR_FX_NAMES" ;;
+        EMBER_STYLE) HINT='rise|fall|drift|spark|pulse|burst' ;;
+      esac
+      ab_valid "$k" "$v"; return ;;
+    HEAT_SOURCE)     re='^(off|time|pressure|weather)$';     hint='off|time|pressure|weather' ;;
+    EVENING_HOURS)   re='^[0-9]{1,2}-[0-9]{1,2}$';           hint='START-END hours, e.g. 19-07' ;;
+    ZIP)             re='^([0-9]{5})?$';                     hint='5-digit US ZIP or empty' ;;
+    LAT)             re='^(-?[0-9]{1,2}(\.[0-9]+)?)?$';      hint='latitude or empty (use afterburn locate)' ;;
+    LON)             re='^(-?[0-9]{1,3}(\.[0-9]+)?)?$';      hint='longitude or empty (use afterburn locate)' ;;
+    HOT_F|COOL_F)    re='^[0-9]{1,3}$';                      hint='whole degrees F' ;;
+    HEAT_WALLPAPERS|FULLSCREEN_QUIET) re='^(yes|no)$';       hint='yes|no' ;;
+    LAPTOP_MODE)     re='^(auto|on|off)$';                   hint='auto|on|off' ;;
+    FAIL_FX)         re='^(random|burn|cascade|dissolve|off)$'; hint='random|burn|cascade|dissolve|off' ;;
+    *) die "unknown key '$k'" ;;
+  esac
+  HINT=$hint
+  [[ $v =~ $re ]]
+}
+
+# Exits with a hint if the value is wrong.
+validate() {
+  value_ok "$1" "$2" || die "bad value for $1: '$2' (allowed: $HINT)"
+}
+
+# Rewrite one KEY=VALUE line in place (keeps its trailing comment), or append it.
+set_key() {
+  local k=$1 v=$2
+  [[ -f $CONF ]] || write_default_conf
+  # A hand-edited conf can end without a newline: start the new line on its own, never glued to the last one.
+  [[ ! -s $CONF || -z $(tail -c1 "$CONF") ]] || printf '\n' >> "$CONF"
+  if [[ " $EDITION_KEYS " == *" $k "* ]]; then
+    # Your choice, so it must read as one: the whole line is rewritten (an old line's default comment
+    # would make a saved value look like an untouched default). Any earlier line for the key goes.
+    sed -i --follow-symlinks -E "/^[[:space:]]*$k=/d" "$CONF"
+    printf '%s=%s  # set by you\n' "$k" "$v" >> "$CONF"
+  elif grep -q "^$k=" "$CONF"; then
+    sed -i --follow-symlinks -E "s/^$k=[^ #]*/$k=$v/" "$CONF"
+  else
+    printf '%s=%s\n' "$k" "$v" >> "$CONF"
+  fi
+}
+
+state_get() { cat "$STATE/$1" 2>/dev/null || echo "$2"; }
+state_set() { mkdir -p "$STATE"; printf '%s\n' "$2" > "$STATE/$1"; }
+flag_on()   { [[ $(state_get "$1" off) == on ]]; }
+effective_quiet() { flag_on quiet || flag_on saver; }
+
+# Only touch Hyprland and cursor-fx while an Afterburn theme (base or edition) is active.
+THEME_NAME=$(ab_theme_name)
+is_afterburn() { ab_is_afterburn "$THEME_NAME"; }
+is_base() { [[ $THEME_NAME == afterburn ]]; }
+# Colours come from the active theme's colors.toml (AB_* in afterburn-theme.sh).
+ab_load_palette "$THEME_NAME"
+
+# Heat level table (from docs spec). Sets L_* for the named level.
+# GLOW_RANGE is the normal level's shadow range (base 14). Cool and hot keep their ratio to it (8:14 and
+# 22:14), so the order of the levels holds for every edition and the base theme gets exactly 8, 14 and 22.
+level_vals() {
+  local g=${GLOW_RANGE:-14}
+  case $1 in
+    cool)   L_BORDER="rgba(${AB_RUST}ee) rgba(${AB_COOL}ee) rgba(${AB_EMBER}cc) 45deg"
+            L_RANGE=$(( (g * 8 + 7) / 14 )); L_SHADOW="rgba(${AB_COOL}33)"
+            (( L_RANGE >= 3 )) || L_RANGE=3 ;;
+    normal) L_BORDER="rgba(${AB_ACCENT}ee) rgba(${AB_EMBER}ee) rgba(${AB_FLARE}ee) 45deg"
+            L_RANGE=$g; L_SHADOW="rgba(${AB_ACCENT}55)" ;;
+    hot)    L_BORDER="rgba(${AB_FLARE}ff) rgba(${AB_HOTWHITE}ff) rgba(${AB_EMBER}ff) 45deg"
+            L_RANGE=$(( (g * 22 + 7) / 14 )); L_SHADOW="rgba(${AB_HOTGLOW}77)"
+            (( L_RANGE <= 40 )) || L_RANGE=40 ;;
+    *) die "level must be cool|normal|hot" ;;
+  esac
+}
+
+# The glow template carries the base theme's colours; ab_recolor_glow swaps in the active theme's.
+glow_template() { ab_recolor_glow "$GLOW_TEMPLATE"; }
+
+# Write the generated Hyprland Lua into Omarchy's current theme dir.
+# Quiet or saver: spin and shadow are forced off in the file itself.
+write_lua() {
+  [[ -f $GLOW_TEMPLATE ]] || die "missing $GLOW_TEMPLATE (is the afterburn theme installed?)"
+  [[ -d $CUR_THEME ]] || die "no Omarchy current theme dir at $CUR_THEME (run: omarchy theme set afterburn)"
+
+  local rot=$ROTATE shadow=true spin dim_on range_opt=""
+  if effective_quiet; then rot=off; shadow=false; fi
+  case $rot in
+    off)    spin='hl.animation({ leaf = "borderangle", enabled = false })' ;;
+    # speed is Hyprland's animation duration in deciseconds: 100 = one turn per 10 s; Hyprland caps speed at 100.
+    slow)   spin='hl.animation({ leaf = "borderangle", enabled = true, speed = 100, bezier = "linear", style = "loop" })' ;;
+    medium) spin='hl.animation({ leaf = "borderangle", enabled = true, speed = 50,  bezier = "linear", style = "loop" })' ;;
+    fast)   spin='hl.animation({ leaf = "borderangle", enabled = true, speed = 25,  bezier = "linear", style = "loop" })' ;;
+  esac
+  if [[ $DIM == 0 ]]; then dim_on=false; else dim_on=true; fi
+  # The normal-level range. The glow template already says 14, so the base theme's file does not change.
+  [[ $GLOW_RANGE == 14 ]] || range_opt=", range = $GLOW_RANGE"
+
+  {
+    glow_template
+    cat <<EOF
+
+-- ---- generated by 'afterburn apply' from $CONF. Edit the conf, then run afterburn apply. ----
+hl.config({
+  decoration = {
+    dim_inactive = $dim_on,
+    dim_strength = $DIM,
+    shadow = { enabled = $shadow$range_opt },
+  },
+})
+$spin
+EOF
+  } > "$CUR_THEME/hyprland.lua"
+}
+
+# Push one heat level into the running compositor (no config reload needed).
+live_level() {
+  level_vals "$1"
+  hyprctl keyword general:col.active_border "$L_BORDER" >/dev/null 2>&1 || true
+  hyprctl keyword decoration:shadow:range "$L_RANGE" >/dev/null 2>&1 || true
+  hyprctl keyword decoration:shadow:color "$L_SHADOW" >/dev/null 2>&1 || true
+  hyprctl keyword decoration:shadow:enabled true >/dev/null 2>&1 || true
+}
+
+# Regenerate the Lua, reload Hyprland (which resets live keywords), then re-apply the level.
+apply_visuals() {
+  write_lua
+  hyprctl reload >/dev/null 2>&1 || true
+  if effective_quiet; then
+    cfx_sync
+  else
+    live_level "$(state_get level normal)"
+  fi
+}
+
+cmd_apply() {
+  load_conf
+  if ! is_afterburn; then
+    echo "afterburn: current theme is not afterburn or an afterburn edition; settings saved, nothing applied"
+    return 0
+  fi
+  ab_write_palette_env   # the fail flash reads its colours from here
+  apply_visuals
+}
+
+# cursor-fx helpers. quiet and saver switch the effect for a while: the one that was running is saved
+# once in cursor-pre-quiet and put back when both end. (prev-cursor-fx is a different thing: the
+# effect from before Afterburn took over, kept by the theme-set hook and restored when you leave it.)
+# subtle-by-afterburn is a third record: it exists only when saver turned `cursor-fx subtle` on from off, so
+# that only that case is turned off again. A subtle you had on yourself is never touched.
+CFX_PRE="$STATE/cursor-pre-quiet"
+SUBTLE_REC="$STATE/subtle-by-afterburn"
+cfx_now() {
+  grep -oP '^config-file\s*=\s*\??cursor-effects/\K[^.]+' "$GHOSTTY" 2>/dev/null || echo off
+}
+
+# on, off, mixed or n/a, as `cursor-fx subtle` reports it ("Subtle version: off (cursor-fx subtle on|off)"); empty if unreadable.
+cfx_subtle_state() {
+  cursor-fx subtle 2>/dev/null | sed -n 's/^[^:]*: \(on\|off\|mixed\|n\/a\) (.*/\1/p' | head -n1
+}
+
+cfx_sync() {
+  command -v cursor-fx >/dev/null 2>&1 || return 0
+  local want
+  if flag_on quiet; then want=off
+  elif flag_on saver; then want='subtle on'
+  else want=""
+  fi
+  if [[ -n $want ]]; then
+    mkdir -p "$STATE"
+    [[ -f $CFX_PRE ]] || cfx_now > "$CFX_PRE"
+    if [[ $want == 'subtle on' && ! -f $SUBTLE_REC && $(cfx_subtle_state) == off ]]; then : > "$SUBTLE_REC"; fi
+    cursor-fx $want >/dev/null 2>&1 || true
+  elif [[ -f $CFX_PRE ]]; then
+    cursor-fx "$(cat "$CFX_PRE")" >/dev/null 2>&1 || true
+    rm -f "$CFX_PRE"
+  fi
+  # Saver is over: put subtle back off, but only if saver was what turned it on.
+  if [[ -f $SUBTLE_REC ]] && ! flag_on saver; then
+    cursor-fx subtle off >/dev/null 2>&1 || true
+    rm -f "$SUBTLE_REC"
+  fi
+}
+
+# CURSOR_FX and EMBER_STYLE act outside Hyprland, so `set` pushes them out at once. (A hand edit of the
+# conf takes effect at the next theme change.) Both need an Afterburn theme to be active.
+apply_extra() {
+  is_afterburn || return 0
+  case $1 in
+    CURSOR_FX)
+      command -v cursor-fx >/dev/null 2>&1 || return 0
+      mkdir -p "$STATE"
+      if [[ -f $CFX_PRE ]]; then
+        printf '%s\n' "$CURSOR_FX" > "$CFX_PRE"   # fullscreen or battery holds the effect off: this one comes back after
+      else
+        # Nothing saved yet (the hook has not run since an older install): the running effect is yours, keep it
+        # for the day you leave Afterburn.
+        [[ -f $STATE/prev-cursor-fx ]] || cfx_now > "$STATE/prev-cursor-fx"
+        cursor-fx "$CURSOR_FX" >/dev/null 2>&1 || true
+      fi
+      printf '%s\n' "$CURSOR_FX" > "$STATE/cursor-fx-set" ;;
+    EMBER_STYLE)
+      [[ -f $STATE/lock-embers && -f $LOCK_SH ]] || return 0
+      bash "$LOCK_SH" recolor "$AB_FLARE" "$AB_EMBER" "$AB_RUST" "$EMBER_STYLE" >/dev/null 2>&1 || true ;;
+  esac
+}
+
+cmd_set() {
+  [[ $# -eq 2 ]] || die "usage: afterburn set KEY VALUE"
+  load_conf
+  valid_key "$1"
+  validate "$1" "$2"
+  set_key "$1" "$2"
+  echo "$1=$2"
+  load_conf
+  cmd_apply
+  apply_extra "$1"
+}
+
+# Drop a saved value, so the edition's default (else the built-in one) applies again.
+cmd_unset() {
+  [[ $# -eq 1 ]] || die "usage: afterburn unset KEY"
+  load_conf
+  valid_key "$1"
+  [[ " $EDITION_KEYS " == *" $1 "* ]] || die "$1 has no edition default (keys that do: $EDITION_KEYS); use: afterburn set $1 VALUE"
+  [[ ! -f $CONF ]] || sed -i --follow-symlinks -E "/^[[:space:]]*$1=/d" "$CONF"
+  load_conf
+  echo "$1=${!1}  (${SRC[$1]})"
+  cmd_apply
+  apply_extra "$1"
+}
+
+cmd_get() {
+  load_conf
+  if [[ $# -eq 0 ]]; then
+    local k
+    for k in $KEYS; do echo "$k=${!k}"; done
+    return 0
+  fi
+  valid_key "$1"
+  echo "${!1}"
+}
+
+cmd_status() {
+  load_conf
+  local theme level
+  theme=$(cat "$OMARCHY_CUR/theme.name" 2>/dev/null || echo unknown)
+  level=$(state_get level normal)
+  echo "theme:    $theme"
+  echo "level:    $level"
+  echo "quiet:    $(state_get quiet off)"
+  echo "saver:    $(state_get saver off)"
+  if command -v cursor-fx >/dev/null 2>&1; then
+    echo "cursor:   $(cfx_now)"
+  else
+    echo "cursor:   (cursor-fx not installed)"
+  fi
+  echo
+  echo "config: $CONF"
+  local k
+  for k in $KEYS; do printf '  %-16s %s%s\n' "$k" "${!k}" "${SRC[$k]:+  (${SRC[$k]})}"; done
+}
+
+# Where the wallpapers for a heat level live. Normal is the staged copy of the active theme's own
+# backgrounds (the path Omarchy links to). Cool and hot are heat-wallpapers/<level>/, with the same
+# file names as the stills: the base theme keeps them in extras/, each edition in its own folder.
+heat_wall_dir() {
+  case $1 in
+    normal) echo "$CUR_THEME/backgrounds" ;;
+    *) if is_base; then echo "$THEME_DIR/extras/heat-wallpapers/$1"
+       else echo "$HOME/.config/omarchy/themes/$THEME_NAME/heat-wallpapers/$1"; fi ;;
+  esac
+}
+
+# Swap a still wallpaper for its variant at this level. A theme without that variant, a live loop
+# and a wallpaper of your own all stay as they are.
+swap_wallpaper() {
+  local cur base target
+  cur=$(readlink -f "$CUR_BG_LINK" 2>/dev/null) || return 0
+  [[ -n $cur ]] || return 0
+  base=$(basename -- "$cur")
+  target="$(heat_wall_dir "$1")/$base"
+  [[ -f $target ]] || return 0
+  [[ $(realpath -m "$target") == "$cur" ]] && return 0
+  omarchy-theme-bg-set "$target" >/dev/null 2>&1 || true
+}
+
+cmd_level() {
+  case ${1:-} in
+    "") state_get level normal; return 0 ;;
+    cool|normal|hot) ;;
+    *) die "usage: afterburn level cool|normal|hot" ;;
+  esac
+  state_set level "$1"
+  is_afterburn || return 0
+  effective_quiet && return 0
+  load_conf
+  live_level "$1"
+  if [[ $HEAT_WALLPAPERS == yes ]]; then swap_wallpaper "$1"; fi
+}
+
+cmd_mode() { # quiet|saver on|off
+  local name=$1 v=${2:-} was
+  case $v in on|off) ;; *) die "usage: afterburn $name on|off" ;; esac
+  was=$(state_get "$name" off)
+  state_set "$name" "$v"
+  echo "$name: $v"
+  # Same state again (the watcher says so at every start): no rewrite and no Hyprland reload.
+  [[ $was == "$v" ]] && return 0
+  if is_afterburn; then
+    load_conf
+    # Turning a mode off must restore the cursor here; turning one on is handled inside apply_visuals.
+    effective_quiet || cfx_sync
+    apply_visuals
+  fi
+}
+
+cmd_laptop() {
+  local v=${1:-}
+  case $v in auto|on|off) ;; *) die "usage: afterburn laptop auto|on|off" ;; esac
+  load_conf
+  set_key LAPTOP_MODE "$v"
+  case $v in
+    on)  cmd_mode saver on ;;
+    off) cmd_mode saver off ;;
+    auto) echo "laptop: auto (afterburn-watch decides from the power source)" ;;
+  esac
+}
+
+# Palette: Afterburn's named colours first, then every "name = #hex" line from the active theme's colors.toml.
+palette() {
+  local f
+  printf '%s %s\n' ember "#$AB_EMBER" flare "#$AB_FLARE" rust "#$AB_RUST" ash "#$AB_ASH"
+  f=$(ab_colors_file "$THEME_NAME") || return 0
+  sed -n -E 's/^([a-z_]+) = "(#[0-9a-fA-F]{6})"$/\1 \2/p' "$f"
+}
+
+copy_hex() {
+  command -v wl-copy >/dev/null 2>&1 || { echo "afterburn: wl-copy not found, cannot copy" >&2; return 1; }
+  printf '%s' "$1" | wl-copy
+}
+
+# tty: truecolor swatches, then a number to copy.
+pick_tty() {
+  local -a names=() hexes=()
+  local name hex i rgb n
+  while read -r name hex; do
+    names+=("$name"); hexes+=("$hex")
+  done < <(palette)
+  for i in "${!names[@]}"; do
+    hex=${hexes[$i]#\#}
+    rgb="$((0x${hex:0:2}));$((0x${hex:2:2}));$((0x${hex:4:2}))"
+    printf '%3d  \033[48;2;%sm      \033[0m  %-10s %s\n' "$((i + 1))" "$rgb" "${names[$i]}" "${hexes[$i]}"
+  done
+  read -rp "Pick a number to copy (Enter to quit): " n || { echo; return 0; }
+  [[ -z $n ]] && return 0
+  [[ $n =~ ^[0-9]+$ ]] && (( n >= 1 && n <= ${#hexes[@]} )) || die "no colour $n"
+  if copy_hex "${hexes[$((n - 1))]}"; then
+    echo "copied ${hexes[$((n - 1))]} (${names[$((n - 1))]})"
+  fi
+}
+
+# Launcher: Omarchy's menu (omarchy-menu-select summons the shell menu and prints the pick).
+pick_menu() {
+  command -v omarchy-menu-select >/dev/null 2>&1 || die "omarchy-menu-select not found"
+  local -a lines=()
+  local name hex sel rc
+  while read -r name hex; do
+    lines+=("$(printf '%-10s  %s' "$name" "$hex")")
+  done < <(palette)
+  sel=$(printf '%s\n' "${lines[@]}" | omarchy-menu-select "Afterburn colors")
+  rc=$?
+  (( rc == 1 )) && return 0   # 1 = cancelled, nothing to do
+  (( rc == 0 )) || die "menu failed (exit $rc)"
+  read -r name _ <<< "$sel"
+  hex=$(grep -oE '#[0-9a-fA-F]{6}' <<< "$sel" | head -1)
+  [[ -n $hex ]] || die "no colour in menu pick: $sel"
+  if copy_hex "$hex"; then
+    command -v notify-send >/dev/null 2>&1 && notify-send "Copied $name $hex" || echo "Copied $name $hex"
+  fi
+}
+
+cmd_colors() {
+  if [[ ${1:-} != --menu && -t 1 ]]; then pick_tty; else pick_menu; fi
+}
+
+cmd_locate() {
+  local zip=${1:-} json lat lon
+  [[ $zip =~ ^[0-9]{5}$ ]] || die "usage: afterburn locate 5-digit-US-ZIP"
+  command -v jq >/dev/null 2>&1 || die "jq is required for locate"
+  json=$(curl -fsS --max-time 10 "https://api.zippopotam.us/us/$zip") || die "ZIP lookup failed (network, or unknown ZIP)"
+  lat=$(jq -r '.places[0].latitude // empty' <<< "$json")
+  lon=$(jq -r '.places[0].longitude // empty' <<< "$json")
+  [[ -n $lat && -n $lon ]] || die "ZIP $zip not found"
+  lat=$(printf '%.4f' "$lat")
+  lon=$(printf '%.4f' "$lon")
+  load_conf
+  set_key ZIP "$zip"
+  set_key LAT "$lat"
+  set_key LON "$lon"
+  mkdir -p "$STATE" && rm -f "$STATE/weather.json"
+  echo "ZIP $zip -> LAT $lat, LON $lon"
+}
+
+cmd="${1:-status}"
+shift || true
+case $cmd in
+  apply)  cmd_apply ;;
+  set)    cmd_set "$@" ;;
+  unset)  cmd_unset "$@" ;;
+  get)    cmd_get "$@" ;;
+  status) cmd_status ;;
+  level)  cmd_level "$@" ;;
+  quiet)  cmd_mode quiet "${1:-}" ;;
+  saver)  cmd_mode saver "${1:-}" ;;
+  laptop) cmd_laptop "$@" ;;
+  colors) cmd_colors "$@" ;;
+  locate) cmd_locate "$@" ;;
+  -h|--help|help) usage ;;
+  *) usage >&2; exit 2 ;;
+esac
