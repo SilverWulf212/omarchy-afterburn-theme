@@ -137,10 +137,12 @@ validate() {
 set_key() {
   local k=$1 v=$2
   [[ -f $CONF ]] || write_default_conf
+  # A hand-edited conf can end without a newline: start the new line on its own, never glued to the last one.
+  [[ ! -s $CONF || -z $(tail -c1 "$CONF") ]] || printf '\n' >> "$CONF"
   if [[ " $EDITION_KEYS " == *" $k "* ]]; then
     # Your choice, so it must read as one: the whole line is rewritten (an old line's default comment
     # would make a saved value look like an untouched default). Any earlier line for the key goes.
-    sed -i -E "/^$k=/d" "$CONF"
+    sed -i -E "/^[[:space:]]*$k=/d" "$CONF"
     printf '%s=%s  # set by you\n' "$k" "$v" >> "$CONF"
   elif grep -q "^$k=" "$CONF"; then
     sed -i -E "s/^$k=[^ #]*/$k=$v/" "$CONF"
@@ -314,7 +316,7 @@ cmd_unset() {
   load_conf
   valid_key "$1"
   [[ " $EDITION_KEYS " == *" $1 "* ]] || die "$1 has no edition default (keys that do: $EDITION_KEYS); use: afterburn set $1 VALUE"
-  [[ ! -f $CONF ]] || sed -i -E "/^$1=/d" "$CONF"
+  [[ ! -f $CONF ]] || sed -i -E "/^[[:space:]]*$1=/d" "$CONF"
   load_conf
   echo "$1=${!1}  (${SRC[$1]})"
   cmd_apply
