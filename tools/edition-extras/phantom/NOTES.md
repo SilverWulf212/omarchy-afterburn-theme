@@ -1,5 +1,7 @@
 # Phantom polish: five enhancements
 
+> **Status: integrated.** `tools/make-editions.sh` copies `files/` and `edition.conf` into `.editions/phantom/`; the hook, the `afterburn` command and `extras/lock/` read them (see `README.md`, "Editions"). Final knobs: Phantom: cursor hologram, border off, dim 0.18, glow 24, drift embers. Where the wiring notes below say "proposal" or "must wire", that is now done; the numbers in this file are the polish pack's originals.
+
 Edition files for `.editions/phantom/`. Nothing here is wired yet. The integrator copies `files/` into the edition theme dir and reads `edition.conf`.
 
 ## The five enhancements

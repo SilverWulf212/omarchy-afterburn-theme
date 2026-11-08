@@ -27,12 +27,22 @@
 #     yellow highlights (the prompt text, the cursor) would otherwise rotate
 #     only as far as orange, and orange is 30 deg from red.
 #
+# Per-edition extras (tools/edition-extras/<name>/): files/ is copied into .editions/<name>/ as it is
+# (extra live wallpapers named 10-*/11-*, btop.theme, neovim.lua) and edition.conf next to it. The conf
+# holds the runtime knobs (CURSOR_FX ROTATE DIM GLOW_RANGE EMBER_STYLE, checked here with the same rules
+# the runtime uses) and the build-time texts TAGLINE, PERSONALITY and FEELING, which end up in
+# .editions/README.md and in the colors.toml header. A bad value stops the build.
+#
 # Requires: magick, ffmpeg, ffprobe, python3, fc-match, JetBrains Mono.
 # Usage: tools/make-editions.sh
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$ROOT"
+
+# The runtime's own checks (ab_valid, ab_file_value), so the build and the runtime can never disagree.
+# shellcheck disable=SC1091
+. "$ROOT/extras/afterburn-theme.sh"
 
 for tool in magick ffmpeg ffprobe python3 fc-match; do
   command -v "$tool" >/dev/null || { echo "make-editions: missing $tool" >&2; exit 1; }
@@ -49,16 +59,66 @@ BASE_ACCENT=$(sed -n 's/^accent = "#\([0-9a-fA-F]\{6\}\)".*/\1/p' colors.toml)
 BG=$(sed -n 's/^background = "\(#[0-9a-fA-F]\{6\}\)".*/\1/p' colors.toml)
 [[ -n $BASE_ACCENT && -n $BG ]] || { echo "make-editions: could not read accent/background" >&2; exit 1; }
 
-# name | target accent hue (deg) | Yaru icon variant | tagline | lightness x | saturation x | warm band | glow word
+# name | target accent hue (deg) | Yaru icon variant | lightness x | saturation x | warm band | glow word
+# (the tagline, personality and feeling live in tools/edition-extras/<name>/edition.conf)
 # Lightness/saturation multipliers are optional tuning; 1.0 keeps the base feel.
 # Warm band (optional, LO:HI deg): the base's 0-70 deg lands on LO..HI in the stills and the preview.
 EDITIONS=(
-  "voltage|185|Yaru-prussiangreen-dark|Cold current on black glass.|1.00|1.00||cyan"
-  "cyber|115|Yaru-olive-dark|Acid green. The grid is listening.|1.00|1.00||green"
-  "overdrive|315|Yaru-magenta-dark|Magenta past the limiter.|1.00|1.00||magenta"
-  "redline|355|Yaru-red-dark|Blood red at the limiter. Hold it.|0.78|1.00|350:4|red"
-  "phantom|270|Yaru-purple-dark|Ultraviolet. Here, then gone.|1.00|1.00||violet"
+  "voltage|185|Yaru-prussiangreen-dark|1.00|1.00||cyan"
+  "cyber|115|Yaru-olive-dark|1.00|1.00||green"
+  "overdrive|315|Yaru-magenta-dark|1.00|1.00||magenta"
+  "redline|355|Yaru-red-dark|0.78|1.00|350:4|red"
+  "phantom|270|Yaru-purple-dark|1.00|1.00||violet"
 )
+
+# The base theme's own row in the README (it has no edition.conf: its knobs are the built-in defaults).
+BASE_TAGLINE="Orange on black. The original burn."
+BASE_PERSONALITY="The original: warm, confident, jet at full burn."
+BASE_FEELING="heat, momentum"
+
+die() { echo "make-editions: $*" >&2; exit 1; }
+
+# edition_conf NAME: read and check tools/edition-extras/NAME/edition.conf. Sets CONF_<KEY> for the five
+# runtime keys and CONF_TAGLINE, CONF_PERSONALITY, CONF_FEELING. Every key is required.
+edition_conf() {
+  local conf="tools/edition-extras/$1/edition.conf" k v
+  [[ -f $conf ]] || die "$conf is missing"
+  for k in $AB_EDITION_KEYS; do
+    v=$(ab_file_value "$conf" "$k") || die "$conf: $k is missing"
+    ab_valid "$k" "$v" || die "$conf: $k='$v' is not an allowed value"
+    printf -v "CONF_$k" %s "$v"
+  done
+  for k in TAGLINE PERSONALITY FEELING; do
+    v=$(ab_file_value "$conf" "$k") || die "$conf: $k is missing"
+    # Plain text only: these land in a Markdown table and a Python argument.
+    [[ $v =~ ^[A-Za-z0-9\ .,:\;\!?\'-]{3,90}$ ]] || die "$conf: $k has characters or a length that is not allowed"
+    printf -v "CONF_$k" %s "$v"
+  done
+}
+
+# turn_words ROTATE: the border turn in words.
+turn_words() {
+  case $1 in off) echo "still" ;; slow) echo "slow, 60 s" ;; medium) echo "medium, 20 s" ;; fast) echo "fast, 8 s" ;; esac
+}
+
+# copy_extras NAME DIR: files/ of the edition's extras go into DIR as they are, and so does edition.conf.
+# A file that would replace one the build already made is an error, not a silent overwrite.
+copy_extras() {
+  local src="tools/edition-extras/$1" f rel
+  if [[ -d $src/files ]]; then
+    while IFS= read -r -d '' f; do
+      rel=${f#"$src/files/"}
+      [[ ! -e $2/$rel ]] || die "$src/files/$rel would replace a file the build made ($2/$rel)"
+      mkdir -p "$(dirname "$2/$rel")"
+      cp "$f" "$2/$rel"
+    done < <(find "$src/files" -type f -print0 | LC_ALL=C sort -z)
+  fi
+  cp "$src/edition.conf" "$2/edition.conf"
+}
+
+# Check every edition.conf before the slow image and video work, so a typo fails in a second.
+for spec in "${EDITIONS[@]}"; do edition_conf "${spec%%|*}"; done
+
 HEAT_QUALITY=80   # the base heat set is q84; 80 keeps five more copies of it small
 
 # Colour maths, stdlib only. Subcommands: info, toml, hypr.
@@ -253,10 +313,15 @@ make_preview unlock.png preview-unlock.png
 STAGE=$(mktemp -d "$ROOT/.editions-build.XXXXXX")
 trap 'rm -rf "$STAGE"' EXIT
 
-rows=("| afterburn (base) | #$BASE_ACCENT | Orange on black. The original burn. |")
+# README rows, one table each: who they are, how they move, and what only they have.
+feel_rows=("| afterburn (base) | #$BASE_ACCENT | $BASE_PERSONALITY | $BASE_FEELING | $BASE_TAGLINE |")
+motion_rows=("| afterburn (base) | embers | $(turn_words slow) | 14 | 0.08 | rise |")
+extras_rows=("| afterburn (base) | The nine wallpapers (six stills, three live loops) |")
 
 for spec in "${EDITIONS[@]}"; do
-  IFS='|' read -r name target icon tagline lmul smul band glow <<<"$spec"
+  IFS='|' read -r name target icon lmul smul band glow <<<"$spec"
+  edition_conf "$name"
+  tagline=$CONF_TAGLINE
   dir="$STAGE/$name"
   mkdir -p "$dir/backgrounds" "$dir/heat-wallpapers/cool" "$dir/heat-wallpapers/hot"
 
@@ -302,21 +367,47 @@ for spec in "${EDITIONS[@]}"; do
   make_unlock "$dir/unlock.png" "$accent" "$label" "$ink"
   make_preview "$dir/unlock.png" "$dir/preview-unlock.png"
 
-  rows+=("| $name | $accent | $tagline |")
+  copy_extras "$name" "$dir"
+  extra_list=()
+  while IFS= read -r f; do extra_list+=("\`${f#"$dir/"}\`"); done < <(
+    { find "$dir/backgrounds" -type f -name '1[0-9]-*' ; find "$dir" -maxdepth 1 -type f \( -name btop.theme -o -name neovim.lua \); } | LC_ALL=C sort)
+  extras_joined=$(IFS=,; echo "${extra_list[*]}")
+  extras_joined=${extras_joined//,/, }
+  feel_rows+=("| $name | $accent | $CONF_PERSONALITY | $CONF_FEELING | $tagline |")
+  motion_rows+=("| $name | $CONF_CURSOR_FX | $(turn_words "$CONF_ROTATE") | $CONF_GLOW_RANGE | $CONF_DIM | $CONF_EMBER_STYLE |")
+  extras_rows+=("| $name | ${extras_joined:-none} |")
   echo "built $name: shift ${shift} deg, accent $accent"
 done
 
 {
   echo "# Afterburn editions"
   echo
-  echo "Generated by \`tools/make-editions.sh\`. Do not hand-edit; change the script and rerun it."
+  echo "Generated by \`tools/make-editions.sh\`. Do not hand-edit; change the script or an edition's \`tools/edition-extras/<name>/edition.conf\` and rerun it."
   echo
   echo "Each edition is the base theme with its warm colours hue-rotated. Neutrals (backgrounds, greys) are unchanged, and the art keeps its shapes."
   echo "Each also carries its own cool and hot heat wallpapers in \`heat-wallpapers/\`, which the \`afterburn\` command swaps in at those heat levels."
   echo
-  echo "| Edition | Accent | Tagline |"
-  echo "| --- | --- | --- |"
-  printf '%s\n' "${rows[@]}"
+  echo "## Who they are"
+  echo
+  echo "| Edition | Accent | Personality | Feeling | Tagline |"
+  echo "| --- | --- | --- | --- | --- |"
+  printf '%s\n' "${feel_rows[@]}"
+  echo
+  echo "## How they move"
+  echo
+  echo "Each edition ships an \`edition.conf\`. The theme-set hook and the \`afterburn\` command read it for the active theme, check every value, and use it as the default for these settings. A value you save yourself in \`~/.config/afterburn/afterburn.conf\` (or with \`afterburn set\`) always wins; \`afterburn unset KEY\` hands the setting back to the edition."
+  echo
+  echo "| Edition | Cursor effect | Border turn | Glow range | Dim | Lock embers |"
+  echo "| --- | --- | --- | --- | --- | --- |"
+  printf '%s\n' "${motion_rows[@]}"
+  echo
+  echo "Lock embers: \`rise\` drifts up (the base), \`fall\` rains down, \`drift\` floats and fades, \`spark\` crackles, \`pulse\` swells on a beat, \`burst\` fires sudden bursts between stillness."
+  echo
+  echo "## What only they have"
+  echo
+  echo "| Edition | Extra files (live wallpapers, btop and Neovim themes) |"
+  echo "| --- | --- |"
+  printf '%s\n' "${extras_rows[@]}"
 } > "$STAGE/README.md"
 
 rm -rf .editions

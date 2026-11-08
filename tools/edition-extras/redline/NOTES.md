@@ -1,5 +1,7 @@
 # Redline polish: five enhancements
 
+> **Status: integrated.** `tools/make-editions.sh` copies `files/` and `edition.conf` into `.editions/redline/`; the hook, the `afterburn` command and `extras/lock/` read them (see `README.md`, "Editions"). Final knobs: Redline: cursor katana, border off, dim 0.15, glow 8, burst embers (the pack proposed medium/18/spark; the spark spec below became the burst style). Where the wiring notes below say "proposal" or "must wire", that is now done; the numbers in this file are the polish pack's originals.
+
 Layout: `files/` goes into the edition theme dir as-is. `edition.conf` holds the runtime knobs. Nothing here touches `extras/`, `tools/make-editions.sh`, `.editions/` or `README.md`. The integrator wires those.
 
 ## The five

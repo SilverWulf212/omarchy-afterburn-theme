@@ -1,5 +1,7 @@
 # Voltage polish: five enhancements
 
+> **Status: integrated.** `tools/make-editions.sh` copies `files/` and `edition.conf` into `.editions/voltage/`; the hook, the `afterburn` command and `extras/lock/` read them (see `README.md`, "Editions"). Final knobs: Voltage: cursor lightning, border fast (8 s), dim 0.06, glow 12, spark embers (the pack proposed medium/0.12/18; retuned for a restless, charged personality). Where the wiring notes below say "proposal" or "must wire", that is now done; the numbers in this file are the polish pack's originals.
+
 Edition: voltage (electric cyan, #45e6f5). Built in worktree `polish-voltage`, branch `polish-voltage`.
 Everything here lives under `tools/edition-extras/voltage/`. Nothing in `extras/`, `.editions/`, `tools/make-editions.sh` or `README.md` was touched.
 
