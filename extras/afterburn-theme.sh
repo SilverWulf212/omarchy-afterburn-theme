@@ -21,6 +21,29 @@ ab_theme_name() {
 # True for `afterburn` and `afterburn-<edition>`.
 ab_is_afterburn() { [[ ${1:-} == afterburn || ${1:-} == afterburn-* ]]; }
 
+# Share laptop policy between the CLI and watcher. USB-C docks and chargers are
+# external power too; the kernel reports them with several USB supply types.
+ab_on_external_power() {
+  local d type
+  for d in "${POWER_DIR:-/sys/class/power_supply}"/*; do
+    type=$(cat "$d/type" 2>/dev/null)
+    case $type in
+      Mains|USB|USB_*|Wireless)
+        [[ $(cat "$d/online" 2>/dev/null) == 1 ]] && return 0 ;;
+    esac
+  done
+  return 1
+}
+
+ab_saver_want() {
+  case ${1:-auto} in
+    on|off) echo "$1" ;;
+    *)
+      if grep -qx Battery "${POWER_DIR:-/sys/class/power_supply}"/*/type 2>/dev/null &&
+         ! ab_on_external_power; then echo on; else echo off; fi ;;
+  esac
+}
+
 # Path of the colors.toml for a theme: the user's copy (like omarchy-theme-dir), else the
 # staged current theme, else the base theme. Prints nothing if none exists.
 ab_colors_file() {
@@ -88,9 +111,8 @@ ab_load_palette() {
 # State for things that cannot parse colors.toml cheaply (the fail flash in every shell).
 ab_write_palette_env() {
   local d="${XDG_STATE_HOME:-$HOME/.local/state}/afterburn"
-  mkdir -p "$d" || return 0
-  printf 'FLARE=%s\nEMBER=%s\nRUST=%s\nASH=%s\n' "$AB_FLARE" "$AB_EMBER" "$AB_RUST" "$AB_ASH" > "$d/palette.env.tmp" &&
-    mv -f "$d/palette.env.tmp" "$d/palette.env"
+  mkdir -p "$d" || return 1
+  printf 'FLARE=%s\nEMBER=%s\nRUST=%s\nASH=%s\n' "$AB_FLARE" "$AB_EMBER" "$AB_RUST" "$AB_ASH" | ab_atomic_write "$d/palette.env"
 }
 
 # Print FILE (a glow template carrying the base theme's colours) in the loaded palette's colours.
@@ -138,21 +160,25 @@ ab_valid() {
 }
 
 # ab_file_value FILE KEY: print KEY's value from a KEY=VALUE file (last line wins; a trailing comment,
-# surrounding spaces and one pair of quotes are dropped). Fails if the key is absent or empty.
+# surrounding spaces and one pair of quotes are dropped). Fails if the key is absent.
 ab_file_value() {
-  local line v
-  line=$(grep -E "^[[:space:]]*$2=" "$1" 2>/dev/null | tail -n1) || return 1
-  [[ -n $line ]] || return 1
-  v=${line#*=}
-  if [[ $v =~ ^[[:space:]]*\"([^\"]*)\" || $v =~ ^[[:space:]]*\'([^\']*)\' ]]; then
-    v=${BASH_REMATCH[1]}
-  else
-    v=${v%%#*}
-    v=${v#"${v%%[![:space:]]*}"}
-    v=${v%"${v##*[![:space:]]}"}
-  fi
-  [[ -n $v ]] || return 1
-  printf '%s' "$v"
+  local line value= found=0 raw
+  local assignment='^[[:space:]]*([A-Z_]+)[[:space:]]*=[[:space:]]*(.*)$'
+  local double='^"([^"]*)"[[:space:]]*(#.*)?$' single="^'([^']*)'[[:space:]]*(#.*)?$"
+  [[ -r $1 ]] || return 1
+  while IFS= read -r line || [[ -n $line ]]; do
+    [[ $line =~ $assignment && ${BASH_REMATCH[1]} == "$2" ]] || continue
+    raw=${BASH_REMATCH[2]}; found=1
+    if [[ $raw =~ $double || $raw =~ $single ]]; then value=${BASH_REMATCH[1]}
+    elif [[ $raw == \"* || $raw == \'* ]]; then value= # malformed final assignment invalidates earlier ones
+    else
+      value=${raw%%#*}
+      value=${value#"${value%%[![:space:]]*}"}
+      value=${value%"${value##*[![:space:]]}"}
+    fi
+  done < "$1"
+  (( found )) || return 1
+  printf '%s' "$value"
 }
 
 # The user's own conf, and where it keeps its explicit values.
@@ -163,7 +189,7 @@ ab_conf_value() {
   local f line
   f=$(ab_conf_path)
   [[ -f $f ]] || return 1
-  line=$(grep -E "^$1=" "$f" | tail -n1) || return 1
+  line=$(grep -E "^[[:space:]]*$1[[:space:]]*=" "$f" | tail -n1) || return 1
   case $line in
     'ROTATE=slow          # off|slow|medium|fast  (border gradient turn: 60s|20s|8s per turn)' | \
     'DIM=0.08             # dim_inactive strength, 0 = off') return 1 ;;
@@ -198,4 +224,92 @@ ab_effective() {
     AB_VAL=$v AB_SRC=edition
   fi
   return 0
+}
+
+# Runtime policy is data, never shell code. Reset every key on every read.
+AB_CONFIG_KEYS="$AB_EDITION_KEYS MOTION HEAT_SOURCE EVENING_HOURS ZIP LAT LON HOT_F COOL_F HEAT_WALLPAPERS FULLSCREEN_QUIET LAPTOP_MODE FAIL_FX"
+ab_default() {
+  case $1 in
+    MOTION) echo on ;; HEAT_SOURCE) echo time ;; EVENING_HOURS) echo 19-07 ;;
+    ZIP|LAT|LON) echo '' ;; HOT_F) echo 90 ;; COOL_F) echo 50 ;;
+    HEAT_WALLPAPERS|FULLSCREEN_QUIET) echo yes ;; LAPTOP_MODE) echo auto ;;
+    FAIL_FX) echo random ;; *) ab_base_default "$1" ;;
+  esac
+}
+ab_config_valid() {
+  local k=$1 v=$2 a b
+  case $k in
+    MOTION) [[ $v == on || $v == off ]] ;;
+    HEAT_SOURCE) [[ $v =~ ^(off|time|pressure|weather)$ ]] ;;
+    EVENING_HOURS)
+      [[ $v =~ ^([0-9]{1,2})-([0-9]{1,2})$ ]] || return 1
+      a=${BASH_REMATCH[1]} b=${BASH_REMATCH[2]}; (( 10#$a <= 23 && 10#$b <= 23 )) ;;
+    ZIP) [[ $v =~ ^([0-9]{5})?$ ]] ;;
+    LAT|LON)
+      [[ -z $v ]] && return 0
+      [[ $v =~ ^-?[0-9]{1,3}(\.[0-9]+)?$ ]] || return 1
+      a=90; [[ $k == LON ]] && a=180
+      awk -v v="$v" -v n="$a" 'BEGIN {exit !(v >= -n && v <= n)}' ;;
+    HOT_F|COOL_F) [[ $v =~ ^[0-9]{1,3}$ ]] ;;
+    HEAT_WALLPAPERS|FULLSCREEN_QUIET) [[ $v == yes || $v == no ]] ;;
+    LAPTOP_MODE) [[ $v =~ ^(auto|on|off)$ ]] ;;
+    FAIL_FX) [[ $v =~ ^(random|burn|cascade|dissolve|off)$ ]] ;;
+    *) ab_valid "$k" "$v" ;;
+  esac
+}
+ab_load_conf() {
+  local k v
+  for k in $AB_CONFIG_KEYS; do
+    if [[ " $AB_EDITION_KEYS " == *" $k "* ]]; then
+      ab_effective "$k" "${1:-$(ab_theme_name)}"
+    else
+      AB_VAL=$(ab_default "$k") AB_SRC=default
+      if v=$(ab_file_value "$(ab_conf_path)" "$k"); then
+        if ab_config_valid "$k" "$v"; then AB_VAL=$v AB_SRC=conf
+        else echo "afterburn: ignoring invalid $k in $(ab_conf_path)" >&2; fi
+      fi
+    fi
+    printf -v "$k" %s "$AB_VAL"
+    if declare -p SRC &>/dev/null; then SRC[$k]=$AB_SRC; fi
+  done
+}
+ab_motion_enabled() { [[ ${MOTION:-on} == on && -z ${NO_MOTION+x} ]]; }
+
+# All mutators share one advisory lock. Children inherit descriptor 9; checking its
+# inode permits nested CLI/hook calls without accepting a forgeable environment flag.
+ab_lock() {
+  local d="${XDG_STATE_HOME:-$HOME/.local/state}/afterburn" lock
+  mkdir -p "$d" || return 1
+  lock="$d/runtime.lock"
+  command -v flock >/dev/null || { echo 'afterburn: flock is required' >&2; return 1; }
+  if [[ ! /proc/$$/fd/9 -ef $lock ]]; then exec 9>"$lock" || return 1; fi
+  flock -x 9
+}
+# Atomic replacement uses a unique temporary sibling; failed writers never publish.
+ab_atomic_write() {
+  local file=$1 tmp
+  # Configs are commonly dotfile-manager links; replace their target atomically,
+  # keeping the user-owned symlink itself intact (including relative links).
+  if [[ -L $file ]]; then file=$(readlink -f "$file") || return 1; fi
+  mkdir -p "$(dirname "$file")" || return 1
+  tmp=$(mktemp "$(dirname "$file")/.afterburn-write.XXXXXX") || return 1
+  if cat > "$tmp" && { [[ ! -f $file ]] || chmod --reference="$file" "$tmp"; } && mv -f "$tmp" "$file"; then return 0; fi
+  rm -f "$tmp"; return 1
+}
+ab_run() {
+  local rc d="${XDG_STATE_HOME:-$HOME/.local/state}/afterburn"
+  if "$@"; then return 0; else rc=$?; fi
+  # The status of a failed AND-list is preserved before publishing the diagnostic.
+  printf '%s: %s failed (%s)\n' "$(date -u +%FT%TZ)" "$1" "$rc" | ab_atomic_write "$d/last-error"
+  echo "afterburn: $1 failed ($rc)" >&2
+  return "$rc"
+}
+
+# A restarted compositor has a new instance signature. Resolve only the instance
+# serving this process's Wayland display, so subprocesses stop targeting the old one.
+ab_refresh_instance() {
+  local selected
+  [[ -n ${WAYLAND_DISPLAY:-} ]] || return 0
+  selected=$(hyprctl instances -j 2>/dev/null | jq -r --arg display "$WAYLAND_DISPLAY" '[.[] | select(.wl_socket == $display)] | if length == 1 then .[0].instance else empty end') || return 0
+  if [[ $selected =~ ^[A-Za-z0-9_.-]+$ ]]; then export HYPRLAND_INSTANCE_SIGNATURE=$selected; fi
 }
