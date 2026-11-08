@@ -39,5 +39,5 @@ Lock embers: `rise` drifts up (the base), `fall` rains down, `drift` floats and 
 | voltage | `backgrounds/live-voltage-arcgrid.mp4`, `btop.theme` |
 | cyber | `backgrounds/live-matrix-rain.mp4`, `btop.theme`, `neovim.lua` |
 | overdrive | `backgrounds/live-speed-streaks.mp4`, `neovim.lua` |
-| redline | `backgrounds/live-tachometer.mp4`, `backgrounds/live-heat-haze.mp4`, `btop.theme` |
+| redline | `backgrounds/live-heat-haze.mp4`, `backgrounds/live-tachometer.mp4`, `btop.theme` |
 | phantom | `backgrounds/live-phantom-aurora.mp4` |
