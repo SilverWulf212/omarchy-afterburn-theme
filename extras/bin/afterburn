@@ -54,7 +54,7 @@ write_default_conf() {
   cat > "$CONF" <<'EOF'
 # Leave a line out (or commented) and the active edition's default applies, then the built-in one.
 # Save a value here and it always wins. `afterburn unset KEY` goes back to following the edition.
-#ROTATE=slow         # off|slow|medium|fast  (border gradient turn: 60s|20s|8s per turn)
+#ROTATE=slow         # off|slow|medium|fast  (border gradient turn: 10s|5s|2.5s per turn)
 #DIM=0.08            # dim_inactive strength, 0 = off
 #GLOW_RANGE=14       # 4-30, shadow range at the normal heat level
 #CURSOR_FX=embers    # a cursor-fx effect (cyber lightning glitch neon phosphor embers shockwave katana teleport fireworks aurora mecha hologram)
@@ -276,6 +276,11 @@ cfx_sync() {
   if [[ -n $want ]]; then
     mkdir -p "$STATE"
     [[ -f $CFX_PRE ]] || cfx_now > "$CFX_PRE"
+    # Subtle changes shader flags, not the active effect. Fullscreen may have
+    # disabled it while saver stayed on, so restore the saved effect first.
+    if [[ $want == 'subtle on' && $(cfx_now) != "$(cat "$CFX_PRE")" ]]; then
+      cursor-fx "$(cat "$CFX_PRE")" >/dev/null 2>&1 || true
+    fi
     if [[ $want == 'subtle on' && ! -f $SUBTLE_REC && $(cfx_subtle_state) == off ]]; then : > "$SUBTLE_REC"; fi
     cursor-fx $want >/dev/null 2>&1 || true
   elif [[ -f $CFX_PRE ]]; then
@@ -320,8 +325,12 @@ cmd_set() {
   set_key "$1" "$2"
   echo "$1=$2"
   load_conf
-  cmd_apply
-  apply_extra "$1"
+  case $1 in
+    LAPTOP_MODE) reconcile_laptop ;;
+    FULLSCREEN_QUIET)
+      if [[ $FULLSCREEN_QUIET == no ]]; then cmd_mode quiet off; else cmd_apply; fi ;;
+    *) cmd_apply; apply_extra "$1" ;;
+  esac
 }
 
 # Drop a saved value, so the edition's default (else the built-in one) applies again.
@@ -422,16 +431,15 @@ cmd_mode() { # quiet|saver on|off
   fi
 }
 
+reconcile_laptop() { cmd_mode saver "$(ab_saver_want "$LAPTOP_MODE")"; }
+
 cmd_laptop() {
   local v=${1:-}
   case $v in auto|on|off) ;; *) die "usage: afterburn laptop auto|on|off" ;; esac
   load_conf
   set_key LAPTOP_MODE "$v"
-  case $v in
-    on)  cmd_mode saver on ;;
-    off) cmd_mode saver off ;;
-    auto) echo "laptop: auto (afterburn-watch decides from the power source)" ;;
-  esac
+  load_conf
+  reconcile_laptop
 }
 
 # Palette: Afterburn's named colours first, then every "name = #hex" line from the active theme's colors.toml.

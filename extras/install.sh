@@ -9,7 +9,7 @@
 #   5. The animated lock screen (optional, asked separately)
 #   6. Colour editions: Voltage, Cyber, Overdrive, Redline, Phantom (optional, asked separately)
 #   7. The boot/login screen set to the current theme (optional, needs sudo, default No)
-# Run:  ~/.config/omarchy/themes/afterburn/extras/install.sh        (asks before each step)
+# Run:  ~/.config/omarchy/themes/afterburn/extras/install.sh        (asks about optional components)
 #       ~/.config/omarchy/themes/afterburn/extras/install.sh --yes  (no questions)
 # Undo: ~/.config/omarchy/themes/afterburn/extras/uninstall.sh
 set -euo pipefail
@@ -38,6 +38,20 @@ ask() { $YES && return 0; local a; read -rp "  $1 [Y/n] " a || { echo; return 1;
 ask_no() { local a; read -rp "  $1 [y/N] " a || { echo; return 1; }; [[ $a =~ ^[Yy] ]]; }
 
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/afterburn"
+# Content snapshots prove ownership and let uninstall preserve subsequent edits.
+owned_copy() {
+  local src=$1 dest=$2 key=$3
+  if [[ -e $dest || -L $dest ]]; then
+    if [[ -L $dest || ! -f $STATE_DIR/owned/$key ]] || ! cmp -s "$dest" "$STATE_DIR/owned/$key"; then
+      skip "$dest already exists or has changed; kept your copy"
+      return 1
+    fi
+  fi
+  mkdir -p "$STATE_DIR/owned" "$(dirname "$dest")"
+  local tmp
+  tmp=$(mktemp "$(dirname "$dest")/.afterburn.XXXXXX")
+  cp -p "$src" "$tmp" && cp -p "$src" "$STATE_DIR/owned/$key" && mv -f "$tmp" "$dest"
+}
 
 # Each step records here just before it changes something, so a failure can say what was touched.
 CHANGED=()
@@ -60,7 +74,8 @@ trap on_exit EXIT
 
 echo; o "  ❯ afterburn // full stack"; echo
 cat <<'EOF'
-  Before you go on, this script can change the following (it asks before each part):
+  Before you go on, this script can change the following (optional components have separate prompts):
+  Continuing includes the theme hook and final theme apply; existing custom files are kept.
 
   • DEFAULT TERMINAL: installs Ghostty (pacman, needs sudo) and/or makes it your
     default terminal, replacing your current one for Super + Return and every
@@ -144,10 +159,11 @@ if command -v cursor-fx >/dev/null; then
   ok "cursor-fx already installed"
 elif ! command -v ghostty >/dev/null; then
   skip "skipped cursor-fx (needs Ghostty)"
+elif [[ -e $CFX_DIR || -L $CFX_DIR ]]; then
+  skip "cursor-fx checkout already exists at $CFX_DIR; kept it. Install it manually or move it aside before retrying"
 elif ask "Install cursor-fx, animated Ghostty cursors by Avarce (MIT)?"; then
   CHANGED+=("cursor-fx installed (its own installer edits Ghostty config; old config in ~/ghostty-savepoints/)")
   [[ -f $HOME/.config/ghostty/config ]] || omarchy refresh config ghostty/config >/dev/null
-  rm -rf "$CFX_DIR"
   git clone -q "$CFX_REPO" "$CFX_DIR"
   git -C "$CFX_DIR" -c advice.detachedHead=false checkout -q "$CFX_PIN"
   (cd "$CFX_DIR" && ./install.sh >/dev/null)
@@ -158,9 +174,9 @@ fi
 
 # 3. Glow + cursor hook
 CHANGED+=("theme-set hook added")
-omarchy hook install theme-set "$HERE/afterburn-theme-set-hook" >/dev/null
-mv -f "$HOOKS/afterburn-theme-set-hook" "$HOOKS/$HOOK_NAME"
-ok "glow hook installed"
+if owned_copy "$HERE/afterburn-theme-set-hook" "$HOOKS/$HOOK_NAME" hook; then
+  ok "glow hook installed"
+fi
 
 # 4. Subtle pack (optional). Config keys and commands: see the README's "Subtle pack" section.
 CONF_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
@@ -186,10 +202,18 @@ if [[ -n $SUBTLE_BLOCKED ]]; then
 elif ask "Add the subtle pack? (slow-turning border, dimmed background windows, heat levels, quiet fullscreen, battery saver, red prompt with a fail flash, afterburn colors)"; then
   mkdir -p "$BIN" "$UNIT_DIR" "$APPS_DIR"
   CHANGED+=("subtle pack: links in ~/.local/bin, ~/.config/afterburn/afterburn.conf, desktop entry")
-  for f in afterburn afterburn-watch; do ln -sfn "$HERE/bin/$f" "$BIN/$f"; done
+  for f in afterburn afterburn-watch; do
+    if [[ ! -e $BIN/$f && ! -L $BIN/$f ]]; then
+      mkdir -p "$STATE_DIR/owned-links"
+      printf '%s\n' "$HERE/bin/$f" > "$STATE_DIR/owned-links/$f"
+    fi
+    ln -sfn "$HERE/bin/$f" "$BIN/$f"
+  done
   ok "afterburn and afterburn-watch linked into ~/.local/bin"
 
   # Writes the default conf if there is none. An existing conf keeps its settings.
+  CONF_NEW=false
+  [[ -e $CONF || -L $CONF ]] || CONF_NEW=true
   "$BIN/afterburn" get >/dev/null
 
   # Heat source: "time" on a first install, and whatever you set before on a re-run. Only an answer
@@ -215,7 +239,11 @@ elif ask "Add the subtle pack? (slow-turning border, dimmed background windows, 
       HEAT=time
     fi
   fi
+  # Refresh our snapshot only when the existing contents were still ours.
+  CONF_OURS=false
+  if $CONF_NEW || { [[ ! -L $CONF && -f $STATE_DIR/owned/conf ]] && cmp -s "$CONF" "$STATE_DIR/owned/conf"; }; then CONF_OURS=true; fi
   conf_set HEAT_SOURCE "$HEAT"
+  if $CONF_OURS; then mkdir -p "$STATE_DIR/owned"; cp -p "$CONF" "$STATE_DIR/owned/conf"; fi
   ok "heat source: $HEAT"
 
   # Red error symbol in starship.toml. The original is backed up once, before the first edit.
@@ -250,21 +278,23 @@ elif ask "Add the subtle pack? (slow-turning border, dimmed background windows, 
       echo >> "$BASHRC"
       : > "$STATE_DIR/bashrc-newline"   # uninstall.sh drops this newline again
     fi
-    echo "[[ -f \"$FAIL_SH\" ]] && source \"$FAIL_SH\"  # afterburn" >> "$BASHRC"
+    echo "[[ -f \"$FAIL_SH\" ]] && source \"$FAIL_SH\"  # afterburn" > "$STATE_DIR/bashrc-line"
+    cat "$STATE_DIR/bashrc-line" >> "$BASHRC"
   fi
   ok "~/.bashrc: one guarded line sources the fail effect"
 
   # User service: the watcher handles fullscreen quiet, battery saver and the heat level.
   CHANGED+=("afterburn-watch user service enabled")
-  cp "$HERE/afterburn-watch.service" "$UNIT_DIR/afterburn-watch.service"
-  systemctl --user daemon-reload >/dev/null 2>&1 || true
-  if systemctl --user enable --now afterburn-watch.service >/dev/null 2>&1; then
-    ok "watcher service enabled (user unit: afterburn-watch)"
-  else
-    skip "couldn't start the watcher; run: systemctl --user enable --now afterburn-watch.service"
-  fi
+  if owned_copy "$HERE/afterburn-watch.service" "$UNIT_DIR/afterburn-watch.service" unit; then
+    systemctl --user daemon-reload >/dev/null 2>&1 || true
+    if systemctl --user enable --now afterburn-watch.service >/dev/null 2>&1; then
+      ok "watcher service enabled (user unit: afterburn-watch)"
+    else
+      skip "couldn't start the watcher; run: systemctl --user enable --now afterburn-watch.service"
+    fi
 
-  cp "$HERE/afterburn-colors.desktop" "$APPS_DIR/afterburn-colors.desktop"
+  fi
+  owned_copy "$HERE/afterburn-colors.desktop" "$APPS_DIR/afterburn-colors.desktop" desktop || true
   ok "subtle pack installed. Try: afterburn status"
 else
   skip "skipped the subtle pack. Re-run this script any time to add it"
@@ -280,8 +310,13 @@ elif ask "Animate the lock screen with embers? (clones Omarchy's lock plugin; it
   CHANGED+=("lock screen clone $CLONE_DIR (if it exists, uninstall.sh removes it)")
   rc=0
   bash "$LOCK" install || rc=$?
-  # Mark whenever the clone exists, even after a failure, so uninstall.sh always undoes it.
-  if [[ -e $CLONE_DIR || -L $CLONE_DIR ]]; then : > "$STATE_DIR/lock-embers"; fi
+  # Record only a clone with explicit Afterburn ownership, including a partial install.
+  if [[ ! -L $CLONE_DIR ]] &&
+     { [[ -f $CLONE_DIR/.afterburn-lock-embers ]] ||
+       [[ -f $STATE_DIR/lock-removal/id && -f $STATE_DIR/lock-removal/inventory &&
+          $(cat "$STATE_DIR/lock-removal/id") == "$CLONE_DIR" ]]; }; then
+    : > "$STATE_DIR/lock-embers"
+  fi
   if (( rc == 0 )); then
     ok "lock screen animated with embers"
   elif (( rc == 3 )); then
@@ -301,12 +336,26 @@ THEME_ROOT="$(dirname "$HERE")"
 THEMES_HOME="$HOME/.config/omarchy/themes"
 # add_missing SRC DEST: copy every file under SRC that DEST does not have yet. Prints how many.
 add_missing() {
-  local f n=0
+  local f parent blocked n=0
   while IFS= read -r -d '' f; do
     [[ -e $2/$f || -L $2/$f ]] && continue
+    parent=$(dirname "$f"); blocked=false
+    while [[ $parent != . ]]; do
+      if [[ -L $2/$parent ]]; then blocked=true; break; fi
+      parent=$(dirname "$parent")
+    done
+    $blocked && continue
     mkdir -p "$(dirname "$2/$f")" && cp -a "$1/$f" "$2/$f" && n=$((n + 1))
   done < <(cd "$1" && find . -type f -print0)
   echo "$n"
+}
+edition_inventory() {
+  (cd "$1" && find . -mindepth 1 -print0 | sort -z |
+    while IFS= read -r -d '' f; do
+      if [[ -L $f ]]; then printf 'link %s %s\n' "$f" "$(readlink "$f")";
+      elif [[ -f $f ]]; then sha256sum "$f";
+      else printf 'dir %s\n' "$f"; fi
+    done)
 }
 EDITIONS=(voltage cyber overdrive redline phantom)
 echo
@@ -318,9 +367,13 @@ elif ask "Install colour editions (Voltage, Cyber, Overdrive, Redline, Phantom)?
   for e in "${AVAILABLE[@]}"; do
     dest="$THEMES_HOME/afterburn-$e"
     if [[ -e $dest || -L $dest ]]; then
-      if grep -qxF "$e" "$STATE_DIR/editions" 2>/dev/null; then
+      if [[ ! -L $dest && -d $dest ]] && grep -qxF "$e" "$STATE_DIR/editions" 2>/dev/null; then
         # Ours: add what this release has and the copy lacks (a new wallpaper set, say). Never overwrites.
+        EDITION_OURS=false
+        if [[ ! -L $dest && -f $STATE_DIR/owned-editions/$e ]] &&
+           cmp -s <(edition_inventory "$dest") "$STATE_DIR/owned-editions/$e"; then EDITION_OURS=true; fi
         added=$(add_missing "$THEME_ROOT/.editions/$e" "$dest")
+        if $EDITION_OURS; then edition_inventory "$dest" > "$STATE_DIR/owned-editions/$e"; fi
         if (( added )); then ok "afterburn-$e already installed; added $added new files"; else ok "afterburn-$e already installed"; fi
       else
         skip "afterburn-$e: $dest already exists and is not ours, left alone"
@@ -332,6 +385,8 @@ elif ask "Install colour editions (Voltage, Cyber, Overdrive, Redline, Phantom)?
     echo "$e" >> "$STATE_DIR/editions"
     CHANGED+=("edition theme $dest")
     cp -a "$THEME_ROOT/.editions/$e" "$dest"
+    mkdir -p "$STATE_DIR/owned-editions"
+    edition_inventory "$dest" > "$STATE_DIR/owned-editions/$e"
     ok "edition installed: afterburn-$e"
   done
 else

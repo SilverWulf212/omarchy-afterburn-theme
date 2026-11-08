@@ -21,6 +21,29 @@ ab_theme_name() {
 # True for `afterburn` and `afterburn-<edition>`.
 ab_is_afterburn() { [[ ${1:-} == afterburn || ${1:-} == afterburn-* ]]; }
 
+# Share laptop policy between the CLI and watcher. USB-C docks and chargers are
+# external power too; the kernel reports them with several USB supply types.
+ab_on_external_power() {
+  local d type
+  for d in "${POWER_DIR:-/sys/class/power_supply}"/*; do
+    type=$(cat "$d/type" 2>/dev/null)
+    case $type in
+      Mains|USB|USB_*|Wireless)
+        [[ $(cat "$d/online" 2>/dev/null) == 1 ]] && return 0 ;;
+    esac
+  done
+  return 1
+}
+
+ab_saver_want() {
+  case ${1:-auto} in
+    on|off) echo "$1" ;;
+    *)
+      if grep -qx Battery "${POWER_DIR:-/sys/class/power_supply}"/*/type 2>/dev/null &&
+         ! ab_on_external_power; then echo on; else echo off; fi ;;
+  esac
+}
+
 # Path of the colors.toml for a theme: the user's copy (like omarchy-theme-dir), else the
 # staged current theme, else the base theme. Prints nothing if none exists.
 ab_colors_file() {

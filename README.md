@@ -23,7 +23,7 @@ omarchy theme install https://github.com/silverwulf212/omarchy-afterburn-theme &
 > [!IMPORTANT]
 > **This replaces your default terminal with Ghostty** and installs third-party software. See [What the full stack changes](#what-the-full-stack-changes) before you run it.
 
-The second half shows a summary of what it will change, then asks before each step:
+The second half shows a summary and asks whether to continue. It asks about optional components; after Continue, it installs the theme hook and reapplies the theme automatically:
 
 1. **Ghostty**: installs it and makes it your default terminal, if needed
 2. **cursor-fx**: animated Ghostty cursors. Afterburn uses *embers*: typing kicks up glowing embers that rise and cool. Each [colour edition](#editions) picks its own effect
@@ -33,7 +33,7 @@ The second half shows a summary of what it will change, then asks before each st
 6. **Colour editions** (optional, asked separately): Voltage, Cyber, Overdrive, Redline and Phantom, the same theme in other colours. See [Editions](#editions)
 7. **Boot and login screen** (optional, needs `sudo`, default No): sets Omarchy's boot splash and login screen to the current theme. See [Boot and login screen](#boot-and-login-screen)
 
-Add `--yes` to answer yes to every question. Two exceptions: `--yes` never changes your heat source (it is `time` on a first install, so it never turns on the weather source, the only part that calls the network once running), and the boot and login screen is never changed by `--yes` because it needs `sudo`. Re-running the installer is safe: it keeps your settings, including the heat source. Run it once after you update the theme: the theme-set hook is a copy, so a new release's hook (and its edition behaviour) only takes effect after that. To undo, run `~/.config/omarchy/themes/afterburn/extras/uninstall.sh`. Switching to another theme also puts your previous cursor effect back.
+Add `--yes` to answer yes to every question. Two exceptions: `--yes` never changes your heat source (it is `time` on a first install, so it never turns on the weather source, the only part that calls the network once running), and the boot and login screen is never changed by `--yes` because it needs `sudo`. Re-running the installer keeps your settings, including the heat source. New installs record ownership snapshots: existing files or files you later change are preserved. Older installs without those records are kept conservatively; see [Ownership and older installs](#ownership-and-older-installs). Run it once after you update the theme: the theme-set hook is a copy, so a new release's hook (and its edition behaviour) only takes effect after that. To undo, run `~/.config/omarchy/themes/afterburn/extras/uninstall.sh`. Switching to another theme also puts your previous cursor effect back.
 
 ## Install: theme only
 
@@ -46,7 +46,7 @@ You get the colors, the ember-gradient borders, the wallpapers and the icons. Th
 ## What the full stack changes
 
 > [!WARNING]
-> **The full-stack installer replaces your default terminal with Ghostty** and installs third-party code. It lists everything below and asks before each step. Read this section before you say yes.
+> **The full-stack installer replaces your default terminal with Ghostty** and installs third-party code. It lists everything below and asks about optional components; the theme hook and theme reapply follow its initial Continue prompt. Read this section before you say yes.
 
 | Change | Details | How to undo |
 |---|---|---|
@@ -56,23 +56,31 @@ You get the colors, the ember-gradient borders, the wallpapers and the icons. Th
 | **Ghostty config** | cursor-fx writes `~/.config/ghostty/shaders/`, `~/.config/ghostty/cursor-effects/` and `~/.local/bin/cursor-fx`, and adds a `config-file = cursor-effects/…` line to `~/.config/ghostty/config`. It backs up anything it replaces to `~/ghostty-savepoints/`. | Restore from `~/ghostty-savepoints/`, or `cursor-fx off`. |
 | **pi agent** (only if `~/.pi/agent` exists) | cursor-fx adds a pi extension and sets `showHardwareCursor: true` in pi's settings. | Delete `~/.pi/agent/extensions/cursor-fx.ts`. |
 | **Omarchy hook** | Adds `~/.config/omarchy/hooks/theme-set.d/50-afterburn-extras`. It runs on **every** theme change: on Afterburn or one of its colour editions it adds the glow in that theme's colours, sets the theme's cursor effect (embers on base, the edition's own on an edition), recolours the lock-screen embers and gives them the edition's motion, applies the subtle pack's settings and restarts the watcher. On other themes it stops the watcher, restores your previous cursor effect and puts the lock embers back to orange and rising. | `uninstall.sh` |
-| **Subtle pack** | Links `afterburn` and `afterburn-watch` into `~/.local/bin`, writes `~/.config/afterburn/afterburn.conf`, and copies the "Afterburn colors" launcher entry to `~/.local/share/applications/`. | `uninstall.sh` removes the links, the conf file and the launcher entry. |
-| **Watcher service** | Installs and starts a user systemd service, `afterburn-watch`, that handles fullscreen, battery and heat changes. | `uninstall.sh` disables and removes it. |
-| **Network calls** | Only if you choose the weather heat source: `api.weather.gov` (station and observations, at most every 20 minutes) and `api.zippopotam.us` (one ZIP lookup when you enter your ZIP). No other option makes a network call. | Choose another `HEAT_SOURCE`, or run `uninstall.sh`. |
+| **Subtle pack** | Links `afterburn` and `afterburn-watch` into `~/.local/bin`, writes `~/.config/afterburn/afterburn.conf`, and copies the "Afterburn colors" launcher entry to `~/.local/share/applications/`. | `uninstall.sh` removes owned links and unchanged owned files; it keeps preexisting or subsequently edited files. |
+| **Watcher service** | Installs and starts a user systemd service, `afterburn-watch`, that handles fullscreen, battery and heat changes. | `uninstall.sh` disables and removes an unchanged owned unit. Failed stops retain the unit and links for retry. |
+| **Network calls** | Only if you choose the weather heat source: `api.weather.gov` (station and observations, at most every 20 minutes) and `api.zippopotam.us` (one ZIP lookup when you enter your ZIP). No other heat source makes runtime network requests; installation still downloads the theme, packages and optional cursor-fx dependency. | Choose another `HEAT_SOURCE`, or run `uninstall.sh`. |
 | **Shell and prompt** | Adds one guarded line to `~/.bashrc` that sources the fail flash, and sets `error_symbol` in `~/.config/starship.toml` so a failed command shows a red `❯`. Only the original `error_symbol` line is remembered, and a whole-file copy is kept in `~/.local/state/afterburn/` as a safety copy. If you have no starship.toml, the prompt is left alone. | `uninstall.sh` removes the line and puts the original `error_symbol` back, only if that line is still Afterburn's. Other edits to your starship.toml are kept. |
 | **Lock screen** (asked separately) | Clones Omarchy's lock plugin with its official clone command and adds an ember layer to the clone. The clone does not get Omarchy's lock-screen updates until you uninstall. | `uninstall.sh` runs `lock-embers.sh uninstall`. |
-| **Colour editions** (asked separately) | Copies each `.editions/<name>/` folder of the installed theme to `~/.config/omarchy/themes/afterburn-<name>`. A folder that is already there is **never** overwritten, and the installer records only what it created. On a re-run, a folder it created gets only the files it lacks (a newer release's wallpapers, say); nothing existing is changed. If `.editions/` is missing, the step is skipped. | `uninstall.sh` removes only the folders the installer created. If one is your active theme, it switches you to base `afterburn` first. |
+| **Colour editions** (asked separately) | Copies each `.editions/<name>/` folder of the installed theme to `~/.config/omarchy/themes/afterburn-<name>`. A folder that is already there is **never** overwritten, and the installer records only what it created. On a re-run, a folder it created gets only the files it lacks (a newer release's wallpapers, say); nothing existing is changed. If `.editions/` is missing, the step is skipped. | `uninstall.sh` removes unchanged folders it created and recorded. Edited or untracked older folders are kept. If one is your active theme, it switches you to base `afterburn` first. |
 | **Boot and login screen** (asked separately, default No) | Runs Omarchy's `omarchy-plymouth-set-by-theme <theme>` for the current theme, which changes the boot splash and the login screen. **Needs `sudo`.** `--yes` skips it. The installer records that it did this. | `omarchy-plymouth-reset` (needs `sudo`), which `uninstall.sh` offers to run, or prints the command if it gets no answer. |
-| **State files** | `~/.local/state/afterburn/` (your previous terminal and cursor effect, the starship backup, the colours the fail flash uses, and markers for the lock screen, bashrc, editions and boot screen) and `~/.local/share/afterburn/` (the cursor-fx checkout). | `uninstall.sh` |
+| **State files** | `~/.local/state/afterburn/` (your previous terminal and cursor effect, the starship backup, the colours the fail flash uses, ownership snapshots and retry records, and markers for the lock screen, bashrc, editions and boot screen) and `~/.local/share/afterburn/` (the cursor-fx checkout). | `uninstall.sh` |
 
 **Also worth knowing:**
 - **GPU and battery:** while a cursor effect is on, Ghostty redraws constantly, so expect a little extra GPU use and battery drain on laptops. `cursor-fx off` turns it off.
 - **Motion and flashing:** the cursor effects animate, and some flash. If you're sensitive to motion or flashing light, skip cursor-fx or run `cursor-fx subtle on`.
 - **Uninstall doesn't remove Ghostty or cursor-fx.** It puts back your terminal and cursor settings, and prints the commands to remove the rest.
-- **Uninstall removes only what the installer created.** That covers the files in `~/.config/afterburn/` and `~/.local/share/afterburn/` (the folders go too, but only when empty) and the edition folders it copied. An `afterburn-<name>` folder you made yourself is never touched. If an edition is your active theme, `uninstall.sh` switches you to base `afterburn` first. If it can't, it keeps that folder and tells you to switch theme and delete it.
+- **Uninstall removes only proven, unchanged resources.** User edits and older resources without ownership records are kept with a message. The third-party cursor-fx checkout is also kept for manual removal. Empty directories are tidied only after their owned files are removed. An `afterburn-<name>` folder you made yourself is never touched. If an edition is your active theme, `uninstall.sh` switches you to base `afterburn` first. If it can't, it keeps that folder and tells you to switch theme and delete it.
 - **The boot and login screen is not undone silently.** If you said yes to it, `uninstall.sh` asks before running `omarchy-plymouth-reset` (needs `sudo`), and prints that command if it gets no answer.
 - **No warranty.** This is a personal hobby project, provided as is under the MIT licence. The installer changes your dotfiles, so commit or back them up first if you keep them in git.
 - **Not affiliated** with Omarchy, Basecamp, Ghostty, Termix or Avarce. Their names are used here only to give credit and to say what this works with.
+
+## Ownership and older installs
+
+New installs record file contents and directory inventories in `~/.local/state/afterburn/`. Uninstall removes matching resources and preserves subsequent user edits, replacements and preexisting files. A preexisting lock clone without an Afterburn ownership marker is not adopted or removed, even when it was originally cloned from Omarchy's stock lock.
+
+Older installations have no complete ownership record. The installer and uninstaller leave those untracked hooks, units, links, configuration and edition folders in place rather than guessing. Review the printed paths, back up/move aside files you want replaced, then rerun the installer. Do not delete a customized lock clone just to make installation proceed; keep it or restore the stock lock through Omarchy after backing it up.
+
+Failed undo steps return a nonzero exit and keep retry state. Resolve the reported failure, then rerun `extras/uninstall.sh`. Partially removed owned directories can be retried while changed or newly added survivors are preserved. Uninstall can therefore finish with deliberately retained user customizations; it is not a blanket reset.
 
 ## Subtle pack
 
@@ -93,6 +101,8 @@ Optional, part of the full-stack install (step 4). Every setting lives in `~/.co
 | Laptop saver | `LAPTOP_MODE` (`auto`) | On battery: no shadow, no spin, and a subtle cursor effect. `auto` follows the power source. `on` and `off` force it. | `afterburn laptop auto` |
 | Red prompt and fail flash | `FAIL_FX` (`random`) | A failed command gets a red `❯` in Starship and a short flash: `burn`, `cascade` or `dissolve`. `random` picks one. Interrupted commands (Ctrl-C, Ctrl-Z) don't flash. Set `NO_MOTION` in your shell to turn the flash off. | `afterburn set FAIL_FX off` |
 | Colours | none | Afterburn's named colours. In a terminal, `afterburn colors` shows swatches and copies the one you pick. The "Afterburn colors" launcher entry opens the menu and copies the hex. | `afterburn colors` |
+
+For a persistent manual battery override, use `afterburn laptop on|off`. `afterburn saver on|off` is temporary: the watcher reapplies `LAPTOP_MODE` within five seconds.
 
 Other commands: `afterburn apply` (rebuilds the glow from the conf and reloads Hyprland), `afterburn level cool|normal|hot`, `afterburn saver on|off`. Battery or laptop mode turns `cursor-fx subtle` back off when it ends, but only if the saver was what turned it on (a subtle you had on yourself stays on; it is also restored when you leave Afterburn or run `uninstall.sh`). The watcher runs as a user service. Check it with `systemctl --user status afterburn-watch`.
 
@@ -187,3 +197,7 @@ uv run --with numpy --with pillow python extras/wallpaper-gen.py backgrounds
 - Built for [Omarchy](https://omarchy.org) by DHH and contributors.
 
 MIT © 2026 SilverWulf
+
+## Development checks
+
+Run the shipped isolated regressions with `python3 -m unittest discover -s tests -v`. They use temporary home directories and desktop-command doubles; they do not install onto your desktop. Native VM and Playwright smoke instructions, prerequisites, and current coverage limits are in [docs/launch-verification.md](docs/launch-verification.md). A passing isolated suite does not establish GPU performance or a successful real installation.
