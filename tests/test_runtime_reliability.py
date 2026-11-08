@@ -241,11 +241,12 @@ real-sleep 0.15''')
 
     def test_palette_menu_does_not_hold_mutation_lock(self):
         import os
-        import shutil
         import signal
         import time
-        (self.bin / 'real-sleep').symlink_to(shutil.which('sleep'))
-        self.stub('omarchy-menu-select', 'echo ready > "$HOME/menu-open"; real-sleep 5; exit 1')
+        os.mkfifo(self.home / 'menu-close')
+        # A real wait keeps the menu open until cleanup without depending on a
+        # sleep binary's argv[0] handling or a fixed timeout on slower CI hosts.
+        self.stub('omarchy-menu-select', 'echo ready > "$HOME/menu-open"; read -r token < "$HOME/menu-close"; exit 1')
         proc = subprocess.Popen(['/bin/bash', str(self.ab), 'colors', '--menu'], env=self.env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, start_new_session=True)
         try:
             deadline = time.monotonic() + 3
@@ -257,5 +258,8 @@ real-sleep 0.15''')
             self.assertLess(time.monotonic() - started, 2)
             self.assertIsNone(proc.poll())
         finally:
-            os.killpg(proc.pid, signal.SIGTERM)
+            try:
+                os.killpg(proc.pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
             proc.communicate(timeout=3)
