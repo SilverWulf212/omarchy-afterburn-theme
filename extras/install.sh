@@ -171,7 +171,7 @@ APPS_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 STARSHIP="$CONF_HOME/starship.toml"
 BASHRC="$HOME/.bashrc"
 FAIL_SH='$HOME/.config/omarchy/themes/afterburn/extras/afterburn-fail.bash'
-conf_set() { sed -i -E "s/^$1=[^ #]*/$1=$2/" "$CONF"; }
+conf_set() { sed -i --follow-symlinks -E "s/^$1=[^ #]*/$1=$2/" "$CONF"; }
 
 echo
 # Never overwrite a file of the user's own: if a name is taken by something that is not our link,
