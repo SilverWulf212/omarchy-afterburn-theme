@@ -3,9 +3,9 @@
 # Long-running user service (extras/afterburn-watch.service). Acts only while
 # the active theme is afterburn or an afterburn colour edition. Three loops, one per concern:
 #   fullscreen  Hyprland socket2 events      -> afterburn quiet on|off
-#   power       upower (or 30s poll)         -> afterburn saver on|off (battery = on)
+#   power       bounded 5s poll             -> afterburn saver on|off (battery = on)
 #   heat        every 60s                    -> afterburn level cool|normal|hot
-# Calls happen only on change. Needs bash, awk, jq, curl, socat; upower optional.
+# Calls happen only on change. Needs bash, awk, jq, curl, socat.
 set -u
 export PATH="$HOME/.local/bin:$PATH"   # systemd's PATH may lack ~/.local/bin
 
@@ -17,6 +17,8 @@ PSI_FILE=${PSI_FILE:-/proc/pressure/cpu}          # overridable for tests
 POWER_DIR=${POWER_DIR:-/sys/class/power_supply}   # overridable for tests
 UA='afterburn-theme (github.com/silverwulf212/omarchy-afterburn-theme)'
 LEVELS=(cool normal hot)
+# shellcheck disable=SC1091
+. "$HOME/.config/omarchy/themes/afterburn/extras/afterburn-theme.sh"
 
 # Defaults first, so a missing or partial conf still leaves every value set.
 load_conf() {
@@ -61,32 +63,25 @@ watch_fullscreen() {
 }
 
 # --- power: battery means saver mode -----------------------------------------
-on_ac() {
-  local d
-  for d in "$POWER_DIR"/*; do
-    [[ $(cat "$d/type" 2>/dev/null) == Mains && $(cat "$d/online" 2>/dev/null) == 1 ]] && return 0
-  done
-  return 1
-}
-has_battery() { grep -qx Battery "$POWER_DIR"/*/type 2>/dev/null; }
-
-power_tick() {  # reads and sets $saver, the last value we applied (set by watch_power)
+power_tick() {
   load_conf
-  is_afterburn && [[ $LAPTOP_MODE == auto ]] && has_battery || return 0
-  local want=on
-  on_ac && want=off
-  if [[ $want != "$saver" ]] && afterburn saver "$want"; then saver=$want; fi
+  is_afterburn || return 0
+  local want actual
+  # Compare with persisted state: a CLI override can change it between ticks.
+  want=$(ab_saver_want "$LAPTOP_MODE")
+  actual=$(cat "$STATE/saver" 2>/dev/null || echo off)
+  if [[ $want != "$actual" ]]; then afterburn saver "$want"; fi
+  if [[ $FULLSCREEN_QUIET != yes && $(cat "$STATE/quiet" 2>/dev/null) == on ]]; then
+    afterburn quiet off
+  fi
 }
 
 watch_power() {
-  local saver=""
   while :; do
     power_tick
-    if command -v upower >/dev/null; then
-      # process substitution keeps the loop in this shell, so $saver persists
-      while read -r _; do power_tick; done < <(upower --monitor 2>/dev/null)
-    fi
-    sleep 30   # upower exited, or there is no upower: poll
+    # A long-lived upower monitor never wakes for a config edit. Polling sysfs
+    # also works without upower and bounds policy-change latency to five seconds.
+    sleep 5
   done
 }
 
