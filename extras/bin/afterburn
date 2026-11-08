@@ -194,10 +194,10 @@ write_lua() {
   if effective_quiet; then rot=off; shadow=false; fi
   case $rot in
     off)    spin='hl.animation({ leaf = "borderangle", enabled = false })' ;;
-    # speed is Hyprland's animation duration in deciseconds: 600 = one turn per 60 s.
-    slow)   spin='hl.animation({ leaf = "borderangle", enabled = true, speed = 600, bezier = "linear", style = "loop" })' ;;
-    medium) spin='hl.animation({ leaf = "borderangle", enabled = true, speed = 200, bezier = "linear", style = "loop" })' ;;
-    fast)   spin='hl.animation({ leaf = "borderangle", enabled = true, speed = 80,  bezier = "linear", style = "loop" })' ;;
+    # speed is Hyprland's animation duration in deciseconds: 100 = one turn per 10 s; Hyprland caps speed at 100.
+    slow)   spin='hl.animation({ leaf = "borderangle", enabled = true, speed = 100, bezier = "linear", style = "loop" })' ;;
+    medium) spin='hl.animation({ leaf = "borderangle", enabled = true, speed = 50,  bezier = "linear", style = "loop" })' ;;
+    fast)   spin='hl.animation({ leaf = "borderangle", enabled = true, speed = 25,  bezier = "linear", style = "loop" })' ;;
   esac
   if [[ $DIM == 0 ]]; then dim_on=false; else dim_on=true; fi
   # The normal-level range. The glow template already says 14, so the base theme's file does not change.

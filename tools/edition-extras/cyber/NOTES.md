@@ -33,7 +33,7 @@ Source: `tools/edition-extras/cyber/`. Nothing here is installed; the integrator
 
 ## Mood knobs (edition.conf, not counted as enhancements)
 
-- `ROTATE=medium`: 20 s per turn for the border gradient.
+- `ROTATE=medium`: 5 s per turn for the border gradient.
 - `DIM=0.12`: a little stronger than the base 0.08, so background windows sink like a dimmed CRT.
 - `GLOW_RANGE=18`: a slightly wider halo than base; the cyber colour is the brightest of the set.
 - `TAGLINE="ACCESS GRANTED. Follow the green."`: replaces the tagline "Acid green. The grid is listening." in

@@ -80,7 +80,7 @@ Optional, part of the full-stack install (step 4). Every setting lives in `~/.co
 
 | Feature | Config key (default) | What it does | Command |
 |---|---|---|---|
-| Slow-turning border | `ROTATE` (`slow`) | The ember gradient turns around the focused window: `off`, `slow` (60 s per turn), `medium` (20 s) or `fast` (8 s). | `afterburn set ROTATE medium` |
+| Slow-turning border | `ROTATE` (`slow`) | The ember gradient turns around the focused window: `off`, `slow` (10 s per turn), `medium` (5 s) or `fast` (2.5 s). | `afterburn set ROTATE medium` |
 | Dimmed background windows | `DIM` (`0.08`) | Dims unfocused windows by this amount. `0` turns it off. | `afterburn set DIM 0.15` |
 | Glow range | `GLOW_RANGE` (`14`) | The glow's size at the normal heat level, 4 to 30. Cool and hot keep their ratio to it (8:14 and 22:14). | `afterburn set GLOW_RANGE 20` |
 | Cursor effect | `CURSOR_FX` (`embers`) | The cursor-fx effect for the theme: `cyber lightning glitch neon phosphor embers shockwave katana teleport fireworks aurora mecha hologram`. Applied at once by `afterburn set`, and at every theme change. | `afterburn set CURSOR_FX neon` |

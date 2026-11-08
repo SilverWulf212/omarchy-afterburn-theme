@@ -22,10 +22,10 @@ Each edition ships an `edition.conf`. The theme-set hook and the `afterburn` com
 
 | Edition | Cursor effect | Border turn | Glow range | Dim | Lock embers |
 | --- | --- | --- | --- | --- | --- |
-| afterburn (base) | embers | slow, 60 s | 14 | 0.08 | rise |
-| voltage | lightning | fast, 8 s | 12 | 0.06 | spark |
-| cyber | phosphor | slow, 60 s | 17 | 0.12 | fall |
-| overdrive | neon | medium, 20 s | 22 | 0.04 | pulse |
+| afterburn (base) | embers | slow, 10 s | 14 | 0.08 | rise |
+| voltage | lightning | fast, 2.5 s | 12 | 0.06 | spark |
+| cyber | phosphor | slow, 10 s | 17 | 0.12 | fall |
+| overdrive | neon | medium, 5 s | 22 | 0.04 | pulse |
 | redline | katana | still | 8 | 0.15 | burst |
 | phantom | hologram | still | 24 | 0.18 | drift |
 

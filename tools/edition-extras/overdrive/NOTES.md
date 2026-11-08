@@ -10,7 +10,7 @@ Magenta edition (`afterburn-overdrive`). Everything here is an extra. Nothing in
 2. **Speed-streak live wallpaper.** `files/backgrounds/live-speed-streaks.mp4`. Magenta light streaks rush left over black, in two layers at different speeds, so it has depth. A seamless 8 s loop, 2560x1072, 30 fps, h264. No other edition has this loop, and it shows speed rather than a sun or a grid, which the base horizon already does.
 3. **Hot-pink Neovim palette.** `files/neovim.lua`. Same shape as Omarchy's `neovim.lua.tpl` (aether.nvim, LazyVim), with the values filled in from the overdrive `colors.toml`. Two neon twists: the cursor is `#ff1fed` (the same pink as the window border) and the accent is the brighter pink `#ff6bda`.
 4. **Spark lock-screen embers.** `EMBER_STYLE=spark`. Lock-screen embers shoot up in short fast bursts and cool quickly, like sparks off a tube on ignition. The base style drifts up slowly. The colour still follows the theme through the existing hook.
-5. **Speed-tuned border and glow.** `ROTATE=medium` and `GLOW_RANGE=18`. The gradient turns every 20 s (base is 60 s) and the glow sits between the normal (14) and hot (22) ranges. It is subtle, but the spin matches the outrun speed theme. Change `ROTATE=fast` for 8 s per turn if you want it louder.
+5. **Speed-tuned border and glow.** `ROTATE=medium` and `GLOW_RANGE=18`. The gradient turns every 5 s (base is 10 s) and the glow sits between the normal (14) and hot (22) ranges. It is subtle, but the spin matches the outrun speed theme. Change `ROTATE=fast` for 8 s per turn if you want it louder.
 
 ## How to see each one
 
@@ -18,7 +18,7 @@ Magenta edition (`afterburn-overdrive`). Everything here is an extra. Nothing in
 - **Wallpaper:** copy `live-speed-streaks.mp4` into `.editions/overdrive/backgrounds/`, then press Super + Ctrl + Space to cycle. It plays through OWE like the other live loops.
 - **Neovim:** copy `files/neovim.lua` to `.editions/overdrive/neovim.lua` and open nvim. The cursor is hot pink, and highlighted words use the brighter accent.
 - **Lock screen:** lock the screen after the integrator adds the `EMBER_STYLE` switch. Sparks should be quick bursts, not a slow drift.
-- **Border:** switch to overdrive and watch the focused window. The turn is 20 s per revolution.
+- **Border:** switch to overdrive and watch the focused window. The turn is 5 s per revolution.
 
 ## What the integrator must wire
 

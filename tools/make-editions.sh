@@ -98,7 +98,7 @@ edition_conf() {
 
 # turn_words ROTATE: the border turn in words.
 turn_words() {
-  case $1 in off) echo "still" ;; slow) echo "slow, 60 s" ;; medium) echo "medium, 20 s" ;; fast) echo "fast, 8 s" ;; esac
+  case $1 in off) echo "still" ;; slow) echo "slow, 10 s" ;; medium) echo "medium, 5 s" ;; fast) echo "fast, 2.5 s" ;; esac
 }
 
 # copy_extras NAME DIR: files/ of the edition's extras go into DIR as they are, and so does edition.conf.
