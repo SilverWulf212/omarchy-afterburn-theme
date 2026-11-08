@@ -23,17 +23,17 @@ omarchy theme install https://github.com/silverwulf212/omarchy-afterburn-theme &
 > [!IMPORTANT]
 > **This replaces your default terminal with Ghostty** and installs third-party software. See [What the full stack changes](#what-the-full-stack-changes) before you run it.
 
-The second half shows a summary and asks whether to continue. It asks about optional components; after Continue, it installs the theme hook and reapplies the theme automatically:
+The second half shows a summary and asks whether to continue. **Glow and cursor effects have separate consent prompts, both defaulting to Yes on a new interactive installation.** Accept them and they are enabled immediately, including for TUIs and all five color editions. Base Afterburn uses embers; each edition uses its own cursor effect. Declining either is remembered across theme changes, even if cursor-fx was already installed. Neither effect requires the optional subtle pack. After Continue, the installer installs the theme hook and reapplies the theme automatically:
 
 1. **Ghostty**: installs it and makes it your default terminal, if needed
 2. **cursor-fx**: animated Ghostty cursors. Afterburn uses *embers*: typing kicks up glowing embers that rise and cool. Each [colour edition](#editions) picks its own effect
-3. **Glow**: the orange halo around the focused window
+3. **Glow**: the halo around focused windows and TUIs, in the active edition's colors
 4. **Subtle pack** (optional): a slow-turning border, dimmed background windows, heat levels, quiet fullscreen, battery saver, a red prompt with a fail flash, and the `afterburn` command. See [Subtle pack](#subtle-pack)
 5. **Lock screen** (optional, asked separately): embers on the lock screen. See [Lock screen](#lock-screen)
 6. **Colour editions** (optional, asked separately): Voltage, Cyber, Overdrive, Redline and Phantom, the same theme in other colours. See [Editions](#editions)
 7. **Boot and login screen** (optional, needs `sudo`, default No): sets Omarchy's boot splash and login screen to the current theme. See [Boot and login screen](#boot-and-login-screen)
 
-Add `--yes` to answer yes to every question. Two exceptions: `--yes` never changes your heat source (it is `time` on a first install, so it never turns on the weather source, the only part that calls the network once running), and the boot and login screen is never changed by `--yes` because it needs `sudo`. Re-running the installer keeps your settings, including the heat source. New installs record ownership snapshots: existing files or files you later change are preserved. Older installs without those records are kept conservatively; see [Ownership and older installs](#ownership-and-older-installs). Run it once after you update the theme: the theme-set hook is a copy, so a new release's hook (and its edition behaviour) only takes effect after that. To undo, run `~/.config/omarchy/themes/afterburn/extras/uninstall.sh`. Switching to another theme also puts your previous cursor effect back.
+Add `--yes` to answer yes to every question. Two exceptions: `--yes` never changes your heat source (it is `time` on a first install, so it never turns on the weather source, the only part that calls the network once running), and the boot and login screen is never changed by `--yes` because it needs `sudo`. Re-running the installer keeps your settings, including the heat source; Enter at either effect prompt keeps its saved choice. `--yes` explicitly enables both effects. Closed stdin does not grant new effect consent. New installs record ownership snapshots: existing files or files you later change are preserved. Older installs without those records are kept conservatively; see [Ownership and older installs](#ownership-and-older-installs). The final effects application runs synchronously and a failure stops installation instead of announcing success. Open a new Ghostty window after installation. With the subtle pack enabled, fullscreen quiet and laptop saver can temporarily suppress effects; `MOTION=off` suppresses animated cursors. Run the installer once after you update the theme: the theme-set hook is a copy, so a new release's hook (and its edition behaviour) only takes effect after that. To undo, run `~/.config/omarchy/themes/afterburn/extras/uninstall.sh`. Switching to another theme also puts your previous cursor effect back.
 
 ## Install: theme only
 
@@ -88,6 +88,8 @@ Optional, part of the full-stack install (step 4). Every setting lives in `~/.co
 
 | Feature | Config key (default) | What it does | Command |
 |---|---|---|---|
+| Glow consent | `GLOW` (`yes`) | Enables the window and TUI halo in every edition. `no` keeps it off through heat and theme changes. Installer asks separately. | `afterburn set GLOW no` |
+| Cursor consent | `CURSOR_EFFECTS` (`yes`) | Enables the active edition's cursor effect. `no` restores your previous cursor and leaves it alone. Installer asks separately. | `afterburn set CURSOR_EFFECTS no` |
 | Motion policy | `MOTION` (`on`) | `off` stops the border turn, cursor shaders, fail flashes and lock particles while preserving your separate effect choices. `NO_MOTION` in your shell also suppresses these effects. Live wallpapers remain under OWE; choose a still background for no wallpaper motion. | `afterburn set MOTION off` |
 | Slow-turning border | `ROTATE` (`slow`) | The ember gradient turns around the focused window: `off`, `slow` (10 s per turn), `medium` (5 s) or `fast` (2.5 s). | `afterburn set ROTATE medium` |
 | Dimmed background windows | `DIM` (`0.08`) | Dims unfocused windows by this amount. `0` turns it off. | `afterburn set DIM 0.15` |
@@ -215,7 +217,9 @@ python3 tools/release-packs.py install --manifest /tmp/afterburn-packs/release.j
 python3 tools/release-packs.py install --manifest /tmp/afterburn-packs/release.json --pack /tmp/afterburn-packs/afterburn-candidate-local-edition-voltage.tar.gz --destination /tmp/afterburn-selected
 ```
 
-This verifies and stages files; it does not activate a theme. The tool refuses unsafe archive paths, links, bad hashes and differing existing files. A fresh destination is recommended. The emitted standalone `afterburn-pack-tool.py` is checksummed alongside the packs, so a published release can be installed without a Git clone. Checksums establish integrity against the trusted manifest; obtain manifests through the trusted release channel. Filesystem failure can leave partially staged new files, so inspect or discard that disposable stage before retrying.
+This verifies and stages files; it does not activate a theme. The tool refuses unsafe archive paths, links, bad hashes and differing existing files. A fresh destination is recommended. The emitted `install-afterburn.sh` verifies the supplied bundle, stages the base and supplied live/edition packs into `~/.config/omarchy/themes/afterburn`, and runs the normal extras installer with its consent prompts. Run `bash install-afterburn.sh` from the extracted bundle. `--yes` forwards explicit consent for both effects and the usual optional extras; it still skips boot/login changes. Conflicting existing theme files are preserved and stop staging; use a fresh installation directory or back up and move an older theme aside first. It is not an in-place upgrade tool.
+
+The emitted standalone `afterburn-pack-tool.py` is checksummed alongside the packs, so a published release can be installed without a Git clone. Checksums establish integrity against the trusted manifest; obtain manifests through the trusted release channel. Filesystem failure can leave partially staged new files, so inspect or discard that disposable stage before retrying.
 
 For actual installation, verified-stage into a fresh `~/.config/omarchy/themes/afterburn`, add only the wanted edition/live packs to that same tree, then separately run its normal extras installer or `omarchy theme set afterburn`. The extras installer does not copy the base out of an arbitrary temporary stage. Exact clone-free download/verification steps and release gates are in [.github/RELEASE_CHECKLIST.md](.github/RELEASE_CHECKLIST.md).
 

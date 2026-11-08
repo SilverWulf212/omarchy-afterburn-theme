@@ -5,6 +5,31 @@ import test_runtime_modes as modes
 
 
 class Reliability(modes.RuntimeModes):
+    def test_declined_cursor_effects_survive_modes_and_saved_effect_changes(self):
+        self.conf.write_text("CURSOR_EFFECTS=no\n")
+        self.ghostty.write_text("config-file = cursor-effects/neon.conf\n")
+        self.cli('quiet', 'on')
+        self.cli('saver', 'on')
+        self.cli('set', 'CURSOR_FX', 'katana')
+        self.cli('quiet', 'off')
+        self.cli('saver', 'off')
+        self.assert_effect('neon')
+        self.cli('set', 'CURSOR_EFFECTS', 'yes')
+        self.assert_effect('katana')
+        self.cli('set', 'CURSOR_EFFECTS', 'no')
+        self.assert_effect('neon')
+
+    def test_declined_glow_is_not_reenabled_by_heat_changes(self):
+        self.cli('set', 'GLOW', 'no')
+        self.cli('level', 'hot')
+        self.cli('apply')
+        log = (self.home / 'hypr.log').read_text()
+        enabled = [line for line in log.splitlines() if 'decoration:shadow:enabled' in line]
+        self.assertTrue(enabled)
+        self.assertTrue(all(line.endswith(' false') for line in enabled), enabled)
+        self.cli('set', 'GLOW', 'yes')
+        self.assertIn('decoration:shadow:enabled true', (self.home / 'hypr.log').read_text())
+
     def test_config_is_data_and_values_reset_between_reads(self):
         marker = self.home / "executed"
         self.conf.write_text(f'HEAT_SOURCE=$(echo unsafe > {marker})\nMOTION="off" # user choice\nEVENING_HOURS=99-99\nLAT=99\nLON=181\n')

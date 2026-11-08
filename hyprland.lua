@@ -27,3 +27,10 @@ hl.config({
     },
   },
 })
+
+-- TUIs use their own app IDs. Explicitly opt terminals into the theme glow,
+-- including after Omarchy's floating-workspace rules disable shadows globally.
+o.window(
+  "(Alacritty|kitty|com.mitchellh.ghostty|foot|org\\.codeberg\\.dnkl\\.foot|wezterm|org\\.omarchy\\..*|TUI\\..*)",
+  { no_shadow = false }
+)

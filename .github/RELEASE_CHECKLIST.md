@@ -40,3 +40,15 @@ python3 afterburn-pack-tool.py install --manifest release.json --pack "afterburn
 ```
 
 `afterburn-pack-tool.py` is emitted beside every build's archives and included in SHA256SUMS and release.json. The CI artifact includes the whole output folder, including this helper. Downloading only the helper, manifests, base and selected edition avoids a Git checkout; do not execute an unverified downloaded helper. SHA256SUMS and release.json themselves must come from the trusted release channel. The extra installer copies staged editions but does not install a base staged in an arbitrary directory: either stage into the intended fresh theme directory as above, or keep the temporary staging directory for review only.
+
+
+Complete-bundle installation: ship `install-afterburn.sh`, `afterburn-pack-tool.py`,
+`release.json`, `SHA256SUMS`, base, base-live and the five edition packs together.
+Both executable helpers are recorded in the manifest/checksums. Extract the bundle
+and run `bash install-afterburn.sh`; this verifies/stages supplied packs, then runs
+the effects consent prompts. The older Python staging command remains available.
+Test new interactive installs with cursor/glow Yes/Yes, Yes/No, No/Yes and No/No,
+and verify TUI app IDs (`org.omarchy.btop`, `org.omarchy.terminal`, `TUI.float`).
+Check each edition's immediate cursor effect, theme switching, basic effects with
+the subtle pack declined, fresh-shell PATH, failed effect application, and retained
+consent on reinstall. Native GPU/rendered behavior remains a separate release gate.

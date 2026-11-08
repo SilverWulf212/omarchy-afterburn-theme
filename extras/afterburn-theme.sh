@@ -227,12 +227,12 @@ ab_effective() {
 }
 
 # Runtime policy is data, never shell code. Reset every key on every read.
-AB_CONFIG_KEYS="$AB_EDITION_KEYS MOTION HEAT_SOURCE EVENING_HOURS ZIP LAT LON HOT_F COOL_F HEAT_WALLPAPERS FULLSCREEN_QUIET LAPTOP_MODE FAIL_FX"
+AB_CONFIG_KEYS="$AB_EDITION_KEYS GLOW CURSOR_EFFECTS MOTION HEAT_SOURCE EVENING_HOURS ZIP LAT LON HOT_F COOL_F HEAT_WALLPAPERS FULLSCREEN_QUIET LAPTOP_MODE FAIL_FX"
 ab_default() {
   case $1 in
     MOTION) echo on ;; HEAT_SOURCE) echo time ;; EVENING_HOURS) echo 19-07 ;;
     ZIP|LAT|LON) echo '' ;; HOT_F) echo 90 ;; COOL_F) echo 50 ;;
-    HEAT_WALLPAPERS|FULLSCREEN_QUIET) echo yes ;; LAPTOP_MODE) echo auto ;;
+    GLOW|CURSOR_EFFECTS|HEAT_WALLPAPERS|FULLSCREEN_QUIET) echo yes ;; LAPTOP_MODE) echo auto ;;
     FAIL_FX) echo random ;; *) ab_base_default "$1" ;;
   esac
 }
@@ -251,7 +251,7 @@ ab_config_valid() {
       a=90; [[ $k == LON ]] && a=180
       awk -v v="$v" -v n="$a" 'BEGIN {exit !(v >= -n && v <= n)}' ;;
     HOT_F|COOL_F) [[ $v =~ ^[0-9]{1,3}$ ]] ;;
-    HEAT_WALLPAPERS|FULLSCREEN_QUIET) [[ $v == yes || $v == no ]] ;;
+    GLOW|CURSOR_EFFECTS|HEAT_WALLPAPERS|FULLSCREEN_QUIET) [[ $v == yes || $v == no ]] ;;
     LAPTOP_MODE) [[ $v =~ ^(auto|on|off)$ ]] ;;
     FAIL_FX) [[ $v =~ ^(random|burn|cascade|dissolve|off)$ ]] ;;
     *) ab_valid "$k" "$v" ;;

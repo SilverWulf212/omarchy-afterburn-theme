@@ -64,6 +64,32 @@ class ReleasePacks(unittest.TestCase):
         self.assertEqual(p.returncode, 0, p.stderr)
         self.assertTrue((self.root / 'standalone/colors.toml').exists())
 
+    def test_bundle_installer_stages_base_and_editions_then_runs_extras(self):
+        import os
+        installer = self.source / 'extras/install.sh'
+        installer.write_text('#!/bin/sh\nprintf "%s" "$*" > "$HOME/activated"\n')
+        installer.chmod(0o755)
+        packs = self.build()
+        script = packs / 'install-afterburn.sh'
+        self.assertTrue(script.exists())
+        home = self.root / 'home'
+        home.mkdir()
+        result = subprocess.run(['bash', str(script), '--yes'],
+                                env={**os.environ, 'HOME': str(home)}, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        target = home / '.config/omarchy/themes/afterburn'
+        self.assertTrue((target / 'colors.toml').exists())
+        self.assertTrue((target / '.editions/cyber/colors.toml').exists())
+        self.assertEqual((home / 'activated').read_text(), '--yes')
+        # An edited installed theme must not be overwritten or activated again.
+        (target / 'colors.toml').write_text('my edits')
+        (home / 'activated').unlink()
+        result = subprocess.run(['bash', str(script), '--yes'],
+                                env={**os.environ, 'HOME': str(home)}, capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual((target / 'colors.toml').read_text(), 'my edits')
+        self.assertFalse((home / 'activated').exists())
+
     def test_modified_file_preserved_and_no_partial_collision_install(self):
         packs = self.build()
         dest = self.root / 'stage'

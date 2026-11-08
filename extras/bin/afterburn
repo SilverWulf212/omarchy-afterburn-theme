@@ -55,6 +55,8 @@ write_default_conf() {
 # Save a value here and it always wins. `afterburn unset KEY` goes back to following the edition.
 #ROTATE=slow         # off|slow|medium|fast  (border gradient turn: 10s|5s|2.5s per turn)
 #DIM=0.08            # dim_inactive strength, 0 = off
+GLOW=yes            # yes|no; window and TUI halo (installer consent)
+CURSOR_EFFECTS=yes  # yes|no; edition cursor effects (installer consent)
 #GLOW_RANGE=14       # 4-30, shadow range at the normal heat level
 #CURSOR_FX=embers    # a cursor-fx effect (cyber lightning glitch neon phosphor embers shockwave katana teleport fireworks aurora mecha hologram)
 #EMBER_STYLE=rise    # lock-screen embers: rise|fall|drift|spark|pulse|burst
@@ -145,6 +147,7 @@ write_lua() {
 
   local rot=$ROTATE shadow=true spin dim_on range_opt=""
   if effective_quiet; then rot=off; shadow=false; fi
+  [[ $GLOW == yes ]] || shadow=false
   ab_motion_enabled || rot=off
   case $rot in
     off)    spin='hl.animation({ leaf = "borderangle", enabled = false })' ;;
@@ -182,7 +185,7 @@ live_level() {
   ab_run hyprctl keyword general:col.active_border "$L_BORDER" >/dev/null 2>&1 || return $?
   ab_run hyprctl keyword decoration:shadow:range "$L_RANGE" >/dev/null 2>&1 || return $?
   ab_run hyprctl keyword decoration:shadow:color "$L_SHADOW" >/dev/null 2>&1 || return $?
-  ab_run hyprctl keyword decoration:shadow:enabled true >/dev/null 2>&1 || return $?
+  ab_run hyprctl keyword decoration:shadow:enabled "$([[ $GLOW == yes ]] && echo true || echo false)" >/dev/null 2>&1 || return $?
 }
 
 # Regenerate the Lua, reload Hyprland (which resets live keywords), then re-apply the level.
@@ -229,6 +232,18 @@ cfx_subtle_state() {
 cfx_sync() {
   command -v cursor-fx >/dev/null 2>&1 || return 0
   local want
+  if [[ $CURSOR_EFFECTS == no ]]; then
+    # Restore only a cursor we took over, then leave the user's effect alone.
+    if [[ -f $STATE/prev-cursor-fx ]]; then
+      ab_run cursor-fx "$(cat "$STATE/prev-cursor-fx")" >/dev/null 2>&1 || return $?
+      rm -f "$STATE/prev-cursor-fx"
+    fi
+    if [[ -f $SUBTLE_REC ]]; then
+      ab_run cursor-fx subtle off >/dev/null 2>&1 || return $?
+    fi
+    rm -f "$CFX_PRE" "$SUBTLE_REC" "$STATE/cursor-fx-set"
+    return 0
+  fi
   if ! ab_motion_enabled || flag_on quiet; then want=off
   elif flag_on saver; then want='subtle on'
   else want=""
@@ -259,7 +274,8 @@ cfx_sync() {
 apply_extra() {
   is_afterburn || return 0
   case $1 in
-    CURSOR_FX)
+    CURSOR_EFFECTS|CURSOR_FX)
+      [[ $CURSOR_EFFECTS == yes ]] || return 0
       command -v cursor-fx >/dev/null 2>&1 || return 0
       mkdir -p "$STATE"
       if [[ -f $CFX_PRE ]]; then

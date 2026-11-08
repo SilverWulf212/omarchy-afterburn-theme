@@ -22,7 +22,9 @@ SUBTLE_REC="$(dirname "$STATE")/subtle-by-afterburn"
 GHOSTTY="$HOME/.config/ghostty/config"
 LOCK_SH="$EXTRAS/lock/lock-embers.sh"
 LOCK_MARK="${XDG_STATE_HOME:-$HOME/.local/state}/afterburn/lock-embers"
-AFTERBURN="$(command -v afterburn 2>/dev/null || echo "$HOME/.local/bin/afterburn")"
+# The CLI is part of the optional subtle pack; basic effects use the fallback.
+AFTERBURN="$HOME/.local/bin/afterburn"
+[[ $(readlink "$AFTERBURN" 2>/dev/null) == "$EXTRAS/bin/afterburn" ]] || AFTERBURN=""
 
 cursor_now() { grep -oP '^config-file\s*=\s*\??cursor-effects/\K[^.]+' "$GHOSTTY" 2>/dev/null || echo off; }
 
@@ -56,7 +58,7 @@ if ab_is_afterburn "$THEME"; then
   ab_load_conf "$THEME"
   DESIRED_FX=$WANT_FX
   if ! ab_motion_enabled; then WANT_FX=off; fi
-  if command -v cursor-fx >/dev/null; then
+  if [[ $CURSOR_EFFECTS == yes ]] && command -v cursor-fx >/dev/null; then
     cur=$(cursor_now)
     ours=$(cat "$OURS_FX" 2>/dev/null || true)
     # An install from before editions had their own effect set embers and wrote no record of it. If an
@@ -78,20 +80,40 @@ if ab_is_afterburn "$THEME"; then
     fi
     mkdir -p "$(dirname "$STATE")" && printf '%s\n' "$WANT_FX" | ab_atomic_write "$OURS_FX"
   fi
+  if [[ $CURSOR_EFFECTS == no ]]; then
+    if [[ -f $STATE ]] && command -v cursor-fx >/dev/null; then
+      ab_run cursor-fx "$(cat "$STATE")" >/dev/null 2>&1 || exit $?
+      rm -f "$STATE"
+    fi
+    if [[ -f $SUBTLE_REC ]] && command -v cursor-fx >/dev/null; then
+      ab_run cursor-fx subtle off >/dev/null 2>&1 || exit $?
+    fi
+    rm -f "$OURS_FX" "$PRE_QUIET" "$SUBTLE_REC"
+  fi
   if [[ -x $AFTERBURN ]]; then
     ab_run "$AFTERBURN" apply >/dev/null 2>&1 || exit $?
   elif [[ -f $EXTRAS/hyprland-glow.lua && -d $CURRENT ]]; then
     # No CLI: the plain glow, recoloured for an edition the same way `afterburn apply` does.
     if declare -F ab_load_palette >/dev/null; then
-      ab_recolor_glow "$EXTRAS/hyprland-glow.lua" | ab_atomic_write "$CURRENT/hyprland.lua"
+      {
+        ab_recolor_glow "$EXTRAS/hyprland-glow.lua"
+        if [[ $GLOW == no ]]; then
+          echo 'hl.config({ decoration = { shadow = { enabled = false } } })'
+        fi
+      } | ab_atomic_write "$CURRENT/hyprland.lua" || exit $?
     else
       cp "$EXTRAS/hyprland-glow.lua" "$CURRENT/hyprland.lua"
     fi
     ab_run hyprctl reload >/dev/null 2>&1 || exit $?
   fi
-  ab_run systemctl --user restart afterburn-watch.service >/dev/null 2>&1 || exit $?
+  # The basic effects do not require the separately optional watcher.
+  if [[ -f ${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/afterburn-watch.service ]]; then
+    ab_run systemctl --user restart afterburn-watch.service >/dev/null 2>&1 || exit $?
+  fi
 else
-  ab_run systemctl --user stop afterburn-watch.service >/dev/null 2>&1 || exit $?
+  if [[ -f ${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/afterburn-watch.service ]]; then
+    ab_run systemctl --user stop afterburn-watch.service >/dev/null 2>&1 || exit $?
+  fi
   if [[ -f $STATE ]] && command -v cursor-fx >/dev/null; then
     ab_run cursor-fx "$(cat "$STATE")" >/dev/null 2>&1 || exit $?
     rm -f "$STATE"

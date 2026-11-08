@@ -71,6 +71,110 @@ echo '{"omarchy":{"clonedFrom":"omarchy.lock"}}' > "$d/manifest.json"''')
         result = self.run_script("install.sh", "--yes")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
+    def prepare_activation(self, theme="afterburn"):
+        base = self.extras.parent
+        shutil.copy(REPO / "colors.toml", base / "colors.toml")
+        shutil.copytree(REPO / ".editions", base / ".editions")
+        current = self.home / ".local/state/omarchy/current"
+        (current / "theme").mkdir(parents=True)
+        self.write(current / "theme.name", theme + "\n")
+        if theme != "afterburn":
+            shutil.copytree(base / ".editions" / theme.removeprefix("afterburn-"),
+                            base.parent / theme)
+        self.write(self.home / ".config/ghostty/config", "# no effect\n")
+        self.stub("cursor-fx", """if [[ $1 == off ]]; then echo '# off' > "$HOME/.config/ghostty/config"
+elif [[ $1 != subtle ]]; then printf 'config-file = cursor-effects/%s.conf\\n' "$1" > "$HOME/.config/ghostty/config"; fi""")
+        # A new dependency lives here, even if the invoking shell lacks this PATH entry.
+        local = self.home / ".local/bin"
+        local.mkdir(parents=True)
+        shutil.move(self.bin / "cursor-fx", local / "cursor-fx")
+        return current / "theme/hyprland.lua"
+
+    def test_install_activates_every_editions_effect_without_relying_on_hook_dispatch(self):
+        choices = (("afterburn", "embers", "f59145"),
+                   ("afterburn-voltage", "lightning", "45e6f5"),
+                   ("afterburn-cyber", "phosphor", "54f545"),
+                   ("afterburn-overdrive", "neon", "f545c9"),
+                   ("afterburn-redline", "katana", "e80c1f"),
+                   ("afterburn-phantom", "hologram", "9d45f5"))
+        for theme, effect, color in choices:
+            with self.subTest(theme=theme):
+                current = self.home / ".local/state/omarchy/current"
+                if not current.exists():
+                    lua = self.prepare_activation(theme)
+                else:
+                    self.write(current / "theme.name", theme + "\n")
+                    source = self.extras.parent / ".editions" / theme.removeprefix("afterburn-")
+                    if source.is_dir():
+                        shutil.copytree(source, self.extras.parent.parent / theme, dirs_exist_ok=True)
+                self.install()
+                self.assertEqual((self.home / ".config/ghostty/config").read_text().strip(),
+                                 f"config-file = cursor-effects/{effect}.conf")
+                self.assertIn(color, lua.read_text())
+                self.assertIn("enabled = true", lua.read_text())
+
+    def test_basic_effects_do_not_require_the_subtle_pack(self):
+        lua = self.prepare_activation()
+        result = subprocess.run(["/bin/bash", str(self.extras / "install.sh")],
+                                env=self.env, input="y\n\n\nn\nn\nn\n", text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse((self.home / ".local/bin/afterburn").exists())
+        self.assertIn("cursor-effects/embers.conf", (self.home / ".config/ghostty/config").read_text())
+        self.assertIn("f5914555", lua.read_text())
+        self.assertNotIn("afterburn-watch.service", self.log.read_text())
+
+    @unittest.skipUnless(shutil.which("lua"), "Lua needed to evaluate compositor configuration")
+    def test_generated_glow_includes_omarchy_tui_app_ids(self):
+        lua = self.prepare_activation()
+        self.install()
+        result = subprocess.run([shutil.which("lua"), "-", str(lua)], input=r'''
+local shadow
+hl = {
+  config = function(c)
+    if c.decoration and c.decoration.shadow and c.decoration.shadow.enabled ~= nil then
+      shadow = c.decoration.shadow.enabled
+    end
+  end,
+  animation = function(_) end
+}
+o = {window = function(pattern, opts)
+  if opts.no_shadow == false then print(pattern) end
+end}
+dofile(arg[1])
+assert(shadow == true, "glow must be enabled")
+''', text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        import re
+        rules = result.stdout.splitlines()
+        for app in ("com.mitchellh.ghostty", "org.omarchy.btop", "org.omarchy.terminal", "TUI.float"):
+            self.assertTrue(any(re.fullmatch(rule, app) for rule in rules), app)
+
+    def test_install_reports_effect_application_failure(self):
+        self.prepare_activation()
+        self.stub("hyprctl", "exit 19")
+        result = self.run_script("install.sh", "--yes")
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertNotIn("is live", result.stdout)
+
+    def test_installer_rejects_compositor_errors_after_successful_reload(self):
+        self.prepare_activation()
+        self.stub("hyprctl", 'if [[ $1 == configerrors ]]; then echo "bad Lua configuration"; fi')
+        result = self.run_script("install.sh", "--yes")
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertNotIn("is live", result.stdout)
+        self.assertIn("bad Lua configuration", result.stderr)
+
+    def test_declined_effects_stay_disabled_on_theme_change(self):
+        lua = self.prepare_activation()
+        # Continue; cursor effects No; glow No; subtle pack No; lock No; editions No.
+        result = subprocess.run(["/bin/bash", str(self.extras / "install.sh")],
+                                env=self.env, input="y\nn\nn\nn\nn\nn\n", text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        hook = self.run_script("afterburn-theme-set-hook", "afterburn")
+        self.assertEqual(hook.returncode, 0, hook.stderr)
+        self.assertNotIn("cursor-effects/embers", (self.home / ".config/ghostty/config").read_text())
+        self.assertIn("enabled = false", lua.read_text())
+
     def test_skipped_pack_preserves_preexisting_files(self):
         self.write(self.home / ".local/bin/afterburn", "mine\n")
         files = (self.conf, self.unit, self.desktop)
@@ -80,7 +184,12 @@ echo '{"omarchy":{"clonedFrom":"omarchy.lock"}}' > "$d/manifest.json"''')
         self.run_script("uninstall.sh")
         for path in files:
             self.assertTrue(path.exists(), str(path))
-            self.assertEqual(path.read_text(), "my resource\n")
+            if path == self.conf:
+                self.assertTrue(path.read_text().startswith("my resource\n"))
+                self.assertIn("GLOW=yes", path.read_text())
+                self.assertIn("CURSOR_EFFECTS=yes", path.read_text())
+            else:
+                self.assertEqual(path.read_text(), "my resource\n")
 
     def test_installer_preserves_file_collisions(self):
         for path in (self.unit, self.desktop):

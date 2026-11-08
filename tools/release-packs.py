@@ -103,9 +103,14 @@ def build(args):
     helper = output / 'afterburn-pack-tool.py'
     helper.write_bytes(Path(__file__).read_bytes())
     release['bootstrap'] = {'name': helper.name, 'sha256': digest(helper.read_bytes()), 'bytes': helper.stat().st_size}
+    installer = output / 'install-afterburn.sh'
+    installer.write_bytes(Path(__file__).with_name('install-release.sh').read_bytes())
+    installer.chmod(0o755)
+    release['installer'] = {'name': installer.name, 'sha256': digest(installer.read_bytes()), 'bytes': installer.stat().st_size}
     (output / 'release.json').write_bytes(encoded(release))
     sums = {name: record['sha256'] for name, record in release['packs'].items()}
     sums[helper.name] = release['bootstrap']['sha256']
+    sums[installer.name] = release['installer']['sha256']
     (output / 'SHA256SUMS').write_text(''.join(f'{sha}  {name}\n' for name, sha in sorted(sums.items())))
     print(json.dumps(release, indent=2))
 

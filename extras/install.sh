@@ -13,6 +13,8 @@
 #       ~/.config/omarchy/themes/afterburn/extras/install.sh --yes  (no questions)
 # Undo: ~/.config/omarchy/themes/afterburn/extras/uninstall.sh
 set -euo pipefail
+# The dependency installer writes here; a fresh shell need not have it on PATH yet.
+export PATH="$HOME/.local/bin:$PATH"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 # The hook, the CLI and the .bashrc line all look for the extras at this path, so a copy of the theme
 # anywhere else would install links to files nothing reads. Stop before changing anything.
@@ -154,23 +156,61 @@ else
   skip "kept your current font"
 fi
 
-# 2. cursor-fx
-if command -v cursor-fx >/dev/null; then
-  ok "cursor-fx already installed"
-elif ! command -v ghostty >/dev/null; then
-  skip "skipped cursor-fx (needs Ghostty)"
-elif [[ -e $CFX_DIR || -L $CFX_DIR ]]; then
-  skip "cursor-fx checkout already exists at $CFX_DIR; kept it. Install it manually or move it aside before retrying"
-elif ask "Install cursor-fx, animated Ghostty cursors by Avarce (MIT)?"; then
-  CHANGED+=("cursor-fx installed (its own installer edits Ghostty config; old config in ~/ghostty-savepoints/)")
-  [[ -f $HOME/.config/ghostty/config ]] || omarchy refresh config ghostty/config >/dev/null
-  git clone -q "$CFX_REPO" "$CFX_DIR"
-  git -C "$CFX_DIR" -c advice.detachedHead=false checkout -q "$CFX_PIN"
-  (cd "$CFX_DIR" && ./install.sh >/dev/null)
-  ok "cursor-fx installed (old Ghostty config backed up in ~/ghostty-savepoints/)"
+# 2. Ask before enabling effects, including when cursor-fx already exists.
+# Keep explicit prior choices on Enter/EOF; --yes explicitly enables both.
+. "$HERE/afterburn-theme.sh"
+ab_load_conf
+CHOOSE_CURSOR=$CURSOR_EFFECTS CHOOSE_GLOW=$GLOW
+# Explicit Y/n defaults on interactive Enter, while EOF remains No.
+choose_effect() {
+  local key=$1 conf_key=$2 label=$3 previous=$4 answer
+  if $YES; then printf -v "$key" yes; return; fi
+  if read -rp "  $label [Enter keeps $previous; y/n] " answer; then
+    case $answer in
+      y|Y|yes|Yes) printf -v "$key" yes ;;
+      n|N|no|No) printf -v "$key" no ;;
+      *) printf -v "$key" '%s' "$previous" ;;
+    esac
+  elif ab_file_value "$(ab_conf_path)" "$conf_key" >/dev/null 2>&1; then
+    printf -v "$key" '%s' "$previous"
+  else printf -v "$key" no; fi
+}
+choose_effect CHOOSE_CURSOR CURSOR_EFFECTS "Enable animated Ghostty cursor effects for all editions (embers on Afterburn; install cursor-fx by Avarce if needed)?" "$CURSOR_EFFECTS"
+choose_effect CHOOSE_GLOW GLOW "Enable the window and TUI glow in every edition's colors?" "$GLOW"
+if [[ $CHOOSE_CURSOR == yes ]]; then
+  if command -v cursor-fx >/dev/null; then
+    ok "cursor-fx ready; the edition's effect will be enabled"
+  elif ! command -v ghostty >/dev/null; then
+    skip "skipped cursor-fx (needs Ghostty)"
+    CHOOSE_CURSOR=no
+  elif [[ -e $CFX_DIR || -L $CFX_DIR ]]; then
+    echo "afterburn: cursor-fx checkout already exists at $CFX_DIR; install it manually or move it aside before retrying" >&2
+    exit 1
+  else
+    CHANGED+=("cursor-fx installed (its own installer edits Ghostty config; old config in ~/ghostty-savepoints/)")
+    [[ -f $HOME/.config/ghostty/config ]] || omarchy refresh config ghostty/config >/dev/null
+    git clone -q "$CFX_REPO" "$CFX_DIR"
+    git -C "$CFX_DIR" -c advice.detachedHead=false checkout -q "$CFX_PIN"
+    (cd "$CFX_DIR" && ./install.sh)
+    command -v cursor-fx >/dev/null
+    ok "cursor-fx installed (old Ghostty config backed up in ~/ghostty-savepoints/)"
+  fi
 else
-  skip "skipped cursor-fx. Re-run this script any time to add it"
+  skip "cursor effects disabled for all Afterburn editions"
 fi
+# Record consent even without the optional subtle pack. Preserve unrelated settings.
+CONF="$(ab_conf_path)"
+CONF_NEW=false; [[ -e $CONF || -L $CONF ]] || CONF_NEW=true
+CONF_OURS=false
+if $CONF_NEW || { [[ ! -L $CONF && -f $STATE_DIR/owned/conf ]] && cmp -s "$CONF" "$STATE_DIR/owned/conf"; }; then CONF_OURS=true; fi
+CHANGED+=("effect consent in $CONF")
+mkdir -p "$(dirname "$CONF")" "$STATE_DIR/owned"
+"$HERE/bin/afterburn" get >/dev/null
+{
+  if [[ -f $CONF ]]; then sed -E '/^[[:space:]]*(GLOW|CURSOR_EFFECTS)[[:space:]]*=/d' "$CONF"; fi
+  printf '\nGLOW=%s\nCURSOR_EFFECTS=%s\n' "$CHOOSE_GLOW" "$CHOOSE_CURSOR"
+} | ab_atomic_write "$CONF"
+if $CONF_OURS; then cp -p "$CONF" "$STATE_DIR/owned/conf"; fi
 
 # 3. Glow + cursor hook
 CHANGED+=("theme-set hook added")
@@ -212,8 +252,8 @@ elif ask "Add the subtle pack? (slow-turning border, dimmed background windows, 
   ok "afterburn and afterburn-watch linked into ~/.local/bin"
 
   # Writes the default conf if there is none. An existing conf keeps its settings.
-  CONF_NEW=false
-  [[ -e $CONF || -L $CONF ]] || CONF_NEW=true
+  PACK_CONF_NEW=false
+  [[ -e $CONF || -L $CONF ]] || PACK_CONF_NEW=true
   "$BIN/afterburn" get >/dev/null
 
   # Heat source: "time" on a first install, and whatever you set before on a re-run. Only an answer
@@ -241,7 +281,7 @@ elif ask "Add the subtle pack? (slow-turning border, dimmed background windows, 
   fi
   # Refresh our snapshot only when the existing contents were still ours.
   CONF_OURS=false
-  if $CONF_NEW || { [[ ! -L $CONF && -f $STATE_DIR/owned/conf ]] && cmp -s "$CONF" "$STATE_DIR/owned/conf"; }; then CONF_OURS=true; fi
+  if $PACK_CONF_NEW || { [[ ! -L $CONF && -f $STATE_DIR/owned/conf ]] && cmp -s "$CONF" "$STATE_DIR/owned/conf"; }; then CONF_OURS=true; fi
   conf_set HEAT_SOURCE "$HEAT"
   if $CONF_OURS; then mkdir -p "$STATE_DIR/owned"; cp -p "$CONF" "$STATE_DIR/owned/conf"; fi
   ok "heat source: $HEAT"
@@ -420,7 +460,15 @@ fi
 
 CHANGED+=("theme set to $FINAL_THEME")
 omarchy theme set "$FINAL_THEME" >/dev/null
-if command -v cursor-fx >/dev/null; then
+# Omarchy reports hook errors without failing theme selection. Apply synchronously
+# as well so installation cannot announce success after an effects failure.
+bash "$HERE/afterburn-theme-set-hook" "$FINAL_THEME"
+CONFIG_ERRORS=$(hyprctl configerrors)
+if [[ -n ${CONFIG_ERRORS//[[:space:]]/} ]]; then
+  printf 'afterburn: Hyprland reported configuration errors:\n%s\n' "$CONFIG_ERRORS" >&2
+  exit 1
+fi
+if [[ $CHOOSE_CURSOR == yes ]]; then
   echo; o "  ❯ $FINAL_THEME is live. Open a new Ghostty window (Super + Return) and type."; echo
 else
   echo; o "  ❯ $FINAL_THEME is live."; echo
