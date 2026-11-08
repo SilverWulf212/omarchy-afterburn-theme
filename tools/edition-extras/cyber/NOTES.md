@@ -1,3 +1,5 @@
+> **Wallpaper refresh (2026-11-08):** The live wallpapers described below are historical and have been retired. Current artwork, rendering, installation and rollback instructions: [docs/wallpapers/README.md](../../../docs/wallpapers/README.md). Other edition effects remain unchanged.
+
 # Afterburn Cyber: polish pass (five enhancements)
 
 > **Status: integrated.** `tools/make-editions.sh` copies `files/` and `edition.conf` into `.editions/cyber/`; the hook, the `afterburn` command and `extras/lock/` read them (see `README.md`, "Editions"). Final knobs: Cyber: cursor phosphor, border slow, dim 0.12, glow 17, fall embers. The tagline went back to the original generated one (quiet control, not shouting). Where the wiring notes below say "proposal" or "must wire", that is now done; the numbers in this file are the polish pack's originals.
