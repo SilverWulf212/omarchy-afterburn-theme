@@ -4,6 +4,16 @@
 
 **Orange-on-black cyber theme for [Omarchy](https://omarchy.org).** Ember-gradient window borders with a soft orange glow, animated ember cursors in Ghostty, and nine wallpapers: six stills and three live loops.
 
+Comes in six colours, each with its own personality: Afterburn (orange), Voltage (cyan), Cyber (green), Overdrive (magenta), Redline (red) and Phantom (violet). See [Editions](#editions).
+
+## Watch
+
+| [![Six editions](docs/media/watch-editions.jpg)](https://github.com/SilverWulf212/omarchy-afterburn-theme/releases/download/v1.0.0/editions.mp4) | [![Launch v2](docs/media/watch-brag-v2.jpg)](https://github.com/SilverWulf212/omarchy-afterburn-theme/releases/download/v1.0.0/brag-v2.mp4) | [![Original launch](docs/media/watch-brag.jpg)](https://github.com/SilverWulf212/omarchy-afterburn-theme/releases/download/v1.0.0/brag.mp4) |
+|---|---|---|
+| **Six editions** (57 s) | **Launch v2** (69 s) | **Original launch** (39 s) |
+
+Click a thumbnail to play or download the video from the [v1.0.0 release](https://github.com/SilverWulf212/omarchy-afterburn-theme/releases/tag/v1.0.0). Music: Sascha Ende, ende.app, CC BY 4.0.
+
 ## Install: the full stack (recommended)
 
 ```bash
