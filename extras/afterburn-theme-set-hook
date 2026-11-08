@@ -51,16 +51,21 @@ if ab_is_afterburn "$THEME"; then
   if command -v cursor-fx >/dev/null; then
     cur=$(cursor_now)
     ours=$(cat "$OURS_FX" 2>/dev/null || true)
+    # An install from before editions had their own effect set embers and wrote no record of it. If an
+    # effect is saved and embers is running, that embers is ours: do not save it over your own.
+    if [[ -z $ours && -f $STATE && $cur == embers ]]; then ours=embers; fi
     if [[ -f $PRE_QUIET ]]; then
       # Fullscreen or battery has the effect off for now. Leave it off, and make the one that comes back
       # afterwards this theme's. What was saved is not your own effect, so it is not touched either.
       echo "$WANT_FX" > "$PRE_QUIET"
-    elif [[ $cur != "$WANT_FX" ]]; then
+    else
       # Save the effect to restore later, unless the current one is only the previous Afterburn theme's.
+      # Also when it is the very effect this theme wants: it is still yours, and the next edition may
+      # switch it, so leaving Afterburn has to know it.
       if [[ -z $ours || $cur != "$ours" ]]; then
         mkdir -p "$(dirname "$STATE")" && echo "$cur" > "$STATE"
       fi
-      cursor-fx "$WANT_FX" >/dev/null 2>&1 || true
+      [[ $cur == "$WANT_FX" ]] || cursor-fx "$WANT_FX" >/dev/null 2>&1 || true
     fi
     mkdir -p "$(dirname "$STATE")" && echo "$WANT_FX" > "$OURS_FX"
   fi

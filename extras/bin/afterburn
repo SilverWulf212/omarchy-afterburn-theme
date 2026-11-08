@@ -284,6 +284,9 @@ apply_extra() {
       if [[ -f $CFX_PRE ]]; then
         printf '%s\n' "$CURSOR_FX" > "$CFX_PRE"   # fullscreen or battery holds the effect off: this one comes back after
       else
+        # Nothing saved yet (the hook has not run since an older install): the running effect is yours, keep it
+        # for the day you leave Afterburn.
+        [[ -f $STATE/prev-cursor-fx ]] || cfx_now > "$STATE/prev-cursor-fx"
         cursor-fx "$CURSOR_FX" >/dev/null 2>&1 || true
       fi
       printf '%s\n' "$CURSOR_FX" > "$STATE/cursor-fx-set" ;;
