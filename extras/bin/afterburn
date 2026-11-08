@@ -46,7 +46,7 @@ declare -A DEFAULT=([ROTATE]=slow [DIM]=0.08 [GLOW_RANGE]=14 [CURSOR_FX]=embers 
 die() { echo "afterburn: $*" >&2; exit 1; }
 
 usage() {
-  sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 write_default_conf() {
