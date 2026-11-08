@@ -28,7 +28,7 @@
 #     only as far as orange, and orange is 30 deg from red.
 #
 # Per-edition extras (tools/edition-extras/<name>/): files/ is copied into .editions/<name>/ as it is
-# (extra live wallpapers named 10-*/11-*, btop.theme, neovim.lua) and edition.conf next to it. The conf
+# (extra live wallpapers named live-*, btop.theme, neovim.lua) and edition.conf next to it. The conf
 # holds the runtime knobs (CURSOR_FX ROTATE DIM GLOW_RANGE EMBER_STYLE, checked here with the same rules
 # the runtime uses) and the build-time texts TAGLINE, PERSONALITY and FEELING, which end up in
 # .editions/README.md and in the colors.toml header. A bad value stops the build.
@@ -370,7 +370,7 @@ for spec in "${EDITIONS[@]}"; do
   copy_extras "$name" "$dir"
   extra_list=()
   while IFS= read -r f; do extra_list+=("\`${f#"$dir/"}\`"); done < <(
-    { find "$dir/backgrounds" -type f -name '1[0-9]-*' ; find "$dir" -maxdepth 1 -type f \( -name btop.theme -o -name neovim.lua \); } | LC_ALL=C sort)
+    { find "$dir/backgrounds" -type f -name 'live-*' ; find "$dir" -maxdepth 1 -type f \( -name btop.theme -o -name neovim.lua \); } | LC_ALL=C sort)
   extras_joined=$(IFS=,; echo "${extra_list[*]}")
   extras_joined=${extras_joined//,/, }
   feel_rows+=("| $name | $accent | $CONF_PERSONALITY | $CONF_FEELING | $tagline |")

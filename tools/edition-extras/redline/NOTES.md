@@ -7,8 +7,8 @@ Layout: `files/` goes into the edition theme dir as-is. `edition.conf` holds the
 ## The five
 
 1. **Katana cursor** (`CURSOR_FX=katana`). Typing in Ghostty leaves a blade-slash trail instead of rising embers. Only Redline asks for it, so the edition feels like a sword rather than a fire.
-2. **Tachometer live loop** (`files/backgrounds/10-tachometer-live.mp4`, 2560x1072, 8 s, 30 fps, h264 High, yuv420p, 438 KB). A redline gauge: the needle sweeps idle to the limiter and back, the 7000-8000 band glows, the limiter flutters with integer harmonics, sparks lift off the arc above 7000, and a digital RPM readout sits under the hub with a LIMITER tag. It loops seamlessly. No other edition has a gauge.
-3. **Heat-haze live loop** (`files/backgrounds/11-heat-haze-live.mp4`, same spec, 722 KB). An exhaust glow on a black horizon. Hot air rises as thin vertical columns that scroll exactly one frame height per loop, and a shimmer warps the glow with integer-harmonic waves, so the loop is seamless. The horizon line is the redline accent.
+2. **Tachometer live loop** (`files/backgrounds/live-tachometer.mp4`, 2560x1072, 8 s, 30 fps, h264 High, yuv420p, 438 KB). A redline gauge: the needle sweeps idle to the limiter and back, the 7000-8000 band glows, the limiter flutters with integer harmonics, sparks lift off the arc above 7000, and a digital RPM readout sits under the hub with a LIMITER tag. It loops seamlessly. No other edition has a gauge.
+3. **Heat-haze live loop** (`files/backgrounds/live-heat-haze.mp4`, same spec, 722 KB). An exhaust glow on a black horizon. Hot air rises as thin vertical columns that scroll exactly one frame height per loop, and a shimmer warps the glow with integer-harmonic waves, so the loop is seamless. The horizon line is the redline accent.
 4. **Spark lock-screen embers** (`EMBER_STYLE=spark`). Grinder-style sparks instead of floating embers: see the spec under "Lock screen" below.
 5. **Redline btop meters** (`files/btop.theme`). Every meter is one red ramp, brown at idle, blood red through the limiter, white-hot (`#ff8a8c`) at the top. Temperatures run past red into yellow-hot (`#ffdc70`) like a glowing exhaust. Box outlines and selection use the accent. It is built on Omarchy's btop template with Redline's colours.
 
@@ -16,14 +16,14 @@ Mood knobs in `edition.conf` (`ROTATE=medium`, `DIM=0.12`, `GLOW_RANGE=18`) are 
 
 ## How to see it
 
-- Live loops: `ffplay -loop 0 tools/edition-extras/redline/files/backgrounds/10-tachometer-live.mp4` (and `11-heat-haze-live.mp4`). Or copy them into a Redline theme dir and pick them from the wallpaper menu.
+- Live loops: `ffplay -loop 0 tools/edition-extras/redline/files/backgrounds/live-tachometer.mp4` (and `live-heat-haze.mp4`). Or copy them into a Redline theme dir and pick them from the wallpaper menu.
 - Cursor: after the integrator wires `CURSOR_FX`, switch to Redline and type in Ghostty.
 - btop: copy `files/btop.theme` over the Redline theme's `btop.theme` (or the same name in `~/.config/omarchy/themes/afterburn-redline/`) and run `btop`.
 - Lock screen: wire `EMBER_STYLE=spark` (below), then lock with the Redline theme active.
 
 ## Integrator must wire
 
-- **Copy the files into the Redline build.** `tools/make-editions.sh` wipes `.editions/` and only grades files from the base `backgrounds/` (it hue-rotates every file there for every edition). Do NOT add the 10-/11- loops to the base `backgrounds/` (that would put them in all six themes). Instead, add a step to the Redline loop in `make-editions.sh`: copy `tools/edition-extras/redline/files/*` into `$dir`, keeping `backgrounds/10-*` and `11-*` as-is (no grade). Without this, a rebuild drops them. `btop.theme` lands in the theme dir root, which Omarchy's btop template gives way to (same-name file overrides the template).
+- **Copy the files into the Redline build.** `tools/make-editions.sh` wipes `.editions/` and only grades files from the base `backgrounds/` (it hue-rotates every file there for every edition). Do NOT add the live-* loops to the base `backgrounds/` (that would put them in all six themes). Instead, add a step to the Redline loop in `make-editions.sh`: copy `tools/edition-extras/redline/files/*` into `$dir`, keeping `backgrounds/live-*` as-is (no grade). Without this, a rebuild drops them. `btop.theme` lands in the theme dir root, which Omarchy's btop template gives way to (same-name file overrides the template).
 - **Wallpaper rotation.** Super+Ctrl+Space cycles `backgrounds/`. Check that the rotation picks up the two new files. They are videos, so the heat-level swap (`afterburn level`) ignores them, as it does for the base live loops.
 - **CURSOR_FX.** `extras/afterburn-theme-set-hook` hard-codes `cursor-fx embers` and checks `[[ $cur != embers ]]`. Read `CURSOR_FX` from the active edition's `edition.conf` (default `embers`), and make that check compare against the configured effect. `afterburn status` and the quiet/saver logic also name `embers`; keep those working for any effect. Valid names include `katana` (present in the local `cursor-effects` install).
 - **EMBER_STYLE.** `extras/lock/EmberLayer.qml` has one motion, today's `rise`: an `Emitter` at the bottom edge, `emitRate: 12`, `lifeSpan: 9000`, `angle: -90`, `magnitude: 26`, and a `#ffc48a -> #ff5a1f -> #7a3e16` ramp. Add a `style` property (default `rise`), read it in `lock-embers.sh`, and branch the emitter and delegate on it. The rest of the layer (glow, breathing scale, input transparency) stays.
@@ -47,8 +47,8 @@ Sparks, not embers. They burst from the bottom glow in short fast arcs and cool 
 
 ## Assets and checks
 
-- `10-tachometer-live.mp4`: rendered from numpy and Pillow frames, piped into libx264 `-crf 20 -preset slow`. Seam check: mean frame step 0.62, last-to-first 0.26 (on a 320-wide grey downsample). A frame from t=2.0 s reads 3 123 RPM, and t=0 reads 850 RPM at idle.
-- `11-heat-haze-live.mp4`: numpy frames, libx264 `-crf 21 -preset slow`. Seam check: mean step 0.048, last-to-first 0.154 (within codec noise on a 0-255 scale).
+- `live-tachometer.mp4`: rendered from numpy and Pillow frames, piped into libx264 `-crf 20 -preset slow`. Seam check: mean frame step 0.62, last-to-first 0.26 (on a 320-wide grey downsample). A frame from t=2.0 s reads 3 123 RPM, and t=0 reads 850 RPM at idle.
+- `live-heat-haze.mp4`: numpy frames, libx264 `-crf 21 -preset slow`. Seam check: mean step 0.048, last-to-first 0.154 (within codec noise on a 0-255 scale).
 - `btop.theme`: all 50 keys present (no template token left), generated from Omarchy's btop template.
 - `edition.conf`: parsed with `bash -n` and sourced (`CURSOR_FX=katana ROTATE=medium DIM=0.12 GLOW_RANGE=18 EMBER_STYLE=spark`).
 - No Higgsfield generation. Credits used: 0.

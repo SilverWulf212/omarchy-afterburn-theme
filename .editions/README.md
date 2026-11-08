@@ -36,8 +36,8 @@ Lock embers: `rise` drifts up (the base), `fall` rains down, `drift` floats and 
 | Edition | Extra files (live wallpapers, btop and Neovim themes) |
 | --- | --- |
 | afterburn (base) | The nine wallpapers (six stills, three live loops) |
-| voltage | `backgrounds/10-voltage-arcgrid.mp4`, `btop.theme` |
-| cyber | `backgrounds/10-matrix-rain.mp4`, `btop.theme`, `neovim.lua` |
-| overdrive | `backgrounds/10-speed-streaks.mp4`, `neovim.lua` |
-| redline | `backgrounds/10-tachometer-live.mp4`, `backgrounds/11-heat-haze-live.mp4`, `btop.theme` |
-| phantom | `backgrounds/10-phantom-aurora.mp4` |
+| voltage | `backgrounds/live-voltage-arcgrid.mp4`, `btop.theme` |
+| cyber | `backgrounds/live-matrix-rain.mp4`, `btop.theme`, `neovim.lua` |
+| overdrive | `backgrounds/live-speed-streaks.mp4`, `neovim.lua` |
+| redline | `backgrounds/live-tachometer.mp4`, `backgrounds/live-heat-haze.mp4`, `btop.theme` |
+| phantom | `backgrounds/live-phantom-aurora.mp4` |

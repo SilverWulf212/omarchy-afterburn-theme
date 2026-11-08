@@ -12,7 +12,7 @@ Source: `tools/edition-extras/cyber/`. Nothing here is installed; the integrator
    own accent is the phosphor colour; the other editions keep their own hue.
    How to see it: switch to cyber and type in Ghostty. Not verified on this machine (cursor-fx not
    installed here); check the effect looks right in the real terminal.
-2. **Matrix-rain live wallpaper** (`files/backgrounds/10-matrix-rain.mp4`). Seamless 8 s, 2560x1072, 30 fps
+2. **Matrix-rain live wallpaper** (`files/backgrounds/live-matrix-rain.mp4`). Seamless 8 s, 2560x1072, 30 fps
    h264. Acid-green columns of hex and symbol glyphs fall over a dormant glyph field, with a phosphor bloom,
    scanlines and a faint CRT vignette. Nothing else in the theme looks like this.
    How to see it: Super + Ctrl + Space to cycle to it, or set it as the wallpaper. Each column has a
@@ -43,7 +43,7 @@ Source: `tools/edition-extras/cyber/`. Nothing here is installed; the integrator
 
 | File | Size | Notes |
 |---|---|---|
-| `files/backgrounds/10-matrix-rain.mp4` | 3.1 MB | 240 frames, 8 s, yuv420p, High profile |
+| `files/backgrounds/live-matrix-rain.mp4` | 3.1 MB | 240 frames, 8 s, yuv420p, High profile |
 | `files/neovim.lua` | ~1.6 KB | luac -p ok |
 | `files/btop.theme` | ~2.4 KB | bash -n ok; keys match the template |
 | `edition.conf` | ~0.2 KB | bash -n ok |
@@ -53,14 +53,14 @@ Regenerate the wallpaper (about 90 s, uses cached numpy and Pillow from uv):
 
 ```bash
 uv run --with numpy --with pillow python3 tools/edition-extras/cyber/make-matrix-rain.py \
-  tools/edition-extras/cyber/files/backgrounds/10-matrix-rain.mp4
+  tools/edition-extras/cyber/files/backgrounds/live-matrix-rain.mp4
 ```
 
 ## Integrator wiring
 
 - Copy `files/neovim.lua` to `.editions/cyber/neovim.lua` and `files/btop.theme` to `.editions/cyber/btop.theme`.
   Both override the templated files of the same name.
-- Copy `files/backgrounds/10-matrix-rain.mp4` to `.editions/cyber/backgrounds/`. The `10-` prefix keeps it
+- Copy `files/backgrounds/live-matrix-rain.mp4` to `.editions/cyber/backgrounds/`. The `live-` prefix keeps it
   clear of the base wallpapers. Consider adding it to `make-editions.sh`'s wallpaper list only if you want it
   in the heat-wallpaper set (it is not a still, so it does not need a heat variant).
 - `edition.conf`: the runtime reads it through the theme-set hook. Its keys are `CURSOR_FX`, `ROTATE`, `DIM`,
@@ -77,5 +77,5 @@ uv run --with numpy --with pillow python3 tools/edition-extras/cyber/make-matrix
 
 ## Undo
 
-Delete `.editions/cyber/neovim.lua`, `.editions/cyber/btop.theme` and `.editions/cyber/backgrounds/10-matrix-rain.mp4`.
+Delete `.editions/cyber/neovim.lua`, `.editions/cyber/btop.theme` and `.editions/cyber/backgrounds/live-matrix-rain.mp4`.
 Restore the cyber `edition.conf` keys to their defaults.

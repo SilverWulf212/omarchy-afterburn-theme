@@ -7,7 +7,7 @@ Edition files for `.editions/phantom/`. Nothing here is wired yet. The integrato
 ## The five enhancements
 
 1. **Hologram cursor (`CURSOR_FX=hologram`).** Ghostty cursor-fx `hologram` instead of the embers every edition gets. Phantom's cursor shimmers like a projection. Unique choice for this edition.
-2. **Ghost aurora live wallpaper (`files/backgrounds/10-phantom-aurora.mp4`).** Violet curtains that bend and shimmer, twinkling stars, and two drifting wisps. Seamless 8 s, 2560x1072, 30 fps, h264. Other editions use the base art, so this loop is phantom-only.
+2. **Ghost aurora live wallpaper (`files/backgrounds/live-phantom-aurora.mp4`).** Violet curtains that bend and shimmer, twinkling stars, and two drifting wisps. Seamless 8 s, 2560x1072, 30 fps, h264. Other editions use the base art, so this loop is phantom-only.
 3. **Stealth dim (`DIM=0.14`).** Unfocused windows fade further into the black than the default 0.08, so background windows look like they are going quiet and out of sight.
 4. **Afterglow halo (`GLOW_RANGE=22`).** A wider, softer violet shadow than the base range of 14. The focused window gets a longer haze instead of a tight rim.
 5. **Drift embers on the lock screen (`EMBER_STYLE=drift`).** See the style spec below. Wisps float up and sideways instead of rising in straight lines.
@@ -15,7 +15,7 @@ Edition files for `.editions/phantom/`. Nothing here is wired yet. The integrato
 ## How to see each one
 
 - Cursor: `cursor-fx hologram` in a Ghostty window, or switch to the phantom edition with the hook wired.
-- Wallpaper: play `10-phantom-aurora.mp4` as a background (the OWE live loop) or use `Super + Ctrl + Space` to reach it after the 9- files.
+- Wallpaper: play `live-phantom-aurora.mp4` as a background (the OWE live loop) or use `Super + Ctrl + Space` to reach it after the base files.
 - Dim: `afterburn set DIM 0.14`, then look at unfocused windows.
 - Halo: compare the shadow radius with and without the change.
 - Lock screen: lock with the phantom theme active once `EMBER_STYLE` is wired.
@@ -27,7 +27,7 @@ Edition files for `.editions/phantom/`. Nothing here is wired yet. The integrato
 - `GLOW_RANGE`: not an existing key. Map it to the `shadow.range` value in the generated `hyprland.lua` for this edition (the base is 14).
 - `EMBER_STYLE`: not an existing key. `EmberLayer.qml` has one style today (rise). See the drift spec below.
 - `TAGLINE`: already in the edition header. Show it wherever the integrator puts edition taglines.
-- Copy `files/backgrounds/10-phantom-aurora.mp4` into `.editions/phantom/backgrounds/`. The `10-` prefix sorts after the base 9-series files, so there is no name clash.
+- Copy `files/backgrounds/live-phantom-aurora.mp4` into `.editions/phantom/backgrounds/`. The `live-` prefix sorts after the base stills in any locale, so there is no name clash and the theme still opens on its still wallpaper (a `10-` name sorts first in en_US, ahead of `1-horizon.jpg`).
 
 ## Drift ember style (EMBER_STYLE=drift), spec for the lock-screen layer
 

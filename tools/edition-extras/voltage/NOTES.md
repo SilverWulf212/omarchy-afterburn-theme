@@ -8,7 +8,7 @@ Everything here lives under `tools/edition-extras/voltage/`. Nothing in `extras/
 ## The five enhancements
 
 1. **Lightning cursor** (`CURSOR_FX=lightning`). Typing throws a cyan bolt instead of the orange embers the other editions keep. Unique to voltage because it is the only edition that names a different cursor effect.
-2. **Arc-grid live wallpaper** (`files/backgrounds/10-voltage-arcgrid.mp4`). Pylons, sagging phase wires and earth wire, with a white-hot energy packet running along each wire. Every 8 s, lightning arcs jump between conductors and crackle with sparks, and the arc light lifts the grid. It is a new scene that no other edition has, so the `10-` prefix keeps it from clashing with the base set.
+2. **Arc-grid live wallpaper** (`files/backgrounds/live-voltage-arcgrid.mp4`). Pylons, sagging phase wires and earth wire, with a white-hot energy packet running along each wire. Every 8 s, lightning arcs jump between conductors and crackle with sparks, and the arc light lifts the grid. It is a new scene that no other edition has, so the `10-` prefix keeps it from clashing with the base set.
 3. **Spark lock-screen embers** (`EMBER_STYLE=spark`). Instead of slow rising embers, the lock screen gets short, fast crackle sparks. Unique to voltage because only this edition asks for the spark motion.
 4. **Charge-meter btop** (`files/btop.theme`). CPU, memory, network and disk meters ramp deep teal, then cyan, then white-hot at high load, so a busy machine looks like a loaded line. Temperature keeps its green, yellow, red semantics. The CPU box outline is cyan. Only voltage gets this ramp.
 5. **Mood tuning** (`ROTATE=medium`, `DIM=0.12`, `GLOW_RANGE=18`, `TAGLINE`). A slower border turn than the base's fast spin, slightly darker background windows so the cyan reads, and a wider halo. The tagline is "Live wire on black glass.", replacing the generated "Cold current on black glass."
@@ -17,7 +17,7 @@ Everything here lives under `tools/edition-extras/voltage/`. Nothing in `extras/
 
 | File | Size | What |
 | --- | --- | --- |
-| `files/backgrounds/10-voltage-arcgrid.mp4` | 649 KB | 2560x1072, 30 fps, 240 frames, 8.000 s, h264 yuv420p, seamless loop |
+| `files/backgrounds/live-voltage-arcgrid.mp4` | 649 KB | 2560x1072, 30 fps, 240 frames, 8.000 s, h264 yuv420p, seamless loop |
 | `files/btop.theme` | about 3 KB | Full btop theme, all placeholders filled from voltage colours.toml |
 | `edition.conf` | under 1 KB | The knobs above |
 | `gen/arcgrid.py` | about 10 KB | Generator for the wallpaper, reproducible |
@@ -26,13 +26,13 @@ Total added: about 0.66 MB.
 
 ## How to see it
 
-- Wallpaper: play it with `mpv --loop tools/edition-extras/voltage/files/backgrounds/10-voltage-arcgrid.mp4`, or wait for the rotation. The base wallpaper cycle includes it once copied into the edition.
+- Wallpaper: play it with `mpv --loop tools/edition-extras/voltage/files/backgrounds/live-voltage-arcgrid.mp4`, or wait for the rotation. The base wallpaper cycle includes it once copied into the edition.
 - Cursor: set `CURSOR_FX=lightning`, then `cursor-fx lightning` in a Ghostty window, and type.
 - btop: copy to `~/.config/btop/themes/` and select it in btop, or check it through the edition theme dir.
 
 ## Integrator wiring
 
-- Copy `files/backgrounds/10-voltage-arcgrid.mp4` into `.editions/voltage/backgrounds/`. The integrator decides whether to add it to heat rotation. It is not a heat variant.
+- Copy `files/backgrounds/live-voltage-arcgrid.mp4` into `.editions/voltage/backgrounds/`. The integrator decides whether to add it to heat rotation. It is not a heat variant.
 - Copy `files/btop.theme` into `.editions/voltage/`, so the theme dir ships it. Omarchy uses a theme-provided file over its own template of the same name.
 - Read `edition.conf` in the hook. Today `afterburn` supports ROTATE, DIM and others, but not `GLOW_RANGE`, `EMBER_STYLE`, `CURSOR_FX` or `TAGLINE`.
   - `CURSOR_FX`: the hook currently hardcodes `cursor-fx embers` for every edition. Use this value when set, and fall back to `embers`.
