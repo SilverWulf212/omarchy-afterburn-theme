@@ -1,7 +1,8 @@
 #!/bin/bash
 # Afterburn: the full stack.
 #   1. Ghostty terminal (installed and made default if needed)
-#   2. cursor-fx animated cursors by Avarce (MIT), set to "embers" while Afterburn is active
+#   2. cursor-fx animated cursors by Avarce (MIT), set to the theme's effect while Afterburn is active
+#      (embers on the base theme, the edition's own on a colour edition)
 #   3. The orange window glow (Omarchy drops .lua from installed themes; a theme-set hook restores it)
 #   4. The subtle pack (optional): slow border turn, dimmed background windows, heat levels,
 #      quiet fullscreen, battery saver, red prompt with a fail flash, the `afterburn` CLI
