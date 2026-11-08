@@ -4,15 +4,14 @@
 #
 # After a failed command, plays one short truecolor animation (burn, cascade,
 # dissolve) on a line showing "✗ <command>  exit N", then erases the line.
-# Total under ~450 ms. Pure bash, no forks except one stat/history on failure.
+# Animation duration is about 400 ms; configuration and palette are validated before playback.
 #
 # Skips: exit 130/148 (Ctrl-C, Ctrl-Z), non-interactive shells, NO_MOTION set.
 # FAIL_FX (random|burn|cascade|dissolve|off) comes from
-# ${XDG_CONFIG_HOME:-~/.config}/afterburn/afterburn.conf, re-read when mtime changes.
+# ${XDG_CONFIG_HOME:-~/.config}/afterburn/afterburn.conf, read as validated data on each failed command.
 
 if [[ $- == *i* && -t 1 && -z ${__AFTERBURN_FAIL_HOOKED-} ]]; then
   __AFTERBURN_FAIL_HOOKED=1
-  __AFTERBURN_FAIL_MTIME=${__AFTERBURN_FAIL_MTIME-}
   __AFTERBURN_FAIL_FX=${__AFTERBURN_FAIL_FX-random}
 
   __AFB_FRAMES=8
@@ -27,22 +26,21 @@ if [[ $- == *i* && -t 1 && -z ${__AFTERBURN_FAIL_HOOKED-} ]]; then
   __AFB_CASCADE=('▀' '▄' '_' '.')
   __AFB_DISSOLVE=('▓' '▒' '░')
 
-  # Re-read FAIL_FX only when the conf file's mtime changes.
+  # Read only the two relevant validated values, without evaluating shell syntax.
   __afterburn_fail_load_conf() {
-    local conf=${XDG_CONFIG_HOME:-$HOME/.config}/afterburn/afterburn.conf
-    local mtime k v
-    mtime=$(stat -c %Y -- "$conf" 2>/dev/null) || mtime=missing
-    [[ $mtime == "$__AFTERBURN_FAIL_MTIME" ]] && return 0
-    __AFTERBURN_FAIL_MTIME=$mtime
-    __AFTERBURN_FAIL_FX=random
-    [[ -r $conf ]] || return 0
-    while IFS='=' read -r k v || [[ -n $k ]]; do
-      if [[ $k == FAIL_FX ]]; then
-        v=${v%%#*}
-        v=${v//[[:space:]]/}
-        __AFTERBURN_FAIL_FX=$v
-      fi
-    done < "$conf"
+    local helper="$HOME/.config/omarchy/themes/afterburn/extras/afterburn-theme.sh"
+    if ! declare -F ab_load_conf >/dev/null; then
+      [[ -r $helper ]] || { __AFTERBURN_FAIL_FX=off; return; }
+      . "$helper"
+    fi
+    # Values are validated data; atomic replacement can occur within one timestamp
+    # second, so do not cache solely by mtime.
+    local MOTION=on FAIL_FX=random k v
+    for k in MOTION FAIL_FX; do
+      if v=$(ab_file_value "$(ab_conf_path)" "$k") && ab_config_valid "$k" "$v"; then printf -v "$k" %s "$v"; fi
+    done
+    __AFTERBURN_FAIL_FX=$FAIL_FX
+    ab_motion_enabled || __AFTERBURN_FAIL_FX=off
   }
 
   # Colours of the active Afterburn theme or edition, written by the theme-set hook to

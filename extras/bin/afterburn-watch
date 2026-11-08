@@ -22,9 +22,7 @@ LEVELS=(cool normal hot)
 
 # Defaults first, so a missing or partial conf still leaves every value set.
 load_conf() {
-  HEAT_SOURCE=time EVENING_HOURS=19-07 HOT_F=90 COOL_F=50
-  FULLSCREEN_QUIET=yes LAPTOP_MODE=auto LAT= LON=
-  [[ -f $CONF ]] && . "$CONF"
+  ab_load_conf "$(ab_theme_name)"
 }
 
 # True for the base theme and for the colour editions (afterburn-voltage, -cyber, ...).
@@ -35,6 +33,7 @@ is_afterburn() { local t; t=$(cat "$THEME_FILE" 2>/dev/null); [[ $t == afterburn
 # watcher was stopped would otherwise leave quiet stuck on (or off) until the next toggle.
 sync_quiet() {
   is_afterburn || return 0
+  ab_refresh_instance
   load_conf
   local fs
   fs=$(hyprctl activewindow -j 2>/dev/null | jq -r '.fullscreen // 0' 2>/dev/null)
@@ -45,20 +44,43 @@ sync_quiet() {
   fi
 }
 
+# Re-select the socket on every connection attempt. Match the current Wayland
+# display after a restart; never fall through to an arbitrary other session.
+ab_socket_exists() { [[ -S $1 ]]; }
+fullscreen_socket() {
+  ab_refresh_instance
+  local runtime=${XDG_RUNTIME_DIR:-/run/user/$UID} sig=${HYPRLAND_INSTANCE_SIGNATURE:-} selected
+  if [[ -n $sig ]] && ab_socket_exists "$runtime/hypr/$sig/.socket2.sock"; then
+    printf '%s\n' "$runtime/hypr/$sig/.socket2.sock"; return 0
+  fi
+  [[ -n ${WAYLAND_DISPLAY:-} ]] || return 1
+  selected=$(hyprctl instances -j 2>/dev/null | jq -r --arg display "$WAYLAND_DISPLAY" '[.[] | select(.wl_socket == $display)] | if length == 1 then .[0].instance else empty end') || return 1
+  [[ $selected =~ ^[A-Za-z0-9_.-]+$ ]] && ab_socket_exists "$runtime/hypr/$selected/.socket2.sock" || return 1
+  printf '%s\n' "$runtime/hypr/$selected/.socket2.sock"
+}
 watch_fullscreen() {
-  local runtime=${XDG_RUNTIME_DIR:-/run/user/$UID} sig sock line
-  sig=${HYPRLAND_INSTANCE_SIGNATURE:-$(ls -t "$runtime/hypr" 2>/dev/null | head -n1)}
-  sock=$runtime/hypr/$sig/.socket2.sock
+  local sock line
   while :; do
-    socat -U - "UNIX-CONNECT:$sock" 2>/dev/null | while IFS= read -r line; do
-      load_conf
-      is_afterburn && [[ $FULLSCREEN_QUIET == yes ]] || continue
-      case $line in
-        'fullscreen>>1') afterburn quiet on ;;
-        'fullscreen>>0') afterburn quiet off ;;
-      esac
-    done
-    sleep 5   # socket gone or Hyprland restarted: try again
+    if sock=$(fullscreen_socket); then
+      socat -d -d -U - "UNIX-CONNECT:$sock" 2> >(
+        while IFS= read -r diagnostic; do
+          if [[ $diagnostic == *"starting data transfer loop"* ]]; then
+            # Mark ready only after a real connection and fullscreen resync.
+            sync_quiet && printf '%s\n' "$sock" | ab_atomic_write "$STATE/fullscreen-socket"
+          fi
+        done
+        rm -f "$STATE/fullscreen-socket"
+      ) | while IFS= read -r line; do
+        load_conf
+        is_afterburn && [[ $FULLSCREEN_QUIET == yes ]] || continue
+        case $line in
+          'fullscreen>>1') afterburn quiet on ;;
+          'fullscreen>>0') afterburn quiet off ;;
+        esac
+      done
+      rm -f "$STATE/fullscreen-socket"
+    fi
+    sleep 5
   done
 }
 
@@ -103,30 +125,32 @@ pressure_level() {  # CPU pressure avg10 (PSI): <5 cool, 5-35 normal, >35 hot
 }
 
 fetch_weather() {  # NWS: points -> first station -> latest obs; forecastHourly for day/night
-  local now pts sid obs hr
+  local now pts sid obs hr sample
   now=$(date +%s); mkdir -p "$STATE"
+  printf '%s\n' "$now" | ab_atomic_write "$STATE/weather-attempt"
   get() { curl -fsS -m 15 -H "User-Agent: $UA" -H 'Accept: application/geo+json' "$1"; }
   pts=$(get "https://api.weather.gov/points/$LAT,$LON") &&
   sid=$(get "$(jq -r '.properties.observationStations' <<<"$pts")" |
         jq -r '(.observationStations[0] // .features[0].properties.stationIdentifier // empty) | split("/") | last') &&
   obs=$(get "https://api.weather.gov/stations/$sid/observations/latest") &&
   hr=$(get "$(jq -r '.properties.forecastHourly' <<<"$pts")") &&
-  jq -n --argjson now "$now" --argjson obs "$obs" --argjson hr "$hr" '{
+  sample=$(jq -n --argjson now "$now" --argjson obs "$obs" --argjson hr "$hr" '{
     checked: $now,
     tempF: ($obs.properties.temperature.value | if . == null then null else . * 9 / 5 + 32 end),
     text: ($obs.properties.textDescription // ""),
     night: ($hr.properties.periods[0].isDaytime == false)
-  }' > "$WEATHER.tmp" && mv "$WEATHER.tmp" "$WEATHER" && return 0
+  }') && printf '%s\n' "$sample" | ab_atomic_write "$WEATHER" && { rm -f "$STATE/weather-error"; return 0; }
   # failed: store only the attempt time, so we retry in 20 min and keep the last level
-  jq -n --argjson now "$now" '{checked: $now}' > "$WEATHER"
+  printf '%s: weather refresh failed\n' "$(date -u +%FT%TZ)" | ab_atomic_write "$STATE/weather-error"
   return 1
 }
 
 weather_level() {  # cached NWS data -> level; no data means no change
   local now checked f txt night i
   now=$(date +%s)
-  checked=$(jq -r '.checked // 0' "$WEATHER" 2>/dev/null)
-  (( now - ${checked:-0} >= 1200 )) && fetch_weather
+  checked=$(cat "$STATE/weather-attempt" 2>/dev/null || echo 0)
+  [[ $checked =~ ^[0-9]+$ ]] || checked=0
+  (( now - checked >= 1200 )) && fetch_weather
   f=$(jq -r '.tempF // empty' "$WEATHER" 2>/dev/null)
   [[ -n $f ]] || return 1
   txt=$(jq -r '.text // "" | ascii_downcase' "$WEATHER")

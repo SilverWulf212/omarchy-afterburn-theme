@@ -20,7 +20,7 @@ class RuntimeModes(unittest.TestCase):
         self.bin = self.root / "bin"
         self.bin.mkdir()
         for command in ("bash cat grep sed head tail awk mkdir mv rm readlink realpath "
-                        "basename dirname printf date sleep ls jq").split():
+                        "basename dirname printf date sleep ls jq flock mktemp chmod").split():
             path = shutil.which(command)
             if path:
                 (self.bin / command).symlink_to(path)
@@ -170,7 +170,10 @@ else printf 'config-file = cursor-effects/%s.conf\\n' "$1" > "$HOME/.config/ghos
             time.sleep(0.3)
             self.conf.write_text("LAPTOP_MODE=on\nFULLSCREEN_QUIET=no\n")
             deadline = time.monotonic() + 7
-            while (self.flag("saver"), self.flag("quiet")) != ("on", "off") and time.monotonic() < deadline:
+            # Persisted flags represent intent; cursor application finishes after
+            # those writes, so wait for both state and the externally applied effect.
+            while ((self.flag("saver"), self.flag("quiet")) != ("on", "off") or
+                   self.ghostty.read_text().strip() != "config-file = cursor-effects/embers.conf") and time.monotonic() < deadline:
                 time.sleep(0.1)
             self.assertEqual(self.flag("saver"), "on")
             self.assertEqual(self.flag("quiet"), "off")

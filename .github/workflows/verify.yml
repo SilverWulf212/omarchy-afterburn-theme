@@ -1,0 +1,56 @@
+name: Verify candidate
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated-and-artifacts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Isolated executable regressions
+        run: python3 -m unittest discover -s tests -v
+      - name: Shell syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          for p in [*Path('extras').rglob('*'), *Path('tools').rglob('*.sh')]:
+              if p.is_file() and (p.suffix in {'.sh', '.bash'} or p.name in {'afterburn', 'afterburn-watch', 'afterburn-theme-set-hook'}):
+                  subprocess.run(['bash', '-n', str(p)], check=True)
+          PY
+      - name: Browser smoke syntax
+        run: node --check tools/smoke-site.mjs
+      - name: Generate source metadata for paired site review
+        run: |
+          python3 tools/generate-edition-data.py --output "$RUNNER_TEMP/edition-data.js"
+          python3 tools/generate-edition-data.py --output "$RUNNER_TEMP/edition-data.js" --markdown-output docs/edition-defaults.md --check
+      - name: Build deterministic selective candidate packs
+        run: python3 tools/release-packs.py build --version "candidate-$GITHUB_SHA" --source-commit "$GITHUB_SHA" --output "$RUNNER_TEMP/packs"
+      - name: Record candidate-linked evidence and pending gates
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          record = {'schema': 1, 'candidate': os.environ['GITHUB_SHA'],
+                    'run': f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
+                    'verified': ['isolated unittest suite', 'bash syntax', 'metadata generation', 'candidate pack build'],
+                    'pending': ['native VM install and rollback', 'real compositor reconnect/fullscreen/motion', 'real browser desktop/mobile/offline/network and screenshot review', 'publication smoke'],
+                    'releaseReady': False}
+          (Path(os.environ['RUNNER_TEMP']) / 'candidate-evidence.json').write_text(json.dumps(record, indent=2) + '\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: candidate-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/packs/
+            ${{ runner.temp }}/edition-data.js
+            ${{ runner.temp }}/candidate-evidence.json

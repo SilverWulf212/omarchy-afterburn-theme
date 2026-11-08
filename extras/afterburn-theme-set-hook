@@ -34,6 +34,9 @@ else
   ab_is_afterburn() { [[ ${1:-} == afterburn ]]; }
 fi
 
+ab_lock || exit 1
+ab_refresh_instance
+
 if ab_is_afterburn "$THEME"; then
   # The edition's knobs: your afterburn.conf first, then its edition.conf, then the base default.
   WANT_FX=embers WANT_STYLE=rise
@@ -43,13 +46,16 @@ if ab_is_afterburn "$THEME"; then
   fi
   if declare -F ab_load_palette >/dev/null; then
     ab_load_palette "$THEME"
-    ab_write_palette_env || true
+    ab_write_palette_env || exit $?
     # Lock embers follow the theme (only when the installer put the embers there).
     if [[ -f $LOCK_MARK && -f $LOCK_SH ]]; then
-      bash "$LOCK_SH" recolor "$AB_FLARE" "$AB_EMBER" "$AB_RUST" "$WANT_STYLE" >/dev/null 2>&1 || true
+      bash "$LOCK_SH" recolor "$AB_FLARE" "$AB_EMBER" "$AB_RUST" "$WANT_STYLE" >/dev/null 2>&1 || exit $?
     fi
   fi
   # Cursor first: afterburn apply may put cursor-fx off in quiet mode, and must see the saved previous effect.
+  ab_load_conf "$THEME"
+  DESIRED_FX=$WANT_FX
+  if ! ab_motion_enabled; then WANT_FX=off; fi
   if command -v cursor-fx >/dev/null; then
     cur=$(cursor_now)
     ours=$(cat "$OURS_FX" 2>/dev/null || true)
@@ -59,46 +65,47 @@ if ab_is_afterburn "$THEME"; then
     if [[ -f $PRE_QUIET ]]; then
       # Fullscreen or battery has the effect off for now. Leave it off, and make the one that comes back
       # afterwards this theme's. What was saved is not your own effect, so it is not touched either.
-      echo "$WANT_FX" > "$PRE_QUIET"
+      printf '%s\n' "$DESIRED_FX" | ab_atomic_write "$PRE_QUIET"
     else
       # Save the effect to restore later, unless the current one is only the previous Afterburn theme's.
       # Also when it is the very effect this theme wants: it is still yours, and the next edition may
       # switch it, so leaving Afterburn has to know it.
       if [[ -z $ours || $cur != "$ours" ]]; then
-        mkdir -p "$(dirname "$STATE")" && echo "$cur" > "$STATE"
+        mkdir -p "$(dirname "$STATE")" && printf '%s\n' "$cur" | ab_atomic_write "$STATE"
       fi
-      [[ $cur == "$WANT_FX" ]] || cursor-fx "$WANT_FX" >/dev/null 2>&1 || true
+      if ! ab_motion_enabled; then printf '%s\n' "$DESIRED_FX" | ab_atomic_write "$PRE_QUIET"; fi
+      [[ $cur == "$WANT_FX" ]] || ab_run cursor-fx "$WANT_FX" >/dev/null 2>&1 || exit $?
     fi
-    mkdir -p "$(dirname "$STATE")" && echo "$WANT_FX" > "$OURS_FX"
+    mkdir -p "$(dirname "$STATE")" && printf '%s\n' "$WANT_FX" | ab_atomic_write "$OURS_FX"
   fi
   if [[ -x $AFTERBURN ]]; then
-    "$AFTERBURN" apply >/dev/null 2>&1 || true
+    ab_run "$AFTERBURN" apply >/dev/null 2>&1 || exit $?
   elif [[ -f $EXTRAS/hyprland-glow.lua && -d $CURRENT ]]; then
     # No CLI: the plain glow, recoloured for an edition the same way `afterburn apply` does.
     if declare -F ab_load_palette >/dev/null; then
-      ab_recolor_glow "$EXTRAS/hyprland-glow.lua" > "$CURRENT/hyprland.lua"
+      ab_recolor_glow "$EXTRAS/hyprland-glow.lua" | ab_atomic_write "$CURRENT/hyprland.lua"
     else
       cp "$EXTRAS/hyprland-glow.lua" "$CURRENT/hyprland.lua"
     fi
-    hyprctl reload >/dev/null 2>&1 || true
+    ab_run hyprctl reload >/dev/null 2>&1 || exit $?
   fi
-  systemctl --user restart afterburn-watch.service >/dev/null 2>&1 || true
+  ab_run systemctl --user restart afterburn-watch.service >/dev/null 2>&1 || exit $?
 else
-  systemctl --user stop afterburn-watch.service >/dev/null 2>&1 || true
+  ab_run systemctl --user stop afterburn-watch.service >/dev/null 2>&1 || exit $?
   if [[ -f $STATE ]] && command -v cursor-fx >/dev/null; then
-    cursor-fx "$(cat "$STATE")" >/dev/null 2>&1 || true
+    ab_run cursor-fx "$(cat "$STATE")" >/dev/null 2>&1 || exit $?
     rm -f "$STATE"
   fi
   rm -f "$OURS_FX"
   # Battery saver turned subtle on: it goes back off now (a subtle you had on yourself has no record and stays).
   if [[ -f $SUBTLE_REC ]] && command -v cursor-fx >/dev/null; then
-    cursor-fx subtle off >/dev/null 2>&1 || true
+    ab_run cursor-fx subtle off >/dev/null 2>&1 || exit $?
   fi
   rm -f "$SUBTLE_REC"
   # Drop the fullscreen and battery flags: the watcher is stopped, so it can't clear them later.
   rm -f "$(dirname "$STATE")/quiet" "$(dirname "$STATE")/saver" "$PRE_QUIET"
   # Back to the base palette for the fail flash and the lock embers.
   rm -f "$(dirname "$STATE")/palette.env"
-  if [[ -f $LOCK_MARK && -f $LOCK_SH ]]; then bash "$LOCK_SH" recolor >/dev/null 2>&1 || true; fi
+  if [[ -f $LOCK_MARK && -f $LOCK_SH ]]; then bash "$LOCK_SH" recolor >/dev/null 2>&1 || exit $?; fi
 fi
 exit 0
