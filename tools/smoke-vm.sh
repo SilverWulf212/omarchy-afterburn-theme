@@ -75,7 +75,8 @@ install_extras
 export PATH="$HOME/.local/bin:$PATH"
 command -v afterburn >/dev/null
 # Disable the asynchronous watcher and weather source during deterministic checks.
-afterburn set HEAT_SOURCE time
+afterburn set HEAT_SOURCE off
+afterburn set MOTION on
 afterburn set LAPTOP_MODE off
 for theme in afterburn afterburn-voltage afterburn-cyber afterburn-overdrive afterburn-redline afterburn-phantom; do
   select_theme "$theme"
@@ -124,6 +125,73 @@ install_extras
 select_theme afterburn-voltage
 afterburn status | tee "$artifacts/reinstalled-status.txt"
 check_errors
-echo 'PASS: native guest CLI/configuration smoke completed; screenshots require visual review.'
-echo 'Watcher automatic power events, lock/PAM, boot splash and physical hardware are not covered.'
+# Exercise the real background watcher separately from deterministic CLI checks.
+# Lua dispatcher syntax matches the Omarchy/Hyprland Lua API required by this theme.
+echo 'Checking automatic watcher policy and actual fullscreen event delivery'
+wait_value() {
+  local file=$1 expected=$2 deadline=$((SECONDS + 20))
+  until [[ $(cat "$file" 2>/dev/null || true) == "$expected" ]]; do
+    (( SECONDS < deadline )) || { echo "Timed out waiting for $file=$expected" >&2; return 1; }
+    sleep 0.2
+  done
+}
+wait_shadow() {
+  local expected=$1 deadline=$((SECONDS + 20))
+  until hyprctl getoption decoration:shadow:enabled -j | jq -e --argjson expected "$expected" '.int == $expected' >/dev/null; do
+    (( SECONDS < deadline )) || { echo "Timed out waiting for applied shadow=$expected" >&2; return 1; }
+    sleep 0.2
+  done
+}
+afterburn set FULLSCREEN_QUIET yes
+afterburn set LAPTOP_MODE off
+window=$(hyprctl activewindow -j)
+[[ $(jq -r '.address // empty' <<<"$window") != '' ]] || { echo 'An active guest terminal window is required for fullscreen smoke' >&2; exit 1; }
+[[ $(jq -r '.fullscreen // 0' <<<"$window") == 0 ]] || { echo 'Start the smoke in a non-fullscreen guest terminal' >&2; exit 1; }
+rm -f "$state/fullscreen-socket"
+systemctl --user start afterburn-watch.service
+systemctl --user is-active --quiet afterburn-watch.service
+socket_deadline=$((SECONDS + 20))
+until [[ -s $state/fullscreen-socket && -S $(cat "$state/fullscreen-socket") ]]; do
+  (( SECONDS < socket_deadline )) || { echo 'Watcher did not confirm a fullscreen event socket connection' >&2; exit 1; }
+  sleep 0.2
+done
+cat "$state/fullscreen-socket" > "$artifacts/watcher-connected-socket.txt"
+# Direct data edit bypasses the CLI reconciliation: only the watcher can apply it.
+python3 - "$HOME/.config/afterburn/afterburn.conf" <<'POLICY'
+import pathlib, re, sys
+p = pathlib.Path(sys.argv[1])
+s = p.read_text()
+s = re.sub(r'^LAPTOP_MODE=.*$', 'LAPTOP_MODE=on', s, flags=re.M)
+p.write_text(s)
+POLICY
+wait_value "$state/saver" on
+wait_shadow 0
+python3 - "$HOME/.config/afterburn/afterburn.conf" <<'POLICY'
+import pathlib, re, sys
+p = pathlib.Path(sys.argv[1])
+s = re.sub(r'^LAPTOP_MODE=.*$', 'LAPTOP_MODE=off', p.read_text(), flags=re.M)
+p.write_text(s)
+POLICY
+wait_value "$state/saver" off
+wait_shadow 1
+# Native mode and visible compositor response, not synthetic socket fixtures.
+hyprctl dispatch 'hl.dsp.window.fullscreen({ mode = "fullscreen", action = "set" })'
+wait_value "$state/quiet" on
+wait_shadow 0
+hyprctl getoption decoration:shadow:enabled -j | tee "$artifacts/watcher-fullscreen-shadow.json" | jq -e '.int == 0' >/dev/null
+hyprctl dispatch 'hl.dsp.window.fullscreen({ mode = "fullscreen", action = "unset" })'
+wait_value "$state/quiet" off
+wait_shadow 1
+stop_watch
+# Persistent motion off must disable the active cursor without erasing its setting.
+chosen_cursor=$(afterburn get CURSOR_FX)
+afterburn set MOTION off
+[[ -z $(effect) && $(afterburn get CURSOR_FX) == "$chosen_cursor" ]]
+afterburn set MOTION on
+[[ $(effect) == "$chosen_cursor" ]]
+afterburn status | tee "$artifacts/after-watcher-and-motion-status.txt"
+check_errors
+printf '%s\n' 'policy-reread' 'fullscreen-enter-event' 'fullscreen-exit-event' 'motion-off-on' > "$artifacts/automatic-checks.txt"
+echo 'PASS: native guest CLI/configuration and automatic watcher smoke completed; screenshots require visual review.'
+echo 'Physical power-source changes, lock/PAM, boot splash and hardware performance are not covered.'
 echo "Revert the disposable VM snapshot to undo all smoke changes. Artifacts: $artifacts"

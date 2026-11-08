@@ -22,7 +22,7 @@ class OwnershipTests(unittest.TestCase):
         for name in ("bash", "sh", "awk", "sed", "grep", "head", "tail", "cat", "cp", "mv", "rm",
                      "mkdir", "rmdir", "ln", "readlink", "realpath", "install", "chmod", "mktemp",
                      "tr", "cut", "date", "id", "basename", "dirname", "wc", "sort", "find", "jq",
-                     "cmp", "sha256sum", "xargs"):
+                     "cmp", "sha256sum", "xargs", "flock"):
             target = shutil.which(name)
             self.assertIsNotNone(target, name)
             (self.bin / name).symlink_to(target)

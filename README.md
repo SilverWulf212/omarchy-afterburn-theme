@@ -88,6 +88,7 @@ Optional, part of the full-stack install (step 4). Every setting lives in `~/.co
 
 | Feature | Config key (default) | What it does | Command |
 |---|---|---|---|
+| Motion policy | `MOTION` (`on`) | `off` stops the border turn, cursor shaders, fail flashes and lock particles while preserving your separate effect choices. `NO_MOTION` in your shell also suppresses these effects. Live wallpapers remain under OWE; choose a still background for no wallpaper motion. | `afterburn set MOTION off` |
 | Slow-turning border | `ROTATE` (`slow`) | The ember gradient turns around the focused window: `off`, `slow` (10 s per turn), `medium` (5 s) or `fast` (2.5 s). | `afterburn set ROTATE medium` |
 | Dimmed background windows | `DIM` (`0.08`) | Dims unfocused windows by this amount. `0` turns it off. | `afterburn set DIM 0.15` |
 | Glow range | `GLOW_RANGE` (`14`) | The glow's size at the normal heat level, 4 to 30. Cool and hot keep their ratio to it (8:14 and 22:14). | `afterburn set GLOW_RANGE 20` |
@@ -103,6 +104,10 @@ Optional, part of the full-stack install (step 4). Every setting lives in `~/.co
 | Colours | none | Afterburn's named colours. In a terminal, `afterburn colors` shows swatches and copies the one you pick. The "Afterburn colors" launcher entry opens the menu and copies the hex. | `afterburn colors` |
 
 For a persistent manual battery override, use `afterburn laptop on|off`. `afterburn saver on|off` is temporary: the watcher reapplies `LAPTOP_MODE` within five seconds.
+
+Configuration is read as validated data, never executed as shell code. Blank values, quoted values and trailing comments are supported; invalid values use their documented defaults. Runtime commands and theme hooks serialize state changes and publish replacement files atomically. This uses `flock` from util-linux and coreutils already present on Omarchy; it adds no desktop service. Run uninstall separately from manual theme commands; concurrent install/uninstall is outside that runtime lock's scope.
+
+`afterburn status` distinguishes saved settings from application evidence: watcher state, connected fullscreen socket, last compositor application time, last error and weather-cache age. A failed compositor, cursor or wallpaper application returns a nonzero status. A saved heat/quiet/saver value alone does not prove the desktop accepted it; failed same-state requests can be retried.
 
 Other commands: `afterburn apply` (rebuilds the glow from the conf and reloads Hyprland), `afterburn level cool|normal|hot`, `afterburn saver on|off`. Battery or laptop mode turns `cursor-fx subtle` back off when it ends, but only if the saver was what turned it on (a subtle you had on yourself stays on; it is also restored when you leave Afterburn or run `uninstall.sh`). The watcher runs as a user service. Check it with `systemctl --user status afterburn-watch`.
 
@@ -198,6 +203,24 @@ uv run --with numpy --with pillow python extras/wallpaper-gen.py backgrounds
 
 MIT © 2026 SilverWulf
 
+## Selective release packs
+
+The existing `omarchy theme install` clone route remains supported. The new release builder can produce a smaller base pack without videos or editions, a separate base-live pack, and one pack per edition. It does not shrink Git history or the existing clone. These packs are build-ready; use download commands only for a release that actually publishes them. The older v1.0.0 video release does not contain these new packs.
+
+To build and inspect packs from a checkout:
+
+```bash
+python3 tools/release-packs.py build --version candidate-local --output /tmp/afterburn-packs
+python3 tools/release-packs.py install --manifest /tmp/afterburn-packs/release.json --pack /tmp/afterburn-packs/afterburn-candidate-local-base.tar.gz --destination /tmp/afterburn-selected
+python3 tools/release-packs.py install --manifest /tmp/afterburn-packs/release.json --pack /tmp/afterburn-packs/afterburn-candidate-local-edition-voltage.tar.gz --destination /tmp/afterburn-selected
+```
+
+This verifies and stages files; it does not activate a theme. The tool refuses unsafe archive paths, links, bad hashes and differing existing files. A fresh destination is recommended. The emitted standalone `afterburn-pack-tool.py` is checksummed alongside the packs, so a published release can be installed without a Git clone. Checksums establish integrity against the trusted manifest; obtain manifests through the trusted release channel. Filesystem failure can leave partially staged new files, so inspect or discard that disposable stage before retrying.
+
+For actual installation, verified-stage into a fresh `~/.config/omarchy/themes/afterburn`, add only the wanted edition/live packs to that same tree, then separately run its normal extras installer or `omarchy theme set afterburn`. The extras installer does not copy the base out of an arbitrary temporary stage. Exact clone-free download/verification steps and release gates are in [.github/RELEASE_CHECKLIST.md](.github/RELEASE_CHECKLIST.md).
+
 ## Development checks
+
+GitHub Actions runs the shipped isolated checks and emits candidate-linked evidence and packs. Native VM, real browser and publication gates stay pending in that evidence until executed; green CI alone is not a release approval.
 
 Run the shipped isolated regressions with `python3 -m unittest discover -s tests -v`. They use temporary home directories and desktop-command doubles; they do not install onto your desktop. Native VM and Playwright smoke instructions, prerequisites, and current coverage limits are in [docs/launch-verification.md](docs/launch-verification.md). A passing isolated suite does not establish GPU performance or a successful real installation.

@@ -36,6 +36,8 @@ OFFICIAL_LOCK_DIR="$OMARCHY_ROOT/shell/plugins/lock"
 REMOVAL_STATE="${XDG_STATE_HOME:-$HOME/.local/state}/afterburn/lock-removal"
 
 
+# Shared policy and runtime lock also cover standalone recolor invocations.
+. "$SELF_DIR/../afterburn-theme.sh"
 say() { echo "lock-embers: $*"; }
 die() { echo "lock-embers: $*" >&2; exit 1; }
 
@@ -218,6 +220,10 @@ recolor_layer() {
   tmp=$(mktemp "$clone_dir/.EmberLayer.XXXXXX")
   sed -e 's/ffc48a/@FLARE@/g; s/ff5a1f/@EMBER@/g; s/7a3e16/@RUST@/g' "$src" |
     sed -e "s/@FLARE@/${flare,,}/g; s/@EMBER@/${ember,,}/g; s/@RUST@/${rust,,}/g" > "$tmp"
+  ab_load_conf "$(ab_theme_name)"
+  if ! ab_motion_enabled; then
+    sed 's/readonly property bool active: root.visible/readonly property bool active: false/' "$tmp" | ab_atomic_write "$tmp"
+  fi
   if cmp -s "$tmp" "$clone_dir/EmberLayer.qml"; then
     rm -f "$tmp"
     say "embers already #$ember, $style"
@@ -280,6 +286,7 @@ uninstall_layer() {
 }
 
 main() {
+  ab_lock || return 1
   case "${1:-}" in
     install) install_layer ;;
     uninstall) uninstall_layer ;;

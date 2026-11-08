@@ -13,7 +13,7 @@ if (!target || !/^https?:\/\//.test(target)) {
 const url = new URL(target);
 const artifacts = path.resolve(output);
 await mkdir(artifacts, { recursive: true });
-const result = { url: url.href, started: new Date().toISOString(), status: 'running', checks: [], pageErrors: [], sameOriginFailures: [], externalFailures: [], cancelledRequests: [] };
+const result = { url: url.href, started: new Date().toISOString(), status: 'running', checks: [], pageErrors: [], sameOriginFailures: [], externalFailures: [], cancelledRequests: [], externalRequests: [] };
 let browser, activePage;
 const check = async (name, fn) => {
   await fn();
@@ -22,6 +22,10 @@ const check = async (name, fn) => {
 };
 function observe(page) {
   page.on('pageerror', error => result.pageErrors.push(String(error)));
+  page.on('request', request => {
+    const address = new URL(request.url());
+    if (/^https?:$/.test(address.protocol) && address.origin !== url.origin) result.externalRequests.push(address.href);
+  });
   const failure = (address, details) => {
     const record = { url: address, details };
     (new URL(address).origin === url.origin ? result.sameOriginFailures : result.externalFailures).push(record);
@@ -61,6 +65,20 @@ try {
   await check('page initializes six editions and eight swatches', async () => {
     await page.waitForFunction(() => document.querySelectorAll('#edRow button').length === 6 && document.querySelectorAll('#swatches button').length === 8);
     assert.match(await page.title(), /afterburn/i);
+  });
+  await check('motion follows live preference, then preserves the explicit user choice', async () => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await pressed(page, '#motionToggle', false);
+    assert.equal(await page.locator('html').getAttribute('data-motion'), 'off');
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await pressed(page, '#motionToggle', true);
+    await page.locator('#motionToggle').click();
+    await pressed(page, '#motionToggle', false);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await pressed(page, '#motionToggle', false);
+    await page.locator('#motionToggle').click();
+    await pressed(page, '#motionToggle', true);
   });
   const accents = new Set();
   for (const edition of ['afterburn', 'voltage', 'cyber', 'overdrive', 'redline', 'phantom']) {
@@ -134,14 +152,36 @@ try {
     assert.ok(dimensions.content <= dimensions.viewport + 1, `horizontal overflow: ${JSON.stringify(dimensions)}`);
   });
   await check('reduced motion leaves automatic embers and preview videos off', async () => {
-    await pressed(small, '#tEmbers', false);
+    await pressed(small, '#motionToggle', false);
+    assert.equal(await small.locator('html').getAttribute('data-motion'), 'off');
     await small.locator('.ed-card video').first().scrollIntoViewIfNeeded();
     assert.equal(await small.locator('.ed-card video[src]').count(), 0);
   });
   await small.screenshot({ path: path.join(artifacts, 'mobile-reduced-motion.png'), fullPage: true, timeout: 15000 });
-  await check('no JavaScript errors or failed requested same-origin assets', async () => {
+  await check('recommendations contain ten comparisons and working conceptual demos', async () => {
+    const ideas = await desktop.newPage();
+    observe(ideas);
+    await ideas.goto(new URL('recommendations/', url).href, { waitUntil: 'domcontentloaded' });
+    assert.equal(await ideas.locator('details.rec').count(), 10);
+    assert.equal(await ideas.locator('.experiment').count(), 3);
+    await ideas.locator('#queue-next').click();
+    assert.equal(await ideas.locator('#queue-step').innerText(), '1 / 4');
+    await ideas.locator('#queue-reset').click();
+    assert.equal(await ideas.locator('#queue-step').innerText(), '0 / 4');
+    await ideas.locator('#callback-next').click();
+    assert.equal(await ideas.locator('#before-count').innerText(), '60');
+    await ideas.locator('#model-visible').uncheck();
+    await ideas.locator('#callback-next').click();
+    assert.equal(await ideas.locator('#before-count').innerText(), '120');
+    assert.equal(await ideas.locator('#after-count').innerText(), '60');
+    const base = await ideas.locator('#pack-selected').innerText();
+    await ideas.locator('#pack-editions').check();
+    assert.notEqual(await ideas.locator('#pack-selected').innerText(), base);
+  });
+  await check('no JavaScript errors, external runtime requests or failed local assets', async () => {
     assert.deepEqual(result.pageErrors, []);
     assert.deepEqual(result.sameOriginFailures, []);
+    assert.deepEqual(result.externalRequests, []);
   });
   result.status = 'passed';
 } catch (error) {

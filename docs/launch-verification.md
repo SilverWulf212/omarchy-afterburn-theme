@@ -12,9 +12,10 @@ cached guest disk. SSH and loopback listening fail with socket `EPERM`. Existing
 `playwright-core` and `/usr/bin/chromium` were located, but Chromium exits with
 `SIGTRAP` at Crashpad's `setsockopt: Operation not permitted` before opening a page.
 Neither native Omarchy VM smoke nor browser assertions have passed here. The shipped
-isolated regression suite passes 38 tests. The migrated local compatibility harness
-passes 524 checks, including real offscreen execution of all six QML styles with
-`QT_QPA_PLATFORMTHEME=` and display variables cleared. Those checks do not establish
+isolated regression suite passes 79 tests in the current candidate. The prior hardening candidate passed 524 migrated local compatibility checks.
+The current candidate also loads and runs all six generated QML styles with
+motion on and off (12 combinations) using `QT_QPA_PLATFORMTHEME=` and cleared
+display variables. Those checks do not establish
 native desktop integration; smoke-tool syntax checks establish only parseability.
 
 ## Prepare a disposable Omarchy guest on Betawulf
@@ -69,10 +70,9 @@ provided tree before mutation. The script runs extras installation with `--yes`
 and closed stdin (boot/login remains skipped), switches six editions, requires no
 Hyprland configuration errors, compares increasing live heat shadow ranges, checks
 overlapping quiet/saver cursor and shadow behavior, checks restoration on an away
-theme, then uninstalls/reinstalls the same extras. It stops the watcher during CLI
+theme, then uninstalls/reinstalls the same extras. It then starts the actual watcher, waits for a confirmed event-socket connection, tests policy-file rereading, dispatches real fullscreen enter/exit transitions, and checks motion off/on restoration. It stops the watcher during CLI
 checks to prevent asynchronous fullscreen/time/power events changing expectations.
-That means automatic watcher power/fullscreen event delivery is **not** established
-by this smoke. Generated credentials, PAM, suspend, boot screens and physical GPU
+Automatic policy rereading and fullscreen delivery have executable assertions after those deterministic checks; they remain **unrun** here. Physical power-source delivery is not covered. Generated credentials, PAM, suspend, boot screens and physical GPU
 or battery behavior remain outside its coverage.
 
 Output: `run.log`, `exit-status.txt`, candidate SHA-256 manifest, live compositor
@@ -115,10 +115,8 @@ browser sandbox cannot initialize, not as a workaround for blocked host sockets.
 The browser script checks six distinct palettes and edition hashes across reload,
 wallpaper controls/keyboard, terminal commands, real clipboard writes, simulated
 installer abort/completion/undo guidance, a loaded video preview, mobile layout,
-reduced motion, JavaScript errors and requested same-origin asset failures. It
-writes `result.json`, `desktop.png` and `mobile-reduced-motion.png`. External CDN
-request failures are reported separately, so a font CDN outage is distinguishable
-from a missing site-owned asset. Unrequested assets, every video codec and visual
+live motion-preference changes/manual overrides, recommendations-demo interactions, reduced motion, JavaScript errors, unexpected external runtime requests and requested same-origin asset failures. It
+writes `result.json`, `desktop.png` and `mobile-reduced-motion.png`. External request failures are recorded separately; the candidate now serves scripts and fonts locally and the smoke asserts no external runtime requests. Unrequested assets, every video codec and visual
 correctness of screenshots are not exhaustively verified. A launch failure writes
 a failed result and returns nonzero; it cannot yield passed browser checks.
 
@@ -138,3 +136,11 @@ bash tools/smoke-vm.sh --help
 These are prerequisite/tooling checks only. Publish genuine VM/browser outcomes
 only after reviewing `exit-status.txt`, `result.json`, logs and screenshots from
 the actual candidate run.
+
+## Candidate reliability and motion checks
+
+The committed suites cover shared-lock contention and nesting, interrupted atomic writes, dotfile symlink preservation, validated nonexecuting config, application-error propagation/retry, same-display reconnect/resync, all six lock-style motion policies, failed weather refresh and location-cache invalidation. Website Node tests execute actual policy/canvas/card-rendering logic using DOM doubles; they are not rendered-browser evidence.
+
+The native automatic fullscreen assertions use the Lua dispatcher form supported by this theme's Omarchy/Hyprland configuration, consistent with [Hyprland's dispatcher API](https://wiki.hypr.land/0.57.0/configuring/core/dispatchers/). Run from a non-fullscreen active guest terminal. The smoke records the actual connected socket and waits for saved policy and compositor output; physical AC/battery hardware, PAM and boot screens still require separate checks.
+
+Both repositories now have candidate-linked Verify workflows. Source packs and generated metadata are review artifacts; the evidence deliberately records releaseReady=false and lists the missing native/browser/publication gates. Follow [.github/RELEASE_CHECKLIST.md](../.github/RELEASE_CHECKLIST.md) before changing that release decision.
