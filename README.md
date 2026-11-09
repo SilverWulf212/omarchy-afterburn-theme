@@ -6,6 +6,23 @@
 
 Comes in six colours, each with its own personality: Afterburn (orange), Voltage (cyan), Cyber (green), Overdrive (magenta), Redline (red) and Phantom (violet). See [Editions](#editions).
 
+## New edition wallpapers
+
+![New Voltage, Cyber, Overdrive, Redline and Phantom wallpaper artwork](docs/wallpapers/preview.jpg)
+
+Full-resolution **theme backgrounds**, including the animated MP4s:
+
+| Edition | Wallpaper | Still | Animated wallpaper |
+|---|---|---|---|
+| Afterburn | Horizon | [JPG](backgrounds/1-horizon.jpg) | [MP4](backgrounds/9-horizon-live.mp4) |
+| Voltage | Resonance | [JPG](.editions/voltage/backgrounds/1-horizon.jpg) | [MP4](.editions/voltage/backgrounds/live-resonance.mp4) |
+| Cyber | Phosphor Path | [JPG](.editions/cyber/backgrounds/1-horizon.jpg) | [MP4](.editions/cyber/backgrounds/live-phosphor-path.mp4) |
+| Overdrive | Midnight Ribbon | [JPG](.editions/overdrive/backgrounds/1-horizon.jpg) | [MP4](.editions/overdrive/backgrounds/live-midnight-ribbon.mp4) |
+| Redline | Crimson Turbine | [JPG](.editions/redline/backgrounds/1-horizon.jpg) | [MP4](.editions/redline/backgrounds/live-crimson-turbine.mp4) |
+| Phantom | Spectral Veil | [JPG](.editions/phantom/backgrounds/1-horizon.jpg) | [MP4](.editions/phantom/backgrounds/live-spectral-veil.mp4) |
+
+[Browse every background and download the original files](WALLPAPERS.md). The edition files live in `.editions/<name>/backgrounds/`; the root `backgrounds/` folder contains the orange Afterburn set.
+
 ## Watch
 
 | [![Six editions](docs/media/watch-editions.jpg)](https://github.com/SilverWulf212/omarchy-afterburn-theme/releases/download/v1.0.0/editions.mp4) | [![Launch v2](docs/media/watch-brag-v2.jpg)](https://github.com/SilverWulf212/omarchy-afterburn-theme/releases/download/v1.0.0/brag-v2.mp4) | [![Original launch](docs/media/watch-brag.jpg)](https://github.com/SilverWulf212/omarchy-afterburn-theme/releases/download/v1.0.0/brag.mp4) |
