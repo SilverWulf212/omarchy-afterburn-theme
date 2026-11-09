@@ -350,7 +350,8 @@ for spec in "${EDITIONS[@]}"; do
     done
   done
 
-  for src in backgrounds/*; do
+  # Grade only the original numbered base set, never the shared edition copies.
+  for src in backgrounds/[1-9]-*; do
     file=$(basename "$src")
     case "$file" in
       *.jpg)
@@ -417,4 +418,17 @@ chmod 755 "$STAGE"
 mv "$STAGE" .editions
 trap - EXIT
 
-echo "done: .editions/ regenerated from base files"
+# Expose every edition in the top-level background picker and GitHub folder.
+# Copy original bytes; do not resize or recolour the signature art.
+for spec in "${EDITIONS[@]}"; do
+  name=${spec%%|*}
+  loops=(".editions/$name/backgrounds/"live-*.mp4)
+  [[ ${#loops[@]} -eq 1 && -f ${loops[0]} ]] || die "$name: expected one signature loop"
+  artwork=${loops[0]##*/}
+  artwork=${artwork#live-}
+  artwork=${artwork%.mp4}
+  cp ".editions/$name/backgrounds/1-horizon.jpg" "backgrounds/$name-$artwork.jpg"
+  cp "${loops[0]}" "backgrounds/$name-$artwork-live.mp4"
+done
+
+echo "done: .editions/ and shared background copies regenerated from base files"

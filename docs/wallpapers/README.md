@@ -2,7 +2,10 @@
 
 Orange Afterburn's six stills, three live loops and film assets are unchanged.
 The five other editions now have original signature art rather than recoloured
-orange live loops. Their five alternative stills remain available.
+orange live loops. Their five alternative stills remain available. Full-resolution
+copies of each signature still and MP4 also live directly in the root `backgrounds/`
+folder, named `<edition>-<artwork>.jpg` and `<edition>-<artwork>-live.mp4`.
+The base theme picker can select these colours too; its original default remains first.
 
 ![Cyber, Overdrive, Phantom, Redline and Voltage signature wallpapers](preview.jpg)
 
@@ -37,7 +40,8 @@ python3 tools/wallpapers/verify.py
 ```
 
 The first command renders assets into `tools/edition-extras/<edition>/files/`.
-The edition builder copies those into `.editions/`, skips the old default
+The edition builder copies those into `.editions/` and publishes the signature
+still/loop copies to root `backgrounds/`, skips the old default
 horizon and its heat variants, and keeps the orange live loops exclusive to
 the base. It does not invoke image generation or need an API key. FFmpeg with
 libx264 is required; edition rebuilding keeps its existing dependencies.

@@ -2,7 +2,7 @@
 
 ![Afterburn](preview.png)
 
-**Orange-on-black cyber theme for [Omarchy](https://omarchy.org).** Ember-gradient window borders with a soft orange glow, animated ember cursors in Ghostty, and nine wallpapers: six stills and three live loops.
+**Orange-on-black cyber theme for [Omarchy](https://omarchy.org).** Ember-gradient window borders with a soft orange glow, animated ember cursors in Ghostty, and nineteen wallpapers: eleven stills and eight live loops across all six colours.
 
 Comes in six colours, each with its own personality: Afterburn (orange), Voltage (cyan), Cyber (green), Overdrive (magenta), Redline (red) and Phantom (violet). See [Editions](#editions).
 
@@ -15,13 +15,13 @@ Full-resolution **theme backgrounds**, including the animated MP4s:
 | Edition | Wallpaper | Still | Animated wallpaper |
 |---|---|---|---|
 | Afterburn | Horizon | [JPG](backgrounds/1-horizon.jpg) | [MP4](backgrounds/9-horizon-live.mp4) |
-| Voltage | Resonance | [JPG](.editions/voltage/backgrounds/1-horizon.jpg) | [MP4](.editions/voltage/backgrounds/live-resonance.mp4) |
-| Cyber | Phosphor Path | [JPG](.editions/cyber/backgrounds/1-horizon.jpg) | [MP4](.editions/cyber/backgrounds/live-phosphor-path.mp4) |
-| Overdrive | Midnight Ribbon | [JPG](.editions/overdrive/backgrounds/1-horizon.jpg) | [MP4](.editions/overdrive/backgrounds/live-midnight-ribbon.mp4) |
-| Redline | Crimson Turbine | [JPG](.editions/redline/backgrounds/1-horizon.jpg) | [MP4](.editions/redline/backgrounds/live-crimson-turbine.mp4) |
-| Phantom | Spectral Veil | [JPG](.editions/phantom/backgrounds/1-horizon.jpg) | [MP4](.editions/phantom/backgrounds/live-spectral-veil.mp4) |
+| Voltage | Resonance | [JPG](backgrounds/voltage-resonance.jpg) | [MP4](backgrounds/voltage-resonance-live.mp4) |
+| Cyber | Phosphor Path | [JPG](backgrounds/cyber-phosphor-path.jpg) | [MP4](backgrounds/cyber-phosphor-path-live.mp4) |
+| Overdrive | Midnight Ribbon | [JPG](backgrounds/overdrive-midnight-ribbon.jpg) | [MP4](backgrounds/overdrive-midnight-ribbon-live.mp4) |
+| Redline | Crimson Turbine | [JPG](backgrounds/redline-crimson-turbine.jpg) | [MP4](backgrounds/redline-crimson-turbine-live.mp4) |
+| Phantom | Spectral Veil | [JPG](backgrounds/phantom-spectral-veil.jpg) | [MP4](backgrounds/phantom-spectral-veil-live.mp4) |
 
-[Browse every background and download the original files](WALLPAPERS.md). The edition files live in `.editions/<name>/backgrounds/`; the root `backgrounds/` folder contains the orange Afterburn set.
+[Browse every background and download the original files](WALLPAPERS.md). All six colours are directly available in [`backgrounds/`](backgrounds/). Each colour edition also keeps its own default and live loop in `.editions/<name>/backgrounds/`.
 
 ## Watch
 
@@ -179,7 +179,7 @@ The base theme's palette. Editions swap the orange for their own colour.
 
 ## Wallpapers
 
-Six still wallpapers at 3440×1440, plus three live loops. Press **Super + Ctrl + Space** to rotate through them.
+Eleven still wallpapers at 3440×1440, plus eight live loops, all directly in `backgrounds/`. The original six orange stills and three orange loops are joined by one signature still and loop per colour edition. Press **Super + Ctrl + Space** to rotate through them.
 
 | | | |
 |---|---|---|
