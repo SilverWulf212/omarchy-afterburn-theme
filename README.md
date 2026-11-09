@@ -17,13 +17,19 @@ Click a thumbnail to play or download the video from the [v1.0.0 release](https:
 ## Install: the full stack (recommended)
 
 ```bash
-omarchy theme install https://github.com/silverwulf212/omarchy-afterburn-theme && ~/.config/omarchy/themes/afterburn/extras/install.sh
+bash <(curl -fsSL https://afterburn.silverwulf.org/install)
 ```
 
 > [!IMPORTANT]
 > **This replaces your default terminal with Ghostty** and installs third-party software. See [What the full stack changes](#what-the-full-stack-changes) before you run it.
 
-The second half shows a summary of what it will change, then asks before each step:
+The short entry point runs the same Omarchy theme install and then the existing extras installer. [Read it first](install.sh). The original two-command form still works:
+
+```bash
+omarchy theme install https://github.com/silverwulf212/omarchy-afterburn-theme && ~/.config/omarchy/themes/afterburn/extras/install.sh
+```
+
+The extras installer shows a summary of what it will change, then asks before each step:
 
 1. **Ghostty**: installs it and makes it your default terminal, if needed
 2. **cursor-fx**: animated Ghostty cursors. Afterburn uses *embers*: typing kicks up glowing embers that rise and cool. Each [colour edition](#editions) picks its own effect
