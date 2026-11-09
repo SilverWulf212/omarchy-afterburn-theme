@@ -50,6 +50,11 @@ def verify():
         for relative in ['backgrounds/1-horizon.jpg', f'backgrounds/{loop.name}',
                          'heat-wallpapers/cool/1-horizon.jpg', 'heat-wallpapers/hot/1-horizon.jpg']:
             assert digest(source / relative) == digest(staged / relative), (edition, relative, 'stale generated asset')
+        # The top-level picker must expose the same full-resolution edition art.
+        artwork = loop.stem.removeprefix('live-')
+        for original, exposed in [('1-horizon.jpg', f'{edition}-{artwork}.jpg'),
+                                  (loop.name, f'{edition}-{artwork}-live.mp4')]:
+            assert digest(source / 'backgrounds' / original) == digest(ROOT / 'backgrounds' / exposed), (edition, exposed, 'stale root background')
         results.append({'edition': edition, 'loop': loop.name, 'bytes': loop.stat().st_size,
                         'median_frame_step': round(statistics.median(steps), 4),
                         'p95_frame_step': round(p95, 4),
