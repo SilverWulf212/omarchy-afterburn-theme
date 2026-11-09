@@ -68,3 +68,18 @@ establish real-desktop GPU performance. Native OWE playback still needs a
 desktop check. Revert the wallpaper-refresh commit and rebuild editions to
 restore the old repository artwork. Restore the saved installed folders to
 undo a manual desktop update.
+
+## Selector artwork
+
+`preview.png` is a 1200px-wide PNG made from that theme's real default
+`backgrounds/1-horizon.jpg`, preserving its full framing. It has no wordmark or
+caption overlay. Omarchy prefers `preview.png` over scanning the wallpaper folder,
+so each edition's builder now generates this file after copying its curated art.
+`unlock.png` and `preview-unlock.png` remain separate branded boot/login artwork.
+
+Rebuild just selector previews with `python3 tools/wallpapers/selector-previews.py build`.
+Validate with `python3 tools/wallpapers/test_selector_previews.py`. Existing installs
+can run the same tool's `install` command after pulling the update; it backs up
+changed previews, replaces files atomically to refresh the selector's directory
+signature, skips custom symlinks, and uses installed wallpaper art instead of
+changing the desktop wallpaper. Restore the printed backup files to undo.

@@ -23,6 +23,25 @@ Full-resolution **theme backgrounds**, including the animated MP4s:
 
 [Browse every background and download the original files](WALLPAPERS.md). All six colours are directly available in [`backgrounds/`](backgrounds/). Each colour edition also keeps its own default and live loop in `.editions/<name>/backgrounds/`.
 
+## Theme-selector previews
+
+All six selector thumbnails show each theme's actual default wallpaper. The
+Afterburn wordmark is reserved for boot/login artwork.
+
+For an existing installation, update the checkout and refresh only its selector
+images (rerunning the extras installer preserves existing preview files):
+
+```bash
+cd ~/.config/omarchy/themes/afterburn
+git pull --ff-only
+python3 tools/wallpapers/selector-previews.py install
+```
+
+This generates thumbnails from each installed theme's own `backgrounds/1-horizon.jpg`,
+backs up changed `preview.png` files under `~/.local/state/afterburn/preview-backups/`,
+and preserves custom preview symlinks. Close and reopen the theme selector afterward.
+To undo, restore the saved `preview.png` files from the printed backup folder.
+
 ## Watch
 
 | [![Six editions](docs/media/watch-editions.jpg)](https://github.com/SilverWulf212/omarchy-afterburn-theme/releases/download/v1.0.0/editions.mp4) | [![Launch v2](docs/media/watch-brag-v2.jpg)](https://github.com/SilverWulf212/omarchy-afterburn-theme/releases/download/v1.0.0/brag-v2.mp4) | [![Original launch](docs/media/watch-brag.jpg)](https://github.com/SilverWulf212/omarchy-afterburn-theme/releases/download/v1.0.0/brag.mp4) |
