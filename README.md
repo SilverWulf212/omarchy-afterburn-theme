@@ -130,11 +130,11 @@ The same theme in five more colours, and each colour has a personality that show
 
 **What only each edition has** (beyond the colours, the heat wallpapers and the lock-screen colours):
 
-- **Voltage:** the lightning cursor; the live wallpaper `live-voltage-arcgrid` (pylons and wires with energy packets, and arcs that jump every 8 s); crackling spark embers on the lock screen; a btop theme whose meters ramp teal, cyan, white-hot.
-- **Cyber:** the phosphor cursor; the live wallpaper `live-matrix-rain` (falling glyph columns, scanlines); slow falling rain on the lock screen; a phosphor btop theme and an acid-green Neovim palette.
-- **Overdrive:** the neon-tube cursor; the live wallpaper `live-speed-streaks` (two layers of light streaks at different speeds); lock-screen embers that swell on a beat; a hot-pink Neovim palette.
-- **Redline:** the katana-slash cursor; two live wallpapers, `live-tachometer` (a gauge that sweeps to the limiter) and `live-heat-haze` (exhaust glow and rising heat); sudden sparks and stillness on the lock screen; btop meters that run brown, red, white-hot.
-- **Phantom:** the hologram cursor; the live wallpaper `live-phantom-aurora` (violet curtains, stars, drifting wisps); wisps that fade in and out on the lock screen; the heaviest dimming of background windows.
+- **Voltage:** the lightning cursor; the live wallpaper `live-resonance` (charged blue/cyan glass threads with a slow electrical ripple); crackling spark embers on the lock screen; a btop theme whose meters ramp teal, cyan, white-hot.
+- **Cyber:** the phosphor cursor; the live wallpaper `live-phosphor-path` (acid-green circuitry with slow optical drift and phosphor light); slow falling rain on the lock screen; a phosphor btop theme and an acid-green Neovim palette.
+- **Overdrive:** the neon-tube cursor; the live wallpaper `live-midnight-ribbon` (a magenta highway with gently moving reflections); lock-screen embers that swell on a beat; a hot-pink Neovim palette.
+- **Redline:** the katana-slash cursor; the live wallpaper `live-crimson-turbine` (black titanium, a crimson ring and restrained heat shimmer); sudden sparks and stillness on the lock screen; btop meters that run brown, red, white-hot.
+- **Phantom:** the hologram cursor; the live wallpaper `live-spectral-veil` (translucent violet folds with a slow flowing ripple); wisps that fade in and out on the lock screen; the heaviest dimming of background windows.
 
 The installer's edition question (step 6) copies them next to the base theme. Switch with the Omarchy theme menu or `omarchy theme set afterburn-voltage`. `omarchy theme install` alone installs only the base theme: the editions sit in its hidden `.editions/` folder as plain theme directories, so without the installer, copy one to `~/.config/omarchy/themes/afterburn-<name>` yourself (you get its colours, wallpapers, icons, btop and Neovim themes, but not the glow and the other extras).
 
@@ -170,7 +170,7 @@ Six still wallpapers at 3440×1440, plus three live loops. Press **Super + Ctrl 
 | `4-nozzle`: afterburner nozzle | `5-flow`: light trails over a night city | `6-ember`: macro shot of a glowing ember |
 | `7-nozzle-live` (live) | `8-ember-live` (live) | `9-horizon-live` (live) |
 
-**Live loops** (`backgrounds/7-nozzle-live.mp4`, `8-ember-live.mp4`, `9-horizon-live.mp4`) play natively through Omarchy's OWE wallpaper engine, so they need no install step. They pause in fullscreen and follow OWE's battery policy. Heat levels change the borders and glow but keep the live loops as they are. Each [colour edition](#editions) adds one or two live loops of its own, named `live-*`. The name sorts after the stills in every locale (a `10-` name would sort first in en_US, because Omarchy picks the first file of a theme), so a theme still opens on its still wallpaper, which is what the heat levels swap.
+**Live loops** (`backgrounds/7-nozzle-live.mp4`, `8-ember-live.mp4`, `9-horizon-live.mp4`) play natively through Omarchy's OWE wallpaper engine, so they need no install step. They pause in fullscreen and follow OWE's battery policy. Heat levels change the borders and glow but keep the live loops as they are. Each [colour edition](#editions) has one bespoke 12 s live loop, named `live-*`, and a matching default still. The three base live loops stay exclusive to orange Afterburn. See [the artwork guide](docs/wallpapers/README.md) for the images, motion, full generation prompts, rebuild commands and installed-theme update instructions. The name sorts after the stills in every locale (a `10-` name would sort first in en_US, because Omarchy picks the first file of a theme), so a theme still opens on its still wallpaper, which is what the heat levels swap.
 
 **Heat variants:** 12 in total, six cool and six hot, in `extras/heat-wallpapers/cool/` and `extras/heat-wallpapers/hot/`. Each has the same file name as its still. With `HEAT_WALLPAPERS=yes`, `afterburn level cool` or `hot` swaps a still wallpaper for its variant, and `afterburn level normal` swaps it back. Each colour edition has its own 12 in `.editions/<name>/heat-wallpapers/`, made from these by `tools/make-editions.sh`.
 

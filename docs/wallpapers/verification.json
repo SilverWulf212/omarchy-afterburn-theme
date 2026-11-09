@@ -1,0 +1,47 @@
+[
+  {
+    "edition": "voltage",
+    "loop": "live-resonance.mp4",
+    "bytes": 4343281,
+    "median_frame_step": 0.1698,
+    "p95_frame_step": 0.2334,
+    "boundary_step": 0.408,
+    "quarter_loop_motion": 7.2924
+  },
+  {
+    "edition": "cyber",
+    "loop": "live-phosphor-path.mp4",
+    "bytes": 2720776,
+    "median_frame_step": 0.0961,
+    "p95_frame_step": 0.2075,
+    "boundary_step": 0.256,
+    "quarter_loop_motion": 5.9994
+  },
+  {
+    "edition": "overdrive",
+    "loop": "live-midnight-ribbon.mp4",
+    "bytes": 4842127,
+    "median_frame_step": 0.1077,
+    "p95_frame_step": 0.183,
+    "boundary_step": 0.2827,
+    "quarter_loop_motion": 4.5305
+  },
+  {
+    "edition": "redline",
+    "loop": "live-crimson-turbine.mp4",
+    "bytes": 2454483,
+    "median_frame_step": 0.0902,
+    "p95_frame_step": 0.1446,
+    "boundary_step": 0.2237,
+    "quarter_loop_motion": 3.5637
+  },
+  {
+    "edition": "phantom",
+    "loop": "live-spectral-veil.mp4",
+    "bytes": 2605639,
+    "median_frame_step": 0.0892,
+    "p95_frame_step": 0.144,
+    "boundary_step": 0.2698,
+    "quarter_loop_motion": 3.2041
+  }
+]

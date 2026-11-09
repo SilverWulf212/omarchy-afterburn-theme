@@ -1,3 +1,5 @@
+> **Wallpaper refresh (2026-11-08):** The live wallpapers described below are historical and have been retired. Current artwork, rendering, installation and rollback instructions: [docs/wallpapers/README.md](../../../docs/wallpapers/README.md). Other edition effects remain unchanged.
+
 # Overdrive polish: five enhancements
 
 > **Status: integrated.** `tools/make-editions.sh` copies `files/` and `edition.conf` into `.editions/overdrive/`; the hook, the `afterburn` command and `extras/lock/` read them (see `README.md`, "Editions"). Final knobs: Overdrive: cursor neon, border medium (20 s), dim 0.04, glow 22, pulse embers (a 110 BPM beat; the pack proposed spark). Where the wiring notes below say "proposal" or "must wire", that is now done; the numbers in this file are the polish pack's originals.
