@@ -46,7 +46,7 @@ cd "$ROOT"
 for tool in magick ffmpeg ffprobe python3 fc-match; do
   command -v "$tool" >/dev/null || { echo "make-editions: missing $tool" >&2; exit 1; }
 done
-for f in colors.toml hyprland.lua icons.theme preview.png backgrounds extras/heat-wallpapers/cool extras/heat-wallpapers/hot; do
+for f in colors.toml hyprland.lua icons.theme backgrounds extras/heat-wallpapers/cool extras/heat-wallpapers/hot; do
   [[ -e $f ]] || { echo "make-editions: base file missing: $f" >&2; exit 1; }
 done
 FONT=$(fc-match -f '%{file}' 'JetBrainsMono Nerd Font:style=Bold')
@@ -277,7 +277,7 @@ grade() {
   fi
 }
 
-# relabel IMG HEX [JPEG_QUALITY]: preview.png and 2-prompt.jpg carry the base accent as a caption
+# relabel IMG HEX [JPEG_QUALITY]: 2-prompt.jpg carries the base accent as a caption
 # ("cyber // 0xF59145 // jetbrains mono"). Paint the hex over with the edition's own, in place.
 # The positions were measured on the 1200 px wide preview and scale with the image width. The old
 # digits are covered with a clean patch of the same caption row (the average of the empty stretches left
@@ -306,6 +306,7 @@ relabel() {
 # Base theme: top-level unlock art (orange, no edition label).
 make_unlock unlock.png "#$BASE_ACCENT" ""
 make_preview unlock.png preview-unlock.png
+python3 tools/wallpapers/selector-previews.py render backgrounds/1-horizon.jpg preview.png
 
 # Build in a scratch dir next to .editions/ and swap it in at the end, so a failed run (a missing
 # codec, Ctrl-C) never leaves a half-wiped .editions/ behind.
@@ -338,8 +339,6 @@ for spec in "${EDITIONS[@]}"; do
   im_sat=$(awk -v s="$smul" 'BEGIN { printf "%.1f", 100 * s }')
   band_expr=""
   [[ -z $band ]] || band_expr=$(band_fx "${band%%:*}" "${band##*:}")
-  grade preview.png "$dir/preview.png"
-  relabel "$dir/preview.png" "${accent#\#}"
 
   for level in cool hot; do
     for src in "extras/heat-wallpapers/$level"/*.jpg; do
@@ -350,7 +349,8 @@ for spec in "${EDITIONS[@]}"; do
     done
   done
 
-  for src in backgrounds/*; do
+  # Grade only the original numbered base set, never the shared edition copies.
+  for src in backgrounds/[1-9]-*; do
     file=$(basename "$src")
     case "$file" in
       *.jpg)
@@ -370,6 +370,7 @@ for spec in "${EDITIONS[@]}"; do
   make_preview "$dir/unlock.png" "$dir/preview-unlock.png"
 
   copy_extras "$name" "$dir"
+  python3 tools/wallpapers/selector-previews.py render "$dir/backgrounds/1-horizon.jpg" "$dir/preview.png"
   extra_list=()
   while IFS= read -r f; do extra_list+=("\`${f#"$dir/"}\`"); done < <(
     { find "$dir/backgrounds" -type f -name 'live-*' ; find "$dir" -maxdepth 1 -type f \( -name btop.theme -o -name neovim.lua \); } | LC_ALL=C sort)
@@ -417,4 +418,17 @@ chmod 755 "$STAGE"
 mv "$STAGE" .editions
 trap - EXIT
 
-echo "done: .editions/ regenerated from base files"
+# Expose every edition in the top-level background picker and GitHub folder.
+# Copy original bytes; do not resize or recolour the signature art.
+for spec in "${EDITIONS[@]}"; do
+  name=${spec%%|*}
+  loops=(".editions/$name/backgrounds/"live-*.mp4)
+  [[ ${#loops[@]} -eq 1 && -f ${loops[0]} ]] || die "$name: expected one signature loop"
+  artwork=${loops[0]##*/}
+  artwork=${artwork#live-}
+  artwork=${artwork%.mp4}
+  cp ".editions/$name/backgrounds/1-horizon.jpg" "backgrounds/$name-$artwork.jpg"
+  cp "${loops[0]}" "backgrounds/$name-$artwork-live.mp4"
+done
+
+echo "done: .editions/ and shared background copies regenerated from base files"

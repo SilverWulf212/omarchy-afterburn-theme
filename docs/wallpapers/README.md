@@ -2,7 +2,10 @@
 
 Orange Afterburn's six stills, three live loops and film assets are unchanged.
 The five other editions now have original signature art rather than recoloured
-orange live loops. Their five alternative stills remain available.
+orange live loops. Their five alternative stills remain available. Full-resolution
+copies of each signature still and MP4 also live directly in the root `backgrounds/`
+folder, named `<edition>-<artwork>.jpg` and `<edition>-<artwork>-live.mp4`.
+The base theme picker can select these colours too; its original default remains first.
 
 ![Cyber, Overdrive, Phantom, Redline and Voltage signature wallpapers](preview.jpg)
 
@@ -37,7 +40,8 @@ python3 tools/wallpapers/verify.py
 ```
 
 The first command renders assets into `tools/edition-extras/<edition>/files/`.
-The edition builder copies those into `.editions/`, skips the old default
+The edition builder copies those into `.editions/` and publishes the signature
+still/loop copies to root `backgrounds/`, skips the old default
 horizon and its heat variants, and keeps the orange live loops exclusive to
 the base. It does not invoke image generation or need an API key. FFmpeg with
 libx264 is required; edition rebuilding keeps its existing dependencies.
@@ -64,3 +68,18 @@ establish real-desktop GPU performance. Native OWE playback still needs a
 desktop check. Revert the wallpaper-refresh commit and rebuild editions to
 restore the old repository artwork. Restore the saved installed folders to
 undo a manual desktop update.
+
+## Selector artwork
+
+`preview.png` is a 1200px-wide PNG made from that theme's real default
+`backgrounds/1-horizon.jpg`, preserving its full framing. It has no wordmark or
+caption overlay. Omarchy prefers `preview.png` over scanning the wallpaper folder,
+so each edition's builder now generates this file after copying its curated art.
+`unlock.png` and `preview-unlock.png` remain separate branded boot/login artwork.
+
+Rebuild just selector previews with `python3 tools/wallpapers/selector-previews.py build`.
+Validate with `python3 tools/wallpapers/test_selector_previews.py`. Existing installs
+can run the same tool's `install` command after pulling the update; it backs up
+changed previews, replaces files atomically to refresh the selector's directory
+signature, skips custom symlinks, and uses installed wallpaper art instead of
+changing the desktop wallpaper. Restore the printed backup files to undo.
