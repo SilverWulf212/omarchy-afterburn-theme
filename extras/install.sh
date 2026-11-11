@@ -7,7 +7,7 @@
 #   4. The subtle pack (optional): slow border turn, dimmed background windows, heat levels,
 #      quiet fullscreen, battery saver, red prompt with a fail flash, the `afterburn` CLI
 #   5. The animated lock screen (optional, asked separately)
-#   6. Colour editions: Voltage, Cyber, Overdrive, Redline, Phantom (optional, asked separately)
+#   6. Colour editions, one per folder in .editions/ (optional, asked separately)
 #   7. The boot/login screen set to the current theme (optional, needs sudo, default No)
 # Run:  ~/.config/omarchy/themes/afterburn/extras/install.sh        (asks before each step)
 #       ~/.config/omarchy/themes/afterburn/extras/install.sh --yes  (no questions)
@@ -22,6 +22,8 @@ if [[ $(realpath -- "$HERE") != "$(realpath -m -- "$EXPECTED")" ]]; then
   echo "  (this copy is at $HERE; install the theme first: omarchy theme install https://github.com/silverwulf212/omarchy-afterburn-theme)" >&2
   exit 1
 fi
+# shellcheck disable=SC1091
+. "$HERE/afterburn-theme.sh"   # AB_BASHRC_LINE
 HOOK_NAME=50-afterburn-extras
 HOOKS="$HOME/.config/omarchy/hooks/theme-set.d"
 CFX_REPO=https://github.com/Avarce/ghostty-cursor-fx.git
@@ -86,8 +88,8 @@ cat <<'EOF'
     that calls the network: api.weather.gov, and api.zippopotam.us once to find your ZIP.
   • LOCK SCREEN (optional, asked separately): clones Omarchy's lock screen plugin and adds
     an ember layer. The clone stops getting Omarchy's lock-screen updates until you uninstall.
-  • COLOUR EDITIONS (optional, asked separately): copies the Voltage, Cyber, Overdrive,
-    Redline and Phantom themes from this theme's .editions/ folder to
+  • COLOUR EDITIONS (optional, asked separately): copies the colour edition themes (the
+    question names them) from this theme's .editions/ folder to
     ~/.config/omarchy/themes/afterburn-<name>. A folder that already exists is never touched.
     uninstall.sh removes only the ones it created.
   • BOOT/LOGIN SCREEN (optional, default No, needs sudo): runs Omarchy's
@@ -170,7 +172,6 @@ UNIT_DIR="$CONF_HOME/systemd/user"
 APPS_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 STARSHIP="$CONF_HOME/starship.toml"
 BASHRC="$HOME/.bashrc"
-FAIL_SH='$HOME/.config/omarchy/themes/afterburn/extras/afterburn-fail.bash'
 conf_set() { sed -i --follow-symlinks -E "s/^$1=[^ #]*/$1=$2/" "$CONF"; }
 
 echo
@@ -243,14 +244,14 @@ elif ask "Add the subtle pack? (slow-turning border, dimmed background windows, 
   fi
 
   # One guarded line in ~/.bashrc, sourced only when the file exists.
-  if ! grep -q '# afterburn$' "$BASHRC" 2>/dev/null; then
+  if ! grep -qxF "$AB_BASHRC_LINE" "$BASHRC" 2>/dev/null; then
     CHANGED+=("~/.bashrc: fail-effect line appended")
     [[ -e $BASHRC ]] || : > "$STATE_DIR/bashrc-created"   # no .bashrc yet: uninstall.sh removes ours again if it ends up empty
     if [[ -s $BASHRC && -n $(tail -c1 "$BASHRC") ]]; then
       echo >> "$BASHRC"
       : > "$STATE_DIR/bashrc-newline"   # uninstall.sh drops this newline again
     fi
-    echo "[[ -f \"$FAIL_SH\" ]] && source \"$FAIL_SH\"  # afterburn" >> "$BASHRC"
+    echo "$AB_BASHRC_LINE" >> "$BASHRC"
   fi
   ok "~/.bashrc: one guarded line sources the fail effect"
 
@@ -276,12 +277,12 @@ echo
 if [[ ! -f $LOCK ]]; then
   skip "lock screen: $LOCK not found, skipped"
 elif ask "Animate the lock screen with embers? (clones Omarchy's lock plugin; it stops getting Omarchy's lock-screen updates until you uninstall)"; then
-  CLONE_DIR="$HOME/.config/omarchy/plugins/${USER:-$(id -un)}.lock"
-  CHANGED+=("lock screen clone $CLONE_DIR (if it exists, uninstall.sh removes it)")
+  # lock-embers.sh picks the clone id (afterburn.lock; an older install keeps its <user>.lock) and writes
+  # the marker $STATE_DIR/lock-embers with it as soon as the clone exists. If a step fails after the
+  # built-in lock was switched off, it puts the built-in lock back before it exits.
+  CHANGED+=("lock screen clone in ~/.config/omarchy/plugins (afterburn.lock; uninstall.sh removes it)")
   rc=0
   bash "$LOCK" install || rc=$?
-  # Mark whenever the clone exists, even after a failure, so uninstall.sh always undoes it.
-  if [[ -e $CLONE_DIR || -L $CLONE_DIR ]]; then : > "$STATE_DIR/lock-embers"; fi
   if (( rc == 0 )); then
     ok "lock screen animated with embers"
   elif (( rc == 3 )); then
@@ -308,13 +309,17 @@ add_missing() {
   done < <(cd "$1" && find . -type f -print0)
   echo "$n"
 }
-EDITIONS=(voltage cyber overdrive redline phantom)
+# The folders under .editions/ are the list; nothing here names an edition.
 echo
-AVAILABLE=()
-for e in "${EDITIONS[@]}"; do [[ -f $THEME_ROOT/.editions/$e/colors.toml ]] && AVAILABLE+=("$e"); done
+AVAILABLE=() NAMES=()
+for d in "$THEME_ROOT"/.editions/*/; do
+  e=${d%/}; e=${e##*/}
+  [[ $e =~ ^[a-z0-9]+$ && -f $d/colors.toml ]] && { AVAILABLE+=("$e"); NAMES+=("${e^}"); }
+done
+printf -v NAMES_LIST '%s, ' "${NAMES[@]}"; NAMES_LIST=${NAMES_LIST%, }
 if (( ${#AVAILABLE[@]} == 0 )); then
   skip "colour editions: no .editions/ folder in $THEME_ROOT (this copy of the theme has none), skipped"
-elif ask "Install colour editions (Voltage, Cyber, Overdrive, Redline, Phantom)? (copies each to ~/.config/omarchy/themes/afterburn-<name>; the extras follow the edition you pick)"; then
+elif ask "Install colour editions ($NAMES_LIST)? (copies each to ~/.config/omarchy/themes/afterburn-<name>; the extras follow the edition you pick)"; then
   for e in "${AVAILABLE[@]}"; do
     dest="$THEMES_HOME/afterburn-$e"
     if [[ -e $dest || -L $dest ]]; then
