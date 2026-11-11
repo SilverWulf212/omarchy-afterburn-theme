@@ -1,0 +1,37 @@
+mode = "light"
+
+accent = "#c2410c"
+selection = "#f3cfa6"
+muted = "#978e80"
+
+background = "#f5efe4"
+dark_background = "#ece5d8"
+darker_background = "#e1d9ca"
+lighter_background = "#e7dfd1"
+
+foreground = "#1f1b16"
+dark_foreground = "#8f8678"
+light_foreground = "#4a443c"
+bright_foreground = "#0c0d0b"
+
+red = "#c4302b"
+yellow = "#925f00"
+orange = "#d2500c"
+green = "#487619"
+cyan = "#7a6244"
+blue = "#c2410c"
+magenta = "#9a3412"
+brown = "#7a3e16"
+
+bright_red = "#a8201c"
+bright_yellow = "#7d5200"
+bright_green = "#3c6414"
+bright_cyan = "#5e4a32"
+bright_blue = "#a8380a"
+bright_magenta = "#7c2d12"
+
+hyprland_active_border = "rgba(c2410cee) rgba(e0340fee) rgba(ee8a1cee) 45deg"
+hyprland_inactive_border = "rgba(cfc6b6cc)"
+
+# Read by the Afterburn extras: middle stop of the cool heat level.
+afterburn_cool = "#a85f38"
