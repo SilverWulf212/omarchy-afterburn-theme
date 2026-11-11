@@ -4,9 +4,11 @@
 #
 # After a failed command, plays one short truecolor animation (burn, cascade,
 # dissolve) on a line showing "✗ <command>  exit N", then erases the line.
-# Total under ~450 ms. Pure bash, no forks except one stat/history on failure.
+# Total under ~450 ms. Pure bash on the success path. A flash costs 11 forks: two stat, one
+# history subshell, and one sleep per frame (8). Needs bash 4.4+ (${var@P}).
 #
-# Skips: exit 130/148 (Ctrl-C, Ctrl-Z), non-interactive shells, NO_MOTION set.
+# Skips: exit 130/148 (Ctrl-C, Ctrl-Z), non-interactive shells, NO_MOTION set, and a prompt
+# where no new command ran (an empty Enter after a failure keeps the old $?).
 # FAIL_FX (random|burn|cascade|dissolve|off) comes from
 # ${XDG_CONFIG_HOME:-~/.config}/afterburn/afterburn.conf, re-read when mtime changes.
 
@@ -111,11 +113,18 @@ if [[ $- == *i* && -t 1 && -z ${__AFTERBURN_FAIL_HOOKED-} ]]; then
   __afterburn_fail_hook() {
     local rc=$?
     local LC_ALL=C.UTF-8   # so ${#text} and ${text:i:1} count characters, not bytes
-    if (( rc != 0 && rc != 130 && rc != 148 )) \
+    # \# is the prompt's command number: it rises only when a command ran. HISTCMD would not
+    # do: HISTCONTROL=ignoredups (Omarchy's default) leaves it still on a repeated command.
+    local num=\\#
+    num=${num@P}
+    local ran=0
+    [[ $num != "${__AFB_CMDNUM-$num}" ]] && ran=1   # first prompt: nothing ran yet
+    __AFB_CMDNUM=$num
+    if (( ran && rc != 0 && rc != 130 && rc != 148 )) \
        && [[ $- == *i* && -t 1 && -z ${NO_MOTION+x} ]]; then
       __afterburn_fail_load_conf
       __afterburn_fail_load_palette
-      local line cmd fx
+      local line cmd
       line=$(builtin history 1 2>/dev/null)
       read -r _ cmd <<<"$line"        # drop the history number
       cmd=${cmd//[[:cntrl:]]/}
