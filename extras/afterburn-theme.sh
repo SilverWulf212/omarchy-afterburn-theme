@@ -17,6 +17,11 @@
 # white cannot make it hotter, so its hot level deepens instead, and the unfocused shadow is a soft
 # warm one rather than the dark themes' black.
 
+# The one line install.sh adds to ~/.bashrc and uninstall.sh takes out again (matched whole, so a line of yours
+# that merely ends in "# afterburn" is never touched). $HOME stays literal in the file.
+AB_FAIL_SH='$HOME/.config/omarchy/themes/afterburn/extras/afterburn-fail.bash'
+AB_BASHRC_LINE="[[ -f \"$AB_FAIL_SH\" ]] && source \"$AB_FAIL_SH\"  # afterburn"
+
 # Theme name as Omarchy stores it (lowercase, dashes). Empty if unknown.
 ab_theme_name() {
   cat "${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/current/theme.name" 2>/dev/null || true

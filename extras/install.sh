@@ -22,6 +22,8 @@ if [[ $(realpath -- "$HERE") != "$(realpath -m -- "$EXPECTED")" ]]; then
   echo "  (this copy is at $HERE; install the theme first: omarchy theme install https://github.com/silverwulf212/omarchy-afterburn-theme)" >&2
   exit 1
 fi
+# shellcheck disable=SC1091
+. "$HERE/afterburn-theme.sh"   # AB_BASHRC_LINE
 HOOK_NAME=50-afterburn-extras
 HOOKS="$HOME/.config/omarchy/hooks/theme-set.d"
 CFX_REPO=https://github.com/Avarce/ghostty-cursor-fx.git
@@ -170,7 +172,6 @@ UNIT_DIR="$CONF_HOME/systemd/user"
 APPS_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 STARSHIP="$CONF_HOME/starship.toml"
 BASHRC="$HOME/.bashrc"
-FAIL_SH='$HOME/.config/omarchy/themes/afterburn/extras/afterburn-fail.bash'
 conf_set() { sed -i --follow-symlinks -E "s/^$1=[^ #]*/$1=$2/" "$CONF"; }
 
 echo
@@ -243,14 +244,14 @@ elif ask "Add the subtle pack? (slow-turning border, dimmed background windows, 
   fi
 
   # One guarded line in ~/.bashrc, sourced only when the file exists.
-  if ! grep -q '# afterburn$' "$BASHRC" 2>/dev/null; then
+  if ! grep -qxF "$AB_BASHRC_LINE" "$BASHRC" 2>/dev/null; then
     CHANGED+=("~/.bashrc: fail-effect line appended")
     [[ -e $BASHRC ]] || : > "$STATE_DIR/bashrc-created"   # no .bashrc yet: uninstall.sh removes ours again if it ends up empty
     if [[ -s $BASHRC && -n $(tail -c1 "$BASHRC") ]]; then
       echo >> "$BASHRC"
       : > "$STATE_DIR/bashrc-newline"   # uninstall.sh drops this newline again
     fi
-    echo "[[ -f \"$FAIL_SH\" ]] && source \"$FAIL_SH\"  # afterburn" >> "$BASHRC"
+    echo "$AB_BASHRC_LINE" >> "$BASHRC"
   fi
   ok "~/.bashrc: one guarded line sources the fail effect"
 
