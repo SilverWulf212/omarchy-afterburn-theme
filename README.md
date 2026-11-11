@@ -2,9 +2,45 @@
 
 ![Afterburn](preview.png)
 
-**Orange-on-black cyber theme for [Omarchy](https://omarchy.org).** Ember-gradient window borders with a soft orange glow, animated ember cursors in Ghostty, and nine wallpapers: six stills and three live loops.
+**Orange-on-black cyber theme for [Omarchy](https://omarchy.org).** Ember-gradient window borders with a soft orange glow, animated ember cursors in Ghostty, and nineteen wallpapers: eleven stills and eight live loops across all six colours.
 
 Comes in six colours, each with its own personality: Afterburn (orange), Voltage (cyan), Cyber (green), Overdrive (magenta), Redline (red) and Phantom (violet). See [Editions](#editions).
+
+## New edition wallpapers
+
+![New Voltage, Cyber, Overdrive, Redline and Phantom wallpaper artwork](docs/wallpapers/preview.jpg)
+
+Full-resolution **theme backgrounds**, including the animated MP4s:
+
+| Edition | Wallpaper | Still | Animated wallpaper |
+|---|---|---|---|
+| Afterburn | Horizon | [JPG](backgrounds/1-horizon.jpg) | [MP4](backgrounds/9-horizon-live.mp4) |
+| Voltage | Resonance | [JPG](backgrounds/voltage-resonance.jpg) | [MP4](backgrounds/voltage-resonance-live.mp4) |
+| Cyber | Phosphor Path | [JPG](backgrounds/cyber-phosphor-path.jpg) | [MP4](backgrounds/cyber-phosphor-path-live.mp4) |
+| Overdrive | Midnight Ribbon | [JPG](backgrounds/overdrive-midnight-ribbon.jpg) | [MP4](backgrounds/overdrive-midnight-ribbon-live.mp4) |
+| Redline | Crimson Turbine | [JPG](backgrounds/redline-crimson-turbine.jpg) | [MP4](backgrounds/redline-crimson-turbine-live.mp4) |
+| Phantom | Spectral Veil | [JPG](backgrounds/phantom-spectral-veil.jpg) | [MP4](backgrounds/phantom-spectral-veil-live.mp4) |
+
+[Browse every background and download the original files](WALLPAPERS.md). All six colours are directly available in [`backgrounds/`](backgrounds/). Each colour edition also keeps its own default and live loop in `.editions/<name>/backgrounds/`.
+
+## Theme-selector previews
+
+All six selector thumbnails show each theme's actual default wallpaper. The
+Afterburn wordmark is reserved for boot/login artwork.
+
+For an existing installation, update the checkout and refresh only its selector
+images (rerunning the extras installer preserves existing preview files):
+
+```bash
+cd ~/.config/omarchy/themes/afterburn
+git pull --ff-only
+python3 tools/wallpapers/selector-previews.py install
+```
+
+This generates thumbnails from each installed theme's own `backgrounds/1-horizon.jpg`,
+backs up changed `preview.png` files under `~/.local/state/afterburn/preview-backups/`,
+and preserves custom preview symlinks. Close and reopen the theme selector afterward.
+To undo, restore the saved `preview.png` files from the printed backup folder.
 
 ## Watch
 
@@ -130,11 +166,11 @@ The same theme in five more colours, and each colour has a personality that show
 
 **What only each edition has** (beyond the colours, the heat wallpapers and the lock-screen colours):
 
-- **Voltage:** the lightning cursor; the live wallpaper `live-voltage-arcgrid` (pylons and wires with energy packets, and arcs that jump every 8 s); crackling spark embers on the lock screen; a btop theme whose meters ramp teal, cyan, white-hot.
-- **Cyber:** the data-rain `cyber` cursor (glyph rain, every typed character burns in green); the live wallpaper `live-matrix-rain` (falling glyph columns, scanlines); slow falling rain on the lock screen; a phosphor btop theme and an acid-green Neovim palette.
-- **Overdrive:** the neon-tube cursor; the live wallpaper `live-speed-streaks` (two layers of light streaks at different speeds); lock-screen embers that swell on a beat; a hot-pink Neovim palette.
-- **Redline:** the katana-slash cursor; two live wallpapers, `live-tachometer` (a gauge that sweeps to the limiter) and `live-heat-haze` (exhaust glow and rising heat); sudden sparks and stillness on the lock screen; btop meters that run brown, red, white-hot.
-- **Phantom:** the hologram cursor; the live wallpaper `live-phantom-aurora` (violet curtains, stars, drifting wisps); wisps that fade in and out on the lock screen; the heaviest dimming of background windows.
+- **Voltage:** the lightning cursor; the live wallpaper `live-resonance` (charged blue/cyan glass threads with a slow electrical ripple); crackling spark embers on the lock screen; a btop theme whose meters ramp teal, cyan, white-hot.
+- **Cyber:** the data-rain `cyber` cursor (glyph rain, every typed character burns in green); the live wallpaper `live-phosphor-path` (acid-green circuitry with slow optical drift and phosphor light); slow falling rain on the lock screen; a phosphor btop theme and an acid-green Neovim palette.
+- **Overdrive:** the neon-tube cursor; the live wallpaper `live-midnight-ribbon` (a magenta highway with gently moving reflections); lock-screen embers that swell on a beat; a hot-pink Neovim palette.
+- **Redline:** the katana-slash cursor; the live wallpaper `live-crimson-turbine` (black titanium, a crimson ring and restrained heat shimmer); sudden sparks and stillness on the lock screen; btop meters that run brown, red, white-hot.
+- **Phantom:** the hologram cursor; the live wallpaper `live-spectral-veil` (translucent violet folds with a slow flowing ripple); wisps that fade in and out on the lock screen; the heaviest dimming of background windows.
 
 The installer's edition question (step 6) copies them next to the base theme. Switch with the Omarchy theme menu or `omarchy theme set afterburn-voltage`. `omarchy theme install` alone installs only the base theme: the editions sit in its hidden `.editions/` folder as plain theme directories, so without the installer, copy one to `~/.config/omarchy/themes/afterburn-<name>` yourself (you get its colours, wallpapers, icons, btop and Neovim themes, but not the glow and the other extras).
 
@@ -162,7 +198,7 @@ The base theme's palette. Editions swap the orange for their own colour.
 
 ## Wallpapers
 
-Six still wallpapers at 3440×1440, plus three live loops. Press **Super + Ctrl + Space** to rotate through them.
+Eleven still wallpapers at 3440×1440, plus eight live loops, all directly in `backgrounds/`. The original six orange stills and three orange loops are joined by one signature still and loop per colour edition. Press **Super + Ctrl + Space** to rotate through them.
 
 | | | |
 |---|---|---|
@@ -170,7 +206,7 @@ Six still wallpapers at 3440×1440, plus three live loops. Press **Super + Ctrl 
 | `4-nozzle`: afterburner nozzle | `5-flow`: light trails over a night city | `6-ember`: macro shot of a glowing ember |
 | `7-nozzle-live` (live) | `8-ember-live` (live) | `9-horizon-live` (live) |
 
-**Live loops** (`backgrounds/7-nozzle-live.mp4`, `8-ember-live.mp4`, `9-horizon-live.mp4`) play natively through Omarchy's OWE wallpaper engine, so they need no install step. They pause in fullscreen and follow OWE's battery policy. Heat levels change the borders and glow but keep the live loops as they are. Each [colour edition](#editions) adds one or two live loops of its own, named `live-*`. The name sorts after the stills in every locale (a `10-` name would sort first in en_US, because Omarchy picks the first file of a theme), so a theme still opens on its still wallpaper, which is what the heat levels swap.
+**Live loops** (`backgrounds/7-nozzle-live.mp4`, `8-ember-live.mp4`, `9-horizon-live.mp4`) play natively through Omarchy's OWE wallpaper engine, so they need no install step. They pause in fullscreen and follow OWE's battery policy. Heat levels change the borders and glow but keep the live loops as they are. Each [colour edition](#editions) has one bespoke 12 s live loop, named `live-*`, and a matching default still. The three base live loops stay exclusive to orange Afterburn. See [the artwork guide](docs/wallpapers/README.md) for the images, motion, full generation prompts, rebuild commands and installed-theme update instructions. The name sorts after the stills in every locale (a `10-` name would sort first in en_US, because Omarchy picks the first file of a theme), so a theme still opens on its still wallpaper, which is what the heat levels swap.
 
 **Heat variants:** 12 in total, six cool and six hot, in `extras/heat-wallpapers/cool/` and `extras/heat-wallpapers/hot/`. Each has the same file name as its still. With `HEAT_WALLPAPERS=yes`, `afterburn level cool` or `hot` swaps a still wallpaper for its variant, and `afterburn level normal` swaps it back. Each colour edition has its own 12 in `.editions/<name>/heat-wallpapers/`, made from these by `tools/make-editions.sh`.
 

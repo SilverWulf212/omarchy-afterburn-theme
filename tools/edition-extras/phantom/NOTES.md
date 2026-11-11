@@ -1,3 +1,5 @@
+> **Wallpaper refresh (2026-11-08):** The live wallpapers described below are historical and have been retired. Current artwork, rendering, installation and rollback instructions: [docs/wallpapers/README.md](../../../docs/wallpapers/README.md). Other edition effects remain unchanged.
+
 # Phantom polish: five enhancements
 
 > **Status: integrated.** `tools/make-editions.sh` copies `files/` and `edition.conf` into `.editions/phantom/`; the hook, the `afterburn` command and `extras/lock/` read them (see `README.md`, "Editions"). Final knobs: Phantom: cursor hologram, border off, dim 0.18, glow 24, drift embers. Where the wiring notes below say "proposal" or "must wire", that is now done; the numbers in this file are the polish pack's originals.

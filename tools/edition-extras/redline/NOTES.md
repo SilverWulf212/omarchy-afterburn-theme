@@ -1,3 +1,5 @@
+> **Wallpaper refresh (2026-11-08):** The live wallpapers described below are historical and have been retired. Current artwork, rendering, installation and rollback instructions: [docs/wallpapers/README.md](../../../docs/wallpapers/README.md). Other edition effects remain unchanged.
+
 # Redline polish: five enhancements
 
 > **Status: integrated.** `tools/make-editions.sh` copies `files/` and `edition.conf` into `.editions/redline/`; the hook, the `afterburn` command and `extras/lock/` read them (see `README.md`, "Editions"). Final knobs: Redline: cursor katana, border off, dim 0.15, glow 8, burst embers (the pack proposed medium/18/spark; the spark spec below became the burst style). Where the wiring notes below say "proposal" or "must wire", that is now done; the numbers in this file are the polish pack's originals.
