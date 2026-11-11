@@ -276,12 +276,12 @@ echo
 if [[ ! -f $LOCK ]]; then
   skip "lock screen: $LOCK not found, skipped"
 elif ask "Animate the lock screen with embers? (clones Omarchy's lock plugin; it stops getting Omarchy's lock-screen updates until you uninstall)"; then
-  CLONE_DIR="$HOME/.config/omarchy/plugins/${USER:-$(id -un)}.lock"
-  CHANGED+=("lock screen clone $CLONE_DIR (if it exists, uninstall.sh removes it)")
+  # lock-embers.sh picks the clone id (afterburn.lock; an older install keeps its <user>.lock) and writes
+  # the marker $STATE_DIR/lock-embers with it as soon as the clone exists. If a step fails after the
+  # built-in lock was switched off, it puts the built-in lock back before it exits.
+  CHANGED+=("lock screen clone in ~/.config/omarchy/plugins (afterburn.lock; uninstall.sh removes it)")
   rc=0
   bash "$LOCK" install || rc=$?
-  # Mark whenever the clone exists, even after a failure, so uninstall.sh always undoes it.
-  if [[ -e $CLONE_DIR || -L $CLONE_DIR ]]; then : > "$STATE_DIR/lock-embers"; fi
   if (( rc == 0 )); then
     ok "lock screen animated with embers"
   elif (( rc == 3 )); then
