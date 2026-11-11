@@ -46,18 +46,25 @@ sync_quiet() {
   fi
 }
 
+# One socket2 line. The case runs first, so the many unrelated events (focus, title, workspace)
+# cost nothing: no source, no fork.
+fullscreen_event() {
+  case $1 in
+    'fullscreen>>1'|'fullscreen>>0') ;;
+    *) return 0 ;;
+  esac
+  load_conf
+  is_afterburn && [[ $FULLSCREEN_QUIET == yes ]] || return 0
+  if [[ $1 == 'fullscreen>>1' ]]; then afterburn quiet on; else afterburn quiet off; fi
+}
+
 watch_fullscreen() {
   local runtime=${XDG_RUNTIME_DIR:-/run/user/$UID} sig sock line
   sig=${HYPRLAND_INSTANCE_SIGNATURE:-$(ls -t "$runtime/hypr" 2>/dev/null | head -n1)}
   sock=$runtime/hypr/$sig/.socket2.sock
   while :; do
     socat -U - "UNIX-CONNECT:$sock" 2>/dev/null | while IFS= read -r line; do
-      load_conf
-      is_afterburn && [[ $FULLSCREEN_QUIET == yes ]] || continue
-      case $line in
-        'fullscreen>>1') afterburn quiet on ;;
-        'fullscreen>>0') afterburn quiet off ;;
-      esac
+      fullscreen_event "$line"
     done
     sleep 5   # socket gone or Hyprland restarted: try again
   done
