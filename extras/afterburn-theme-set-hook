@@ -77,12 +77,12 @@ if ab_is_afterburn "$THEME"; then
   fi
   if [[ -x $AFTERBURN ]]; then
     "$AFTERBURN" apply >/dev/null 2>&1 || true
-  elif [[ -f $EXTRAS/hyprland-glow.lua && -d $CURRENT ]]; then
+  elif [[ -f $EXTRAS/../hyprland.lua && -d $CURRENT ]]; then
     # No CLI: the plain glow, recoloured for an edition the same way `afterburn apply` does.
     if declare -F ab_load_palette >/dev/null; then
-      ab_recolor_glow "$EXTRAS/hyprland-glow.lua" > "$CURRENT/hyprland.lua"
+      ab_recolor_glow "$EXTRAS/../hyprland.lua" > "$CURRENT/hyprland.lua"
     else
-      cp "$EXTRAS/hyprland-glow.lua" "$CURRENT/hyprland.lua"
+      cp "$EXTRAS/../hyprland.lua" "$CURRENT/hyprland.lua"
     fi
     hyprctl reload >/dev/null 2>&1 || true
   fi

@@ -28,7 +28,7 @@ OMARCHY_CUR="$STATE_ROOT/omarchy/current"
 CUR_THEME="$OMARCHY_CUR/theme"
 CUR_BG_LINK="$OMARCHY_CUR/background"
 THEME_DIR="$HOME/.config/omarchy/themes/afterburn"
-GLOW_TEMPLATE="$THEME_DIR/extras/hyprland-glow.lua"
+GLOW_TEMPLATE="$THEME_DIR/hyprland.lua"   # the base theme's own glow file: the template every edition is recoloured from
 LOCK_SH="$THEME_DIR/extras/lock/lock-embers.sh"
 GHOSTTY="$HOME/.config/ghostty/config"
 # The extras always live in the base theme dir, also while a colour edition is active.
