@@ -59,7 +59,7 @@ write_default_conf() {
   cat > "$CONF" <<'EOF'
 # Leave a line out (or commented) and the active edition's default applies, then the built-in one.
 # Save a value here and it always wins. `afterburn unset KEY` goes back to following the edition.
-#ROTATE=slow         # off|slow|medium|fast  (border gradient turn: 60s|20s|8s per turn)
+#ROTATE=slow         # off|slow|medium|fast  (border gradient turn: 10s|5s|2.5s per turn)
 #DIM=0.08            # dim_inactive strength, 0 = off
 #GLOW_RANGE=14       # 4-30, shadow range at the normal heat level
 #CURSOR_FX=embers    # a cursor-fx effect (cyber lightning glitch neon phosphor embers shockwave katana teleport fireworks aurora mecha hologram)

@@ -59,7 +59,7 @@ omarchy theme install https://github.com/silverwulf212/omarchy-afterburn-theme &
 > [!IMPORTANT]
 > **This replaces your default terminal with Ghostty** and installs third-party software. See [What the full stack changes](#what-the-full-stack-changes) before you run it.
 
-The second half shows a summary of what it will change, then asks before each step:
+Needs Omarchy 4.x (tested on 4.5.0, Hyprland 0.56). The second half shows a summary of what it will change, then asks before every optional step. Two things come with the first "Continue?" and are not asked again: the theme-set hook that restores the glow, and a final `omarchy theme set`.
 
 1. **Ghostty**: installs it and makes it your default terminal, if needed
 2. **cursor-fx**: animated Ghostty cursors. Afterburn uses *embers*: typing kicks up glowing embers that rise and cool. Each [colour edition](#editions) picks its own effect
@@ -82,7 +82,7 @@ You get the colors, the ember-gradient borders, the wallpapers and the icons. Th
 ## What the full stack changes
 
 > [!WARNING]
-> **The full-stack installer replaces your default terminal with Ghostty** and installs third-party code. It lists everything below and asks before each step. Read this section before you say yes.
+> **The full-stack installer replaces your default terminal with Ghostty** and installs third-party code. It lists everything below and asks before every optional step. Read this section before you say yes.
 
 | Change | Details | How to undo |
 |---|---|---|
@@ -127,7 +127,7 @@ Optional, part of the full-stack install (step 4). Every setting lives in `~/.co
 | Heat source: weather | `HEAT_SOURCE=weather`, `ZIP`, `HOT_F` (`90`), `COOL_F` (`50`) | Reads the nearest National Weather Service station (`api.weather.gov`), at most every 20 minutes. Hot at or above `HOT_F`, cool at or below `COOL_F`, cool in rain, snow or storms, and one level cooler at night. US only. | `afterburn locate 10001`, then `afterburn set HEAT_SOURCE weather` |
 | Quiet fullscreen | `FULLSCREEN_QUIET` (`yes`) | In fullscreen: no shadow, no spin, cursor effect off. Restored when you leave fullscreen. | `afterburn quiet on` / `off` |
 | Laptop saver | `LAPTOP_MODE` (`auto`) | On battery: no shadow, no spin, and a subtle cursor effect. `auto` follows the power source and only counts the machine's own battery: the battery of a wireless mouse or keyboard (`scope` = `Device` in `/sys/class/power_supply`) is ignored, so a desktop is never in saver mode. `on` and `off` force it. | `afterburn laptop auto` |
-| Red prompt and fail flash | `FAIL_FX` (`random`) | A failed command gets a red `❯` in Starship and a short flash: `burn`, `cascade` or `dissolve`. `random` picks one. Interrupted commands (Ctrl-C, Ctrl-Z) don't flash. Set `NO_MOTION` in your shell to turn the flash off. | `afterburn set FAIL_FX off` |
+| Red prompt and fail flash | `FAIL_FX` (`random`) | A failed command gets a red `❯` in Starship and, in bash, a short flash (zsh and fish get the red prompt only): `burn`, `cascade` or `dissolve`. `random` picks one. Interrupted commands (Ctrl-C, Ctrl-Z) don't flash. Set `NO_MOTION` in your shell to turn the flash off. | `afterburn set FAIL_FX off` |
 | Colours | none | Afterburn's named colours. In a terminal, `afterburn colors` shows swatches and copies the one you pick. The "Afterburn colors" launcher entry opens the menu and copies the hex. | `afterburn colors` |
 
 Other commands: `afterburn apply` (rebuilds the glow from the conf and reloads Hyprland), `afterburn level cool|normal|hot`, `afterburn saver on|off`. If the effects look off, run `afterburn status` (it says why quiet or saver is on) or `afterburn doctor` (read-only: power supplies and whether each counts, the watcher, cursor-fx, Ghostty, Hyprland config errors). Battery or laptop mode turns `cursor-fx subtle` back off when it ends, but only if the saver was what turned it on (a subtle you had on yourself stays on; it is also restored when you leave Afterburn or run `uninstall.sh`). The watcher runs as a user service. Check it with `systemctl --user status afterburn-watch`.
@@ -198,7 +198,7 @@ The base theme's palette. Editions swap the orange for their own colour.
 
 ## Wallpapers
 
-Eleven still wallpapers at 3440×1440, plus eight live loops, all directly in `backgrounds/`. The original six orange stills and three orange loops are joined by one signature still and loop per colour edition. Press **Super + Ctrl + Space** to rotate through them.
+Eleven still wallpapers at 3440×1440, plus eight live loops, all directly in `backgrounds/`. The original six orange stills and three orange loops are joined by one signature still and loop per colour edition. Press **Super + Ctrl + Space** to open Omarchy's background switcher and pick one, or run `omarchy theme bg next` to step to the next.
 
 | | | |
 |---|---|---|
