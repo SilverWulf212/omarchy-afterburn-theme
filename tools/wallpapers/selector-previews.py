@@ -9,7 +9,7 @@ import stat
 import subprocess
 import tempfile
 ROOT = Path(__file__).resolve().parents[2]
-EDITIONS = ('voltage', 'cyber', 'overdrive', 'redline', 'phantom')
+EDITIONS = ('voltage', 'cyber', 'overdrive', 'redline', 'phantom', 'lite')
 
 def render(source, destination, backup=None):
     source, destination = Path(source), Path(destination)

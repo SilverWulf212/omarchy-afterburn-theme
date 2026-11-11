@@ -66,7 +66,7 @@ Needs Omarchy 4.x (tested on 4.5.0, Hyprland 0.56). The second half shows a summ
 3. **Glow**: the orange halo around the focused window
 4. **Subtle pack** (optional): a slow-turning border, dimmed background windows, heat levels, quiet fullscreen, battery saver, a red prompt with a fail flash, and the `afterburn` command. See [Subtle pack](#subtle-pack)
 5. **Lock screen** (optional, asked separately): embers on the lock screen. See [Lock screen](#lock-screen)
-6. **Colour editions** (optional, asked separately): Voltage, Cyber, Overdrive, Redline and Phantom, the same theme in other colours. See [Editions](#editions)
+6. **Colour editions** (optional, asked separately): Voltage, Cyber, Overdrive, Redline and Phantom, the same theme in other colours, and Lite, the light one. See [Editions](#editions)
 7. **Boot and login screen** (optional, needs `sudo`, default No): sets Omarchy's boot splash and login screen to the current theme. See [Boot and login screen](#boot-and-login-screen)
 
 Add `--yes` to answer yes to every question. Two exceptions: `--yes` never changes your heat source (it is `time` on a first install, so it never turns on the weather source, the only part that calls the network once running), and the boot and login screen is never changed by `--yes` because it needs `sudo`. Re-running the installer is safe: it keeps your settings, including the heat source. Run it once after you update the theme: the theme-set hook is a copy, so a new release's hook (and its edition behaviour) only takes effect after that. To undo, run `~/.config/omarchy/themes/afterburn/extras/uninstall.sh`. Switching to another theme also puts your previous cursor effect back.
@@ -153,7 +153,7 @@ Because it is a clone, the lock screen **stops getting Omarchy's lock-screen upd
 
 ## Editions
 
-The same theme in five more colours, and each colour has a personality that shows mostly in how things move: the border turn, the glow, the cursor and the lock-screen embers. Each edition is a complete Omarchy theme with its own colours, wallpapers, icons and boot image. They live in the hidden folder `.editions/` of the repo (Omarchy skips dot folders when it stages a theme, so switching to the base theme does not copy them). See [`.editions/README.md`](.editions/README.md) for previews and the exact numbers.
+The same theme in five more colours plus one light edition, and each has a personality that shows mostly in how things move: the border turn, the glow, the cursor and the lock-screen embers. Each edition is a complete Omarchy theme with its own colours, wallpapers, icons and boot image. They live in the hidden folder `.editions/` of the repo (Omarchy skips dot folders when it stages a theme, so switching to the base theme does not copy them). See [`.editions/README.md`](.editions/README.md) for previews and the exact numbers.
 
 | Edition (theme name) | Colour | Personality | Feeling | Tagline | Cursor | Lock embers | Border |
 |---|---|---|---|---|---|---|---|
@@ -163,6 +163,7 @@ The same theme in five more colours, and each colour has a personality that show
 | Overdrive (`afterburn-overdrive`) | magenta | Showoff on a neon highway at night | fun, speed, nostalgia | Midnight highway. Magenta past the limiter. | `neon` | `pulse` | medium turn, big bloom |
 | Redline (`afterburn-redline`) | red | Dangerous, disciplined, engine at the limit | tension, adrenaline | Blood red at the limiter. Hold it. | `katana` | `burst` | still, tight glow |
 | Phantom (`afterburn-phantom`) | violet | The quiet one, barely there | calm, mystery, stealth | Here, then gone. | `hologram` | `drift` | still, wide soft haze, dim backgrounds |
+| Lite (`afterburn-lite`) | burnt orange on warm paper (light) | Calm, exact, daylight-clear: ink instead of glow | clarity, warm paper | The same fire, printed on paper. | `embers` (drawn as ink) | `drift` | still, short warm shadow, almost no dimming |
 
 **What only each edition has** (beyond the colours, the heat wallpapers and the lock-screen colours):
 
@@ -170,6 +171,7 @@ The same theme in five more colours, and each colour has a personality that show
 - **Cyber:** the data-rain `cyber` cursor (glyph rain, every typed character burns in green); the live wallpaper `live-phosphor-path` (acid-green circuitry with slow optical drift and phosphor light); slow falling rain on the lock screen; a phosphor btop theme and an acid-green Neovim palette.
 - **Overdrive:** the neon-tube cursor; the live wallpaper `live-midnight-ribbon` (a magenta highway with gently moving reflections); lock-screen embers that swell on a beat; a hot-pink Neovim palette.
 - **Redline:** the katana-slash cursor; the live wallpaper `live-crimson-turbine` (black titanium, a crimson ring and restrained heat shimmer); sudden sparks and stillness on the lock screen; btop meters that run brown, red, white-hot.
+- **Lite:** the light one, for daylight and bright rooms. A hand-made palette on warm paper `#f5efe4` with every text colour at least 4.5:1 against it; the base stills reprinted as ink on that paper; two wallpapers of its own, `1-horizon` (an engraved contrail) and `8-heat-shield` (ceramic tiles with heat in the seams); the live wallpaper `live-heat-shield` (the seams glow, shimmer and settle); a short warm shadow instead of a glow, and a hot heat level that deepens the ink instead of whitening it. Its art stays out of the shared `backgrounds/` folder, where a bright wallpaper would jar.
 - **Phantom:** the hologram cursor; the live wallpaper `live-spectral-veil` (translucent violet folds with a slow flowing ripple); wisps that fade in and out on the lock screen; the heaviest dimming of background windows.
 
 The installer's edition question (step 6) copies them next to the base theme. Switch with the Omarchy theme menu or `omarchy theme set afterburn-voltage`. `omarchy theme install` alone installs only the base theme: the editions sit in its hidden `.editions/` folder as plain theme directories, so without the installer, copy one to `~/.config/omarchy/themes/afterburn-<name>` yourself (you get its colours, wallpapers, icons, btop and Neovim themes, but not the glow and the other extras).

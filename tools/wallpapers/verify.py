@@ -13,6 +13,61 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+LIGHT_EDITIONS = ['lite']
+
+
+def check_loop(edition, loop):
+    """The delivery spec every signature loop meets, and a seamless boundary. Returns its numbers."""
+    info = json.loads(subprocess.check_output([
+        'ffprobe', '-v', 'error', '-show_streams', '-show_format', '-of', 'json', str(loop)]))
+    assert len(info['streams']) == 1, (edition, 'unexpected audio or extra stream')
+    video = info['streams'][0]
+    assert (video['codec_name'], video['profile'], video['pix_fmt']) == ('h264', 'High', 'yuv420p')
+    assert (video['width'], video['height'], video['r_frame_rate'], int(video['nb_frames'])) == (2560, 1072, '30/1', 360)
+    assert float(info['format']['duration']) == 12, (edition, info['format']['duration'])
+    raw = subprocess.check_output([
+        'ffmpeg', '-v', 'error', '-i', str(loop), '-vf', 'scale=320:134,format=gray',
+        '-f', 'rawvideo', '-threads', '1', '-'])
+    size = 320 * 134
+    assert len(raw) == size * 360
+    frames = [memoryview(raw)[i * size:(i + 1) * size] for i in range(360)]
+    def difference(a, b):
+        return sum(abs(x - y) for x, y in zip(a, b)) / size
+    steps = [difference(frames[i], frames[i + 1]) for i in range(359)]
+    seam = difference(frames[-1], frames[0])
+    motion = max(difference(frames[0], frames[i]) for i in [90, 180, 270])
+    assert motion > 0.1, (edition, 'no measurable motion', motion)
+    p95 = sorted(steps)[int(len(steps) * 0.95)]
+    limit = min(0.5, max(0.25, p95 * 2))
+    assert seam <= limit, (edition, 'loop jump', seam, limit)
+    return {'edition': edition, 'loop': loop.name, 'bytes': loop.stat().st_size,
+            'median_frame_step': round(statistics.median(steps), 4), 'p95_frame_step': round(p95, 4),
+            'boundary_step': round(seam, 4), 'quarter_loop_motion': round(motion, 4)}
+
+
+def verify_light():
+    """Light editions: the loop spec, every hand-made file staged unchanged, and a light palette.
+    Their art is deliberately absent from the shared dark backgrounds/ folder."""
+    results = []
+    for edition in LIGHT_EDITIONS:
+        source = ROOT / 'tools/edition-extras' / edition / 'files'
+        staged = ROOT / '.editions' / edition
+        loops = list((staged / 'backgrounds').glob('*.mp4'))
+        assert len(loops) == 1, (edition, 'expected exactly one signature loop', loops)
+        results.append(check_loop(edition, loops[0]))
+        for path in sorted(p for p in source.rglob('*') if p.is_file()):
+            relative = path.relative_to(source)
+            assert digest(path) == digest(staged / relative), (edition, str(relative), 'stale generated asset')
+        colors = (staged / 'colors.toml').read_text()
+        assert 'mode = "light"' in colors, (edition, 'colors.toml is not a light palette')
+        for level in ['cool', 'hot']:
+            stills = {p.name for p in (staged / 'backgrounds').glob('*.jpg')}
+            heat = {p.name for p in (staged / 'heat-wallpapers' / level).glob('*.jpg')}
+            assert stills == heat, (edition, level, 'heat variants do not match the stills', stills ^ heat)
+        assert not list((ROOT / 'backgrounds').glob(edition + '-*')), (edition, 'light art leaked into the dark picker')
+    return results
+
+
 def verify():
     results = []
     for edition in ['voltage', 'cyber', 'overdrive', 'redline', 'phantom']:
@@ -59,6 +114,7 @@ def verify():
                         'median_frame_step': round(statistics.median(steps), 4),
                         'p95_frame_step': round(p95, 4),
                         'boundary_step': round(seam, 4), 'quarter_loop_motion': round(motion, 4)})
+    results += verify_light()
     print(json.dumps(results, indent=2))
 
 

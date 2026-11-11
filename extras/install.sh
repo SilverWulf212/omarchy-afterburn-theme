@@ -308,13 +308,13 @@ add_missing() {
   done < <(cd "$1" && find . -type f -print0)
   echo "$n"
 }
-EDITIONS=(voltage cyber overdrive redline phantom)
+EDITIONS=(voltage cyber overdrive redline phantom lite)
 echo
 AVAILABLE=()
 for e in "${EDITIONS[@]}"; do [[ -f $THEME_ROOT/.editions/$e/colors.toml ]] && AVAILABLE+=("$e"); done
 if (( ${#AVAILABLE[@]} == 0 )); then
   skip "colour editions: no .editions/ folder in $THEME_ROOT (this copy of the theme has none), skipped"
-elif ask "Install colour editions (Voltage, Cyber, Overdrive, Redline, Phantom)? (copies each to ~/.config/omarchy/themes/afterburn-<name>; the extras follow the edition you pick)"; then
+elif ask "Install colour editions (Voltage, Cyber, Overdrive, Redline, Phantom, and the light one, Lite)? (copies each to ~/.config/omarchy/themes/afterburn-<name>; the extras follow the edition you pick)"; then
   for e in "${AVAILABLE[@]}"; do
     dest="$THEMES_HOME/afterburn-$e"
     if [[ -e $dest || -L $dest ]]; then

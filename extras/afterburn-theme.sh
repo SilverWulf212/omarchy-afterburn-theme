@@ -12,6 +12,10 @@
 # stop is `afterburn_cool` (an extra key the editions carry; ANSI `magenta` is a fixed violet
 # in every edition, so it cannot be used). Every value falls back to the base theme's, so a
 # missing file or key leaves the original orange look.
+#
+# A light edition (`mode = "light"` in its colors.toml, e.g. afterburn-lite) is ink on paper: adding
+# white cannot make it hotter, so its hot level deepens instead, and the unfocused shadow is a soft
+# warm one rather than the dark themes' black.
 
 # Theme name as Omarchy stores it (lowercase, dashes). Empty if unknown.
 ab_theme_name() {
@@ -48,9 +52,11 @@ ab_mix() {
 #   AB_COOL                       middle stop of the cool heat level
 #   AB_INACTIVE                   unfocused border
 #   AB_HOTWHITE AB_HOTGLOW        hot-level border highlight and shadow
+#   AB_MODE                       dark|light, from the theme's `mode`
+#   AB_SHADOW_INACTIVE            8-digit rgba hex of the unfocused window shadow
 ab_load_palette() {
   AB_ACCENT=f59145 AB_EMBER=ff5a1f AB_FLARE=ffc48a AB_RUST=7a3e16 AB_ASH=5e5b55
-  AB_COOL=e8703a AB_INACTIVE=2b2a28
+  AB_COOL=e8703a AB_INACTIVE=2b2a28 AB_MODE=dark AB_SHADOW_INACTIVE=00000066
   local f line k v stops=() cool_set=
   f=$(ab_colors_file "${1:-}") || f=""
   if [[ -n $f ]]; then
@@ -59,6 +65,7 @@ ab_load_palette() {
         k=${BASH_REMATCH[1]} v=${BASH_REMATCH[2]}
         v=${v,,}
         case $k in
+          mode)            [[ $v == light ]] && AB_MODE=light ;;
           brown)           [[ $v =~ ^#([0-9a-f]{6})$ ]] && AB_RUST=${BASH_REMATCH[1]} ;;
           dark_foreground) [[ $v =~ ^#([0-9a-f]{6})$ ]] && AB_ASH=${BASH_REMATCH[1]} ;;
           afterburn_cool)  [[ $v =~ ^#([0-9a-f]{6})$ ]] && { AB_COOL=${BASH_REMATCH[1]}; cool_set=1; } ;;
@@ -83,6 +90,13 @@ ab_load_palette() {
     AB_HOTGLOW=$(ab_mix "$AB_ACCENT" "$AB_FLARE" 60)
     [[ -n $cool_set ]] || AB_COOL=$(ab_mix "$AB_EMBER" "$AB_RUST" 35)
   fi
+  # Light edition: a near-white stop vanishes on paper, so the hot highlight is the ember deepened
+  # with ink, and the hot shadow leans to the ember. The unfocused shadow becomes a faint warm one.
+  if [[ $AB_MODE == light ]]; then
+    AB_HOTWHITE=$(ab_mix "$AB_EMBER" 000000 22)
+    AB_HOTGLOW=$(ab_mix "$AB_ACCENT" "$AB_EMBER" 60)
+    AB_SHADOW_INACTIVE=${AB_RUST}26
+  fi
 }
 
 # State for things that cannot parse colors.toml cheaply (the fail flash in every shell).
@@ -96,8 +110,10 @@ ab_write_palette_env() {
 # Print FILE (a glow template carrying the base theme's colours) in the loaded palette's colours.
 # One pass through placeholders, so a new colour can never be rewritten twice. Base: unchanged.
 ab_recolor_glow() {
-  sed -e "s/f59145/@ACCENT@/g; s/ff5a1f/@EMBER@/g; s/ffc48a/@FLARE@/g; s/2b2a28/@INACTIVE@/g" "$1" |
-    sed -e "s/@ACCENT@/$AB_ACCENT/g; s/@EMBER@/$AB_EMBER/g; s/@FLARE@/$AB_FLARE/g; s/@INACTIVE@/$AB_INACTIVE/g"
+  sed -e "s/f59145/@ACCENT@/g; s/ff5a1f/@EMBER@/g; s/ffc48a/@FLARE@/g; s/2b2a28/@INACTIVE@/g" \
+      -e "s/rgba(00000066)/rgba(@SHADOW_INACTIVE@)/g" "$1" |
+    sed -e "s/@ACCENT@/$AB_ACCENT/g; s/@EMBER@/$AB_EMBER/g; s/@FLARE@/$AB_FLARE/g; s/@INACTIVE@/$AB_INACTIVE/g" \
+        -e "s/@SHADOW_INACTIVE@/${AB_SHADOW_INACTIVE:-00000066}/g"
 }
 
 # ---- Edition knobs ------------------------------------------------------------------------------
