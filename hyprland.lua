@@ -1,4 +1,4 @@
--- Afterburn: three-stop gradient on the focused window, plus a soft glow in the theme accent.
+-- Afterburn: three-stop ember gradient on the focused window, plus a soft orange glow.
 local active_border_color = { colors = { "rgba(f59145ee)", "rgba(ff5a1fee)", "rgba(ffc48aee)" }, angle = 45 }
 local inactive_border_color = "rgba(2b2a28aa)"
 

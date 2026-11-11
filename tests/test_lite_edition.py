@@ -74,8 +74,8 @@ class Runtime(unittest.TestCase):
     def test_base_theme_is_untouched(self):
         self.assertEqual(self.palette("afterburn"), ["dark", "f59145", "fff1e0", "ffb37a", "00000066"])
         r = self.sb.run(["/bin/bash", "-c",
-                         f'. "{THEME_SH}"; ab_load_palette afterburn; ab_recolor_glow "{REPO}/hyprland.lua"'])
-        self.assertEqual(r.stdout, (REPO / "hyprland.lua").read_text())
+                         f'. "{THEME_SH}"; ab_load_palette afterburn; ab_recolor_glow "{REPO}/extras/hyprland-glow.lua"'])
+        self.assertEqual(r.stdout, (REPO / "extras/hyprland-glow.lua").read_text())
 
     def test_lite_hot_level_is_ink_not_white(self):
         mode, accent, hotwhite, hotglow, shadow = self.palette("afterburn-lite")
@@ -88,7 +88,7 @@ class Runtime(unittest.TestCase):
 
     def test_lite_glow_file_has_no_black_shadow(self):
         r = self.sb.run(["/bin/bash", "-c",
-                         f'. "{THEME_SH}"; ab_load_palette afterburn-lite; ab_recolor_glow "{REPO}/hyprland.lua"'])
+                         f'. "{THEME_SH}"; ab_load_palette afterburn-lite; ab_recolor_glow "{REPO}/extras/hyprland-glow.lua"'])
         self.assertNotIn("00000066", r.stdout)
         self.assertNotIn("f59145", r.stdout)
         self.assertIn("c2410c", r.stdout)
