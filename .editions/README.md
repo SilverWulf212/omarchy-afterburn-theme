@@ -24,7 +24,7 @@ Each edition ships an `edition.conf`. The theme-set hook and the `afterburn` com
 | --- | --- | --- | --- | --- | --- |
 | afterburn (base) | embers | slow, 10 s | 14 | 0.08 | rise |
 | voltage | lightning | fast, 2.5 s | 12 | 0.06 | spark |
-| cyber | phosphor | slow, 10 s | 17 | 0.12 | fall |
+| cyber | cyber | slow, 10 s | 17 | 0.12 | fall |
 | overdrive | neon | medium, 5 s | 22 | 0.04 | pulse |
 | redline | katana | still | 8 | 0.15 | burst |
 | phantom | hologram | still | 24 | 0.18 | drift |
