@@ -2,9 +2,59 @@
 
 ![Afterburn](preview.png)
 
-**Orange-on-black cyber theme for [Omarchy](https://omarchy.org).** Ember-gradient window borders with a soft orange glow, animated ember cursors in Ghostty, and nineteen wallpapers: eleven stills and eight live loops across all six colours.
+**Orange-on-black cyber theme for [Omarchy](https://omarchy.org).** Ember-gradient window borders with a soft orange glow, animated ember cursors in Ghostty, and nineteen wallpapers: eleven stills and eight live loops across all six colours. Comes in six colours, each with its own personality: Afterburn (orange), Voltage (cyan), Cyber (green), Overdrive (magenta), Redline (red) and Phantom (violet). See [Editions](#editions).
 
-Comes in six colours, each with its own personality: Afterburn (orange), Voltage (cyan), Cyber (green), Overdrive (magenta), Redline (red) and Phantom (violet). See [Editions](#editions).
+## Install: the full stack (recommended)
+
+```bash
+omarchy theme install https://github.com/silverwulf212/omarchy-afterburn-theme && ~/.config/omarchy/themes/afterburn/extras/install.sh
+```
+
+> [!IMPORTANT]
+> **This replaces your default terminal with Ghostty** and installs third-party software. See [What the full stack changes](#what-the-full-stack-changes) before you run it.
+
+The second half shows a summary of what it will change, then asks before every optional step. Two things come with the first "Continue?" and are not asked again: the theme-set hook that restores the glow, and a final `omarchy theme set`.
+
+1. **Ghostty**: installs it and makes it your default terminal, if needed
+2. **cursor-fx**: animated Ghostty cursors. Afterburn uses *embers*: typing kicks up glowing embers that rise and cool. Each [colour edition](#editions) picks its own effect
+3. **Glow**: the orange halo around the focused window
+4. **Subtle pack** (optional): a slow-turning border, dimmed background windows, heat levels, quiet fullscreen, battery saver, a red prompt with a fail flash, and the `afterburn` command. See [Subtle pack](#subtle-pack)
+5. **Lock screen** (optional, asked separately): embers on the lock screen. See [Lock screen](#lock-screen)
+6. **Colour editions** (optional, asked separately): Voltage, Cyber, Overdrive, Redline and Phantom, the same theme in other colours, and Lite, the light one. See [Editions](#editions)
+7. **Boot and login screen** (optional, needs `sudo`, default No): sets Omarchy's boot splash and login screen to the current theme. See [Boot and login screen](#boot-and-login-screen)
+
+Add `--yes` to answer yes to every question. Two exceptions: `--yes` never changes your heat source (it is `time` on a first install, so it never turns on the weather source, the only part that calls the network once running), and the boot and login screen is never changed by `--yes` because it needs `sudo`. Re-running the installer is safe: it keeps your settings, including the heat source. Run it once after you update the theme: the theme-set hook is a copy, so a new release's hook (and its edition behaviour) only takes effect after that. To undo, run `~/.config/omarchy/themes/afterburn/extras/uninstall.sh`. Switching to another theme also puts your previous cursor effect back.
+
+## Install: theme only
+
+```bash
+omarchy theme install https://github.com/silverwulf212/omarchy-afterburn-theme
+```
+
+You get the colors, the ember-gradient borders, the wallpapers and the icons. The glow and the cursors need the extras, because Omarchy doesn't run code from a theme by itself.
+
+## Requirements
+
+- Omarchy 4.x (tested on 4.5.0, Hyprland 0.56).
+- Ghostty is optional: the cursor effects need it, and the installer offers to install it.
+- bash, for the fail flash (the red-prompt effect after a failed command).
+
+## Undo
+
+```bash
+~/.config/omarchy/themes/afterburn/extras/uninstall.sh
+```
+
+It removes only what the installer created and puts your previous terminal, font and cursor effect back. Your `afterburn.conf` is kept as `afterburn.conf.bak`. The table in [What the full stack changes](#what-the-full-stack-changes) lists the undo for each piece.
+
+## Update
+
+```bash
+omarchy theme update
+~/.config/omarchy/themes/afterburn/extras/install.sh
+```
+
+Run the installer again so the hook and the service copies refresh. Installed edition folders keep their existing files; the installer only adds files they lack.
 
 ## New edition wallpapers
 
@@ -50,35 +100,6 @@ To undo, restore the saved `preview.png` files from the printed backup folder.
 
 Click a thumbnail to play or download the video from the [v1.0.0 release](https://github.com/SilverWulf212/omarchy-afterburn-theme/releases/tag/v1.0.0). Music: Sascha Ende, ende.app, CC BY 4.0.
 
-## Install: the full stack (recommended)
-
-```bash
-omarchy theme install https://github.com/silverwulf212/omarchy-afterburn-theme && ~/.config/omarchy/themes/afterburn/extras/install.sh
-```
-
-> [!IMPORTANT]
-> **This replaces your default terminal with Ghostty** and installs third-party software. See [What the full stack changes](#what-the-full-stack-changes) before you run it.
-
-Needs Omarchy 4.x (tested on 4.5.0, Hyprland 0.56). The second half shows a summary of what it will change, then asks before every optional step. Two things come with the first "Continue?" and are not asked again: the theme-set hook that restores the glow, and a final `omarchy theme set`.
-
-1. **Ghostty**: installs it and makes it your default terminal, if needed
-2. **cursor-fx**: animated Ghostty cursors. Afterburn uses *embers*: typing kicks up glowing embers that rise and cool. Each [colour edition](#editions) picks its own effect
-3. **Glow**: the orange halo around the focused window
-4. **Subtle pack** (optional): a slow-turning border, dimmed background windows, heat levels, quiet fullscreen, battery saver, a red prompt with a fail flash, and the `afterburn` command. See [Subtle pack](#subtle-pack)
-5. **Lock screen** (optional, asked separately): embers on the lock screen. See [Lock screen](#lock-screen)
-6. **Colour editions** (optional, asked separately): Voltage, Cyber, Overdrive, Redline and Phantom, the same theme in other colours, and Lite, the light one. See [Editions](#editions)
-7. **Boot and login screen** (optional, needs `sudo`, default No): sets Omarchy's boot splash and login screen to the current theme. See [Boot and login screen](#boot-and-login-screen)
-
-Add `--yes` to answer yes to every question. Two exceptions: `--yes` never changes your heat source (it is `time` on a first install, so it never turns on the weather source, the only part that calls the network once running), and the boot and login screen is never changed by `--yes` because it needs `sudo`. Re-running the installer is safe: it keeps your settings, including the heat source. Run it once after you update the theme: the theme-set hook is a copy, so a new release's hook (and its edition behaviour) only takes effect after that. To undo, run `~/.config/omarchy/themes/afterburn/extras/uninstall.sh`. Switching to another theme also puts your previous cursor effect back.
-
-## Install: theme only
-
-```bash
-omarchy theme install https://github.com/silverwulf212/omarchy-afterburn-theme
-```
-
-You get the colors, the ember-gradient borders, the wallpapers and the icons. The glow and the cursors need the extras, because Omarchy doesn't run code from a theme by itself.
-
 ## What the full stack changes
 
 > [!WARNING]
@@ -92,7 +113,7 @@ You get the colors, the ember-gradient borders, the wallpapers and the icons. Th
 | **Ghostty config** | cursor-fx writes `~/.config/ghostty/shaders/`, `~/.config/ghostty/cursor-effects/` and `~/.local/bin/cursor-fx`, and adds a `config-file = cursor-effects/…` line to `~/.config/ghostty/config`. It backs up anything it replaces to `~/ghostty-savepoints/`. | Restore from `~/ghostty-savepoints/`, or `cursor-fx off`. |
 | **pi agent** (only if `~/.pi/agent` exists) | cursor-fx adds a pi extension and sets `showHardwareCursor: true` in pi's settings. | Delete `~/.pi/agent/extensions/cursor-fx.ts`. |
 | **Omarchy hook** | Adds `~/.config/omarchy/hooks/theme-set.d/50-afterburn-extras`. It runs on **every** theme change: on Afterburn or one of its colour editions it adds the glow in that theme's colours, sets the theme's cursor effect (embers on base, the edition's own on an edition), recolours the lock-screen embers and gives them the edition's motion, applies the subtle pack's settings and restarts the watcher. On other themes it stops the watcher, restores your previous cursor effect and puts the lock embers back to orange and rising. | `uninstall.sh` |
-| **Subtle pack** | Links `afterburn` and `afterburn-watch` into `~/.local/bin`, writes `~/.config/afterburn/afterburn.conf`, and copies the "Afterburn colors" launcher entry to `~/.local/share/applications/`. | `uninstall.sh` removes the links, the conf file and the launcher entry. |
+| **Subtle pack** | Links `afterburn` and `afterburn-watch` into `~/.local/bin`, writes `~/.config/afterburn/afterburn.conf`, and copies the "Afterburn colors" launcher entry to `~/.local/share/applications/`. | `uninstall.sh` removes the links and the launcher entry, and keeps the conf as `afterburn.conf.bak`. |
 | **Watcher service** | Installs and starts a user systemd service, `afterburn-watch`, that handles fullscreen, battery and heat changes. | `uninstall.sh` disables and removes it. |
 | **Network calls** | Only if you choose the weather heat source: `api.weather.gov` (station and observations, at most every 20 minutes) and `api.zippopotam.us` (one ZIP lookup when you enter your ZIP). No other option makes a network call. | Choose another `HEAT_SOURCE`, or run `uninstall.sh`. |
 | **Shell and prompt** | Adds one guarded line to `~/.bashrc` that sources the fail flash, and sets `error_symbol` in `~/.config/starship.toml` so a failed command shows a red `❯`. Only the original `error_symbol` line is remembered, and a whole-file copy is kept in `~/.local/state/afterburn/` as a safety copy. If you have no starship.toml, the prompt is left alone. | `uninstall.sh` removes the line and puts the original `error_symbol` back, only if that line is still Afterburn's. Other edits to your starship.toml are kept. |
@@ -105,7 +126,7 @@ You get the colors, the ember-gradient borders, the wallpapers and the icons. Th
 - **GPU and battery:** while a cursor effect is on, Ghostty redraws constantly, so expect a little extra GPU use and battery drain on laptops. `cursor-fx off` turns it off.
 - **Motion and flashing:** the cursor effects animate, and some flash. If you're sensitive to motion or flashing light, skip cursor-fx or run `cursor-fx subtle on`.
 - **Uninstall doesn't remove Ghostty or cursor-fx.** It puts back your terminal and cursor settings, and prints the commands to remove the rest.
-- **Uninstall removes only what the installer created.** That covers the files in `~/.config/afterburn/` and `~/.local/share/afterburn/` (the folders go too, but only when empty) and the edition folders it copied. An `afterburn-<name>` folder you made yourself is never touched. If an edition is your active theme, `uninstall.sh` switches you to base `afterburn` first. If it can't, it keeps that folder and tells you to switch theme and delete it.
+- **Uninstall removes only what the installer created.** That covers the files in `~/.config/afterburn/` and `~/.local/share/afterburn/` (the folders go too, but only when empty; your `afterburn.conf` is kept as `afterburn.conf.bak`, so that folder stays) and the edition folders it copied. An `afterburn-<name>` folder you made yourself is never touched. If an edition is your active theme, `uninstall.sh` switches you to base `afterburn` first. If it can't, it keeps that folder and tells you to switch theme and delete it.
 - **The boot and login screen is not undone silently.** If you said yes to it, `uninstall.sh` asks before running `omarchy-plymouth-reset` (needs `sudo`), and prints that command if it gets no answer.
 - **No warranty.** This is a personal hobby project, provided as is under the MIT licence. The installer changes your dotfiles, so commit or back them up first if you keep them in git.
 - **Not affiliated** with Omarchy, Basecamp, Ghostty, Termix or Avarce. Their names are used here only to give credit and to say what this works with.
@@ -209,6 +230,8 @@ Eleven still wallpapers at 3440×1440, plus eight live loops, all directly in `b
 | `7-nozzle-live` (live) | `8-ember-live` (live) | `9-horizon-live` (live) |
 
 **Live loops** (`backgrounds/7-nozzle-live.mp4`, `8-ember-live.mp4`, `9-horizon-live.mp4`) play natively through Omarchy's OWE wallpaper engine, so they need no install step. They pause in fullscreen and follow OWE's battery policy. Heat levels change the borders and glow but keep the live loops as they are. Each [colour edition](#editions) has one bespoke 12 s live loop, named `live-*`, and a matching default still. The three base live loops stay exclusive to orange Afterburn. See [the artwork guide](docs/wallpapers/README.md) for the images, motion, full generation prompts, rebuild commands and installed-theme update instructions. The name sorts after the stills in every locale (a `10-` name would sort first in en_US, because Omarchy picks the first file of a theme), so a theme still opens on its still wallpaper, which is what the heat levels swap.
+
+**Memory:** still wallpapers cost nothing extra. A playing live loop costs about 350 MB of RAM and about 500 MB of video memory, in Omarchy's own renderer (`owe-render`); the figure is the same for every loop, and it is freed about two minutes after you switch back to a still. The watcher service (`afterburn-watch`) uses about 7 MB.
 
 **Heat variants:** 12 in total, six cool and six hot, in `extras/heat-wallpapers/cool/` and `extras/heat-wallpapers/hot/`. Each has the same file name as its still. With `HEAT_WALLPAPERS=yes`, `afterburn level cool` or `hot` swaps a still wallpaper for its variant, and `afterburn level normal` swaps it back. Each colour edition has its own 12 in `.editions/<name>/heat-wallpapers/`, made from these by `tools/make-editions.sh`.
 
