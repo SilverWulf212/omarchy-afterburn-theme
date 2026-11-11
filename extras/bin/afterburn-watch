@@ -15,6 +15,9 @@ THEME_FILE=${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/current/theme.name
 WEATHER=$STATE/weather.json
 PSI_FILE=${PSI_FILE:-/proc/pressure/cpu}          # overridable for tests
 POWER_DIR=${POWER_DIR:-/sys/class/power_supply}   # overridable for tests
+# ab_has_battery and ab_on_ac: only a system battery counts, not a wireless mouse's. The helper sits next to bin/.
+# shellcheck disable=SC1091
+. "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../afterburn-power.sh"
 UA='afterburn-theme (github.com/silverwulf212/omarchy-afterburn-theme)'
 LEVELS=(cool normal hot)
 
@@ -61,21 +64,20 @@ watch_fullscreen() {
 }
 
 # --- power: battery means saver mode -----------------------------------------
-on_ac() {
-  local d
-  for d in "$POWER_DIR"/*; do
-    [[ $(cat "$d/type" 2>/dev/null) == Mains && $(cat "$d/online" 2>/dev/null) == 1 ]] && return 0
-  done
-  return 1
-}
-has_battery() { grep -qx Battery "$POWER_DIR"/*/type 2>/dev/null; }
-
+# Only a system battery makes this a laptop (see afterburn-power.sh). A wireless mouse reporting
+# "discharging" on a desktop must not turn the saver on.
 power_tick() {  # reads and sets $saver, the last value we applied (set by watch_power)
   load_conf
-  is_afterburn && [[ $LAPTOP_MODE == auto ]] && has_battery || return 0
+  is_afterburn && [[ $LAPTOP_MODE == auto ]] || return 0
+  if ! ab_has_battery; then
+    # Not a laptop. Older versions counted a mouse battery and may have left the saver on: switch it off
+    # once per watcher start. After that the saver is yours (afterburn saver on|off).
+    if [[ -z ${saver:-} && $(cat "$STATE/saver" 2>/dev/null) == on ]] && afterburn saver off; then saver=off; fi
+    return 0
+  fi
   local want=on
-  on_ac && want=off
-  if [[ $want != "$saver" ]] && afterburn saver "$want"; then saver=$want; fi
+  ab_on_ac && want=off
+  if [[ $want != "${saver:-}" ]] && afterburn saver "$want"; then saver=$want; fi
 }
 
 watch_power() {

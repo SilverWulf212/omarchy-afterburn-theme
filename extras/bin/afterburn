@@ -1,7 +1,8 @@
 #!/bin/bash
 # afterburn: knobs for the Afterburn theme. Installed to ~/.local/bin by extras/install.sh.
 #
-#   afterburn status                  show settings, heat level, quiet/saver, cursor effect
+#   afterburn status                  show settings, heat level, quiet/saver (and why), cursor effect
+#   afterburn doctor                  read-only checkup: why effects might be off (power supplies, watcher, ...)
 #   afterburn get [KEY]               print one setting (or all)
 #   afterburn set KEY VALUE           validate, save to the conf, re-apply the glow
 #   afterburn unset KEY               drop your saved value: the edition's default (else the built-in one) returns
@@ -34,6 +35,10 @@ GHOSTTY="$HOME/.config/ghostty/config"
 # shellcheck disable=SC1091
 . "$THEME_DIR/extras/afterburn-theme.sh" 2>/dev/null || {
   echo "afterburn: missing $THEME_DIR/extras/afterburn-theme.sh (is the afterburn theme installed?)" >&2; exit 1; }
+# Which power supplies count as a laptop battery (a wireless mouse's does not).
+# shellcheck disable=SC1091
+. "$THEME_DIR/extras/afterburn-power.sh" 2>/dev/null || {
+  echo "afterburn: missing $THEME_DIR/extras/afterburn-power.sh (update the theme: git -C $THEME_DIR pull)" >&2; exit 1; }
 
 KEYS="ROTATE DIM GLOW_RANGE CURSOR_FX EMBER_STYLE HEAT_SOURCE EVENING_HOURS ZIP LAT LON HOT_F COOL_F HEAT_WALLPAPERS FULLSCREEN_QUIET LAPTOP_MODE FAIL_FX"
 # Settings an edition can set a default for (see afterburn-theme.sh). Everything else is yours alone.
@@ -46,7 +51,7 @@ declare -A DEFAULT=([ROTATE]=slow [DIM]=0.08 [GLOW_RANGE]=14 [CURSOR_FX]=embers 
 die() { echo "afterburn: $*" >&2; exit 1; }
 
 usage() {
-  sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 write_default_conf() {
@@ -348,6 +353,30 @@ cmd_get() {
   echo "${!1}"
 }
 
+# One line for a mode flag: off, or on with the likely reason.
+mode_line() {
+  [[ $(state_get "$1" off) == on ]] || { echo off; return 0; }
+  case $1 in
+    quiet) echo "on  (a window is fullscreen and FULLSCREEN_QUIET=yes, or you ran: afterburn quiet on)" ;;
+    saver) echo "on  ($(saver_reason))" ;;
+  esac
+}
+
+# Why saver is on, from what the watcher looks at (LAPTOP_MODE and the system battery). Needs LAPTOP_MODE set.
+saver_reason() {
+  local bat
+  bat=$(ab_system_batteries | head -n1)
+  if [[ $LAPTOP_MODE == on ]]; then
+    echo "LAPTOP_MODE=on forces it; follow the power source again with: afterburn laptop auto"
+  elif [[ $LAPTOP_MODE == auto && -n $bat ]] && ! ab_on_ac; then
+    echo "on battery: $bat is $(ab_ps_attr "$POWER_DIR/$bat" status | tr '[:upper:]' '[:lower:]'), no AC adapter online"
+  elif [[ $LAPTOP_MODE == auto && -z $bat ]]; then
+    echo "no system battery found (wireless mouse and keyboard batteries do not count), so power is not the cause; left over or set by hand. Turn it off: afterburn saver off"
+  else
+    echo "set by hand or left on; turn it off: afterburn saver off"
+  fi
+}
+
 cmd_status() {
   load_conf
   local theme level
@@ -355,8 +384,8 @@ cmd_status() {
   level=$(state_get level normal)
   echo "theme:    $theme"
   echo "level:    $level"
-  echo "quiet:    $(state_get quiet off)"
-  echo "saver:    $(state_get saver off)"
+  echo "quiet:    $(mode_line quiet)"
+  echo "saver:    $(mode_line saver)"
   if command -v cursor-fx >/dev/null 2>&1; then
     echo "cursor:   $(cfx_now)"
   else
@@ -366,6 +395,37 @@ cmd_status() {
   echo "config: $CONF"
   local k
   for k in $KEYS; do printf '  %-16s %s%s\n' "$k" "${!k}" "${SRC[$k]:+  (${SRC[$k]})}"; done
+}
+
+# Read-only checkup: everything that can switch the effects off, on one screen. Writes nothing
+# (it reads the conf directly instead of load_conf, which would create a missing one).
+cmd_doctor() {
+  LAPTOP_MODE=$(sed -n 's/^LAPTOP_MODE=\([a-z]*\).*/\1/p' "$CONF" 2>/dev/null | tail -n1); LAPTOP_MODE=${LAPTOP_MODE:-auto}
+  local d kind note n
+  echo "theme:      ${THEME_NAME:-unknown} ($(is_afterburn && echo "an Afterburn theme" || echo "NOT an Afterburn theme: the extras do nothing"))"
+  echo "quiet:      $(mode_line quiet)"
+  echo "saver:      $(mode_line saver)"
+  echo "laptop:     LAPTOP_MODE=$LAPTOP_MODE"
+  echo "power supplies in $POWER_DIR:"
+  for d in "$POWER_DIR"/*; do
+    [[ -d $d ]] || continue
+    kind=$(ab_ps_kind "$d")
+    case $kind in
+      system)     note="counted: this machine's battery" ;;
+      peripheral) note="ignored: a device battery (mouse, keyboard, ...), not a laptop" ;;
+      mains)      note="AC adapter" ;;
+      *)          note="not a battery" ;;
+    esac
+    printf '  %-18s type=%s scope=%s status=%s capacity=%s  -> %s\n' "$(basename "$d")" \
+      "$(ab_ps_attr "$d" type)" "$(ab_ps_attr "$d" scope | grep . || echo none)" \
+      "$(ab_ps_attr "$d" status | grep . || echo -)" "$(ab_ps_attr "$d" capacity | grep . || echo -)" "$note"
+  done
+  [[ -n $(ls "$POWER_DIR" 2>/dev/null) ]] || echo "  (none)"
+  echo "watcher:    $(systemctl --user is-active afterburn-watch.service 2>/dev/null || true) (afterburn-watch.service)"
+  echo "cursor-fx:  $(command -v cursor-fx >/dev/null 2>&1 && echo installed || echo "NOT installed: no cursor effects")"
+  echo "ghostty:    $(command -v ghostty >/dev/null 2>&1 && echo installed || echo "NOT installed")"
+  n=$(hyprctl configerrors 2>/dev/null | grep -Evc '^[[:space:]]*$|^no errors' || true)
+  echo "hyprland config errors: ${n:-0}$([[ ${n:-0} -gt 0 ]] && echo "  (see: hyprctl configerrors)")"
 }
 
 # Where the wallpapers for a heat level live. Normal is the staged copy of the active theme's own
@@ -517,6 +577,7 @@ case $cmd in
   unset)  cmd_unset "$@" ;;
   get)    cmd_get "$@" ;;
   status) cmd_status ;;
+  doctor) cmd_doctor ;;
   level)  cmd_level "$@" ;;
   quiet)  cmd_mode quiet "${1:-}" ;;
   saver)  cmd_mode saver "${1:-}" ;;
