@@ -144,7 +144,7 @@ ab_base_default() {
 ab_valid() {
   local k=${1:-} v=${2:-}
   case $k in
-    CURSOR_FX)   [[ $v =~ ^(cyber|lightning|glitch|neon|phosphor|embers|shockwave|katana|teleport|fireworks|aurora|mecha|hologram)$ ]] ;;
+    CURSOR_FX)   [[ $v =~ ^(${AB_CURSOR_FX_NAMES// /|})$ ]] ;;
     ROTATE)      [[ $v =~ ^(off|slow|medium|fast)$ ]] ;;
     DIM)         [[ $v =~ ^(0|1|0?\.[0-9]+|1\.0*)$ ]] ;;
     GLOW_RANGE)  [[ $v =~ ^[1-9][0-9]?$ ]] && (( v >= 4 && v <= 30 )) ;;

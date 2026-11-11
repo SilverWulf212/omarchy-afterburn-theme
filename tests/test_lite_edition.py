@@ -160,8 +160,9 @@ class BuiltEdition(unittest.TestCase):
     def test_light_art_stays_out_of_the_dark_picker(self):
         self.assertEqual(list((REPO / "backgrounds").glob("lite-*")), [])
 
-    def test_the_installer_knows_it(self):
-        self.assertRegex((REPO / "extras/install.sh").read_text(), r"EDITIONS=\([^)]*\blite\b[^)]*\)")
+    def test_the_installer_will_find_it(self):
+        # install.sh lists the folders under .editions/ that hold a colors.toml (see test_names.py)
+        self.assertTrue((BUILT / "colors.toml").is_file())
 
 
 if __name__ == "__main__":

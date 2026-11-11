@@ -16,8 +16,8 @@ def pixels(path):
         'scale=240:100:flags=lanczos,format=rgb24', '-frames:v', '1', '-threads', '1', '-f', 'rawvideo', '-'])
 class SelectorPreviews(unittest.TestCase):
     def test_each_theme_preview_matches_its_actual_default_wallpaper(self):
-        themes = [('afterburn', ROOT), *[(name, ROOT/'.editions'/name) for name in
-                   ('voltage', 'cyber', 'overdrive', 'redline', 'phantom')]]
+        editions = sorted(p.parent.name for p in (ROOT/'tools/edition-extras').glob('*/edition.conf'))
+        themes = [('afterburn', ROOT), *[(name, ROOT/'.editions'/name) for name in editions]]
         for name, theme in themes:
             with self.subTest(theme=name):
                 preview, wallpaper = theme/'preview.png', theme/'backgrounds/1-horizon.jpg'

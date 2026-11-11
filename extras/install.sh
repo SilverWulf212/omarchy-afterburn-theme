@@ -7,7 +7,7 @@
 #   4. The subtle pack (optional): slow border turn, dimmed background windows, heat levels,
 #      quiet fullscreen, battery saver, red prompt with a fail flash, the `afterburn` CLI
 #   5. The animated lock screen (optional, asked separately)
-#   6. Colour editions: Voltage, Cyber, Overdrive, Redline, Phantom (optional, asked separately)
+#   6. Colour editions, one per folder in .editions/ (optional, asked separately)
 #   7. The boot/login screen set to the current theme (optional, needs sudo, default No)
 # Run:  ~/.config/omarchy/themes/afterburn/extras/install.sh        (asks before each step)
 #       ~/.config/omarchy/themes/afterburn/extras/install.sh --yes  (no questions)
@@ -86,8 +86,8 @@ cat <<'EOF'
     that calls the network: api.weather.gov, and api.zippopotam.us once to find your ZIP.
   • LOCK SCREEN (optional, asked separately): clones Omarchy's lock screen plugin and adds
     an ember layer. The clone stops getting Omarchy's lock-screen updates until you uninstall.
-  • COLOUR EDITIONS (optional, asked separately): copies the Voltage, Cyber, Overdrive,
-    Redline and Phantom themes from this theme's .editions/ folder to
+  • COLOUR EDITIONS (optional, asked separately): copies the colour edition themes (the
+    question names them) from this theme's .editions/ folder to
     ~/.config/omarchy/themes/afterburn-<name>. A folder that already exists is never touched.
     uninstall.sh removes only the ones it created.
   • BOOT/LOGIN SCREEN (optional, default No, needs sudo): runs Omarchy's
@@ -308,13 +308,17 @@ add_missing() {
   done < <(cd "$1" && find . -type f -print0)
   echo "$n"
 }
-EDITIONS=(voltage cyber overdrive redline phantom lite)
+# The folders under .editions/ are the list; nothing here names an edition.
 echo
-AVAILABLE=()
-for e in "${EDITIONS[@]}"; do [[ -f $THEME_ROOT/.editions/$e/colors.toml ]] && AVAILABLE+=("$e"); done
+AVAILABLE=() NAMES=()
+for d in "$THEME_ROOT"/.editions/*/; do
+  e=${d%/}; e=${e##*/}
+  [[ $e =~ ^[a-z0-9]+$ && -f $d/colors.toml ]] && { AVAILABLE+=("$e"); NAMES+=("${e^}"); }
+done
+printf -v NAMES_LIST '%s, ' "${NAMES[@]}"; NAMES_LIST=${NAMES_LIST%, }
 if (( ${#AVAILABLE[@]} == 0 )); then
   skip "colour editions: no .editions/ folder in $THEME_ROOT (this copy of the theme has none), skipped"
-elif ask "Install colour editions (Voltage, Cyber, Overdrive, Redline, Phantom, and the light one, Lite)? (copies each to ~/.config/omarchy/themes/afterburn-<name>; the extras follow the edition you pick)"; then
+elif ask "Install colour editions ($NAMES_LIST)? (copies each to ~/.config/omarchy/themes/afterburn-<name>; the extras follow the edition you pick)"; then
   for e in "${AVAILABLE[@]}"; do
     dest="$THEMES_HOME/afterburn-$e"
     if [[ -e $dest || -L $dest ]]; then

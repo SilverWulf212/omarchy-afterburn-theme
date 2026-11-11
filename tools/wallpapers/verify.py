@@ -13,7 +13,10 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-LIGHT_EDITIONS = ['lite']
+EXTRAS = ROOT / 'tools/edition-extras'
+# An edition with its own hand-made colors.toml is a light one (tools/make-editions.sh); the rest are hue rotations.
+LIGHT_EDITIONS = sorted(p.parent.name for p in EXTRAS.glob('*/colors.toml'))
+DARK_EDITIONS = sorted(p.parent.name for p in EXTRAS.glob('*/edition.conf') if p.parent.name not in LIGHT_EDITIONS)
 
 
 def check_loop(edition, loop):
@@ -70,7 +73,7 @@ def verify_light():
 
 def verify():
     results = []
-    for edition in ['voltage', 'cyber', 'overdrive', 'redline', 'phantom']:
+    for edition in DARK_EDITIONS:
         source = ROOT / 'tools/edition-extras' / edition / 'files'
         staged = ROOT / '.editions' / edition
         loops = list((staged / 'backgrounds').glob('*.mp4'))

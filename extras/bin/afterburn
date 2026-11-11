@@ -56,13 +56,16 @@ usage() {
 
 write_default_conf() {
   mkdir -p "$CONF_DIR"
-  cat > "$CONF" <<'EOF'
+  {
+  cat <<'EOF'
 # Leave a line out (or commented) and the active edition's default applies, then the built-in one.
 # Save a value here and it always wins. `afterburn unset KEY` goes back to following the edition.
 #ROTATE=slow         # off|slow|medium|fast  (border gradient turn: 10s|5s|2.5s per turn)
 #DIM=0.08            # dim_inactive strength, 0 = off
 #GLOW_RANGE=14       # 4-30, shadow range at the normal heat level
-#CURSOR_FX=embers    # a cursor-fx effect (cyber lightning glitch neon phosphor embers shockwave katana teleport fireworks aurora mecha hologram)
+EOF
+  printf '#CURSOR_FX=embers    # a cursor-fx effect (%s)\n' "$AB_CURSOR_FX_NAMES"
+  cat <<'EOF'
 #EMBER_STYLE=rise    # lock-screen embers: rise|fall|drift|spark|pulse|burst
 HEAT_SOURCE=time     # off|time|pressure|weather
 EVENING_HOURS=19-07  # time source: cool inside this window
@@ -76,6 +79,7 @@ FULLSCREEN_QUIET=yes
 LAPTOP_MODE=auto     # auto|on|off
 FAIL_FX=random       # random|burn|cascade|dissolve|off
 EOF
+  } > "$CONF"
 }
 
 # Read the conf (we wrote it, so sourcing is fine) and fill any missing key with its default.

@@ -9,7 +9,8 @@ import stat
 import subprocess
 import tempfile
 ROOT = Path(__file__).resolve().parents[2]
-EDITIONS = ('voltage', 'cyber', 'overdrive', 'redline', 'phantom', 'lite')
+# One folder per edition under tools/edition-extras/: that list is the only place the names live.
+EDITIONS = sorted(p.parent.name for p in (ROOT/'tools/edition-extras').glob('*/edition.conf'))
 
 def render(source, destination, backup=None):
     source, destination = Path(source), Path(destination)

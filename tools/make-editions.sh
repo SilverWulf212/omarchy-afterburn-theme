@@ -84,6 +84,12 @@ BASE_FEELING="heat, momentum"
 
 die() { echo "make-editions: $*" >&2; exit 1; }
 
+# Every folder under tools/edition-extras/ must have a row above: a folder with no row would be silently left out.
+for d in tools/edition-extras/*/; do
+  name=${d%/}; name=${name##*/}
+  [[ " ${EDITIONS[*]%%|*} ${LIGHT_EDITIONS[*]%%|*} " == *" $name "* ]] || die "$d has no row in EDITIONS or LIGHT_EDITIONS"
+done
+
 # edition_conf NAME: read and check tools/edition-extras/NAME/edition.conf. Sets CONF_<KEY> for the five
 # runtime keys and CONF_TAGLINE, CONF_PERSONALITY, CONF_FEELING. Every key is required.
 edition_conf() {
