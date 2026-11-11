@@ -50,4 +50,4 @@ Built and tested with stubs and a throwaway home folder. Still to look at with r
 
 ## Undo
 
-Delete `tools/edition-extras/lite/`, drop the `lite` row from `LIGHT_EDITIONS` in `tools/make-editions.sh` and from `EDITIONS` in `extras/install.sh` and `tools/wallpapers/selector-previews.py`, and rerun the build. An installed copy: remove `~/.config/omarchy/themes/afterburn-lite` (or run `extras/uninstall.sh`).
+Delete `tools/edition-extras/lite/`, drop the `lite` row from `LIGHT_EDITIONS` in `tools/make-editions.sh`, and rerun the build (the installer and the wallpaper tools read the folders, so they need no edit). An installed copy: remove `~/.config/omarchy/themes/afterburn-lite` (or run `extras/uninstall.sh`).

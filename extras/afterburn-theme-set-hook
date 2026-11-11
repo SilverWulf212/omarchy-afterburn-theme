@@ -1,6 +1,6 @@
 #!/bin/bash
 # Afterburn extras: an Omarchy theme-set hook, installed by extras/install.sh.
-# On afterburn or an edition (afterburn-voltage, -cyber, -overdrive, -redline, -phantom, -lite): switch
+# On afterburn or an edition (afterburn-<name>, one per folder in .editions/): switch
 # Ghostty cursor-fx to the theme's effect (CURSOR_FX: your afterburn.conf, else the edition's
 # edition.conf, else embers; if installed), regenerate and reload the glow with `afterburn apply`
 # (Omarchy drops a cloned theme's .lua) in the edition's colours, recolour the lock-screen embers

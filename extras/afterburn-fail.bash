@@ -124,7 +124,7 @@ if [[ $- == *i* && -t 1 && -z ${__AFTERBURN_FAIL_HOOKED-} ]]; then
        && [[ $- == *i* && -t 1 && -z ${NO_MOTION+x} ]]; then
       __afterburn_fail_load_conf
       __afterburn_fail_load_palette
-      local line cmd fx
+      local line cmd
       line=$(builtin history 1 2>/dev/null)
       read -r _ cmd <<<"$line"        # drop the history number
       cmd=${cmd//[[:cntrl:]]/}

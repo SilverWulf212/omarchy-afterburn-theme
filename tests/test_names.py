@@ -1,5 +1,4 @@
 """One source of truth for names: edition names come from folders, cursor-fx names from one list."""
-import os
 import pathlib
 import shutil
 import subprocess

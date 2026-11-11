@@ -1,5 +1,4 @@
 import os
-import pathlib
 import pty
 import select
 import unittest

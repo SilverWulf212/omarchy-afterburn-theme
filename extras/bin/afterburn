@@ -43,8 +43,8 @@ GHOSTTY="$HOME/.config/ghostty/config"
 KEYS="ROTATE DIM GLOW_RANGE CURSOR_FX EMBER_STYLE HEAT_SOURCE EVENING_HOURS ZIP LAT LON HOT_F COOL_F HEAT_WALLPAPERS FULLSCREEN_QUIET LAPTOP_MODE FAIL_FX"
 # Settings an edition can set a default for (see afterburn-theme.sh). Everything else is yours alone.
 EDITION_KEYS="$AB_EDITION_KEYS"
-# What a key falls back to when it is missing, empty or fails its check.
 declare -A SRC=()   # where an edition key's value came from: conf, edition or default
+# What a key falls back to when it is missing, empty or fails its check.
 declare -A DEFAULT=([ROTATE]=slow [DIM]=0.08 [GLOW_RANGE]=14 [CURSOR_FX]=embers [EMBER_STYLE]=rise [HEAT_SOURCE]=time [EVENING_HOURS]=19-07 [ZIP]="" [LAT]="" [LON]=""
                     [HOT_F]=90 [COOL_F]=50 [HEAT_WALLPAPERS]=yes [FULLSCREEN_QUIET]=yes [LAPTOP_MODE]=auto [FAIL_FX]=random)
 

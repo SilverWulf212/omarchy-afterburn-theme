@@ -9,7 +9,7 @@
 # repeatable, so rerunning it only changes git where its inputs or rules changed.
 #
 # The folder is hidden on purpose: Omarchy stages an installed theme with a `*` glob,
-# which skips dot entries, so the ~125 MB of editions are not copied into current/theme
+# which skips dot entries, so the ~100 MB of editions are not copied into current/theme
 # every time you switch to the base theme. The installer copies them from here.
 #
 # Method: hue-rotate the alternative stills and palette. Curated default stills,
