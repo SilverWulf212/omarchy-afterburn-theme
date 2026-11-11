@@ -1,6 +1,9 @@
 import unittest
 
-from support import Sandbox
+try:  # `unittest discover -s tests` and `unittest tests.test_x` both work
+    from support import Sandbox
+except ImportError:
+    from tests.support import Sandbox
 
 SAVER_CALLS = ("afterburn saver on", "afterburn saver off")
 

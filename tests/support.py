@@ -5,6 +5,7 @@ install root, and a PATH made of ONLY stub commands plus symlinks to the few cor
 scripts need. The real PATH is never used, so a real `omarchy-plugin-*`, `hyprctl`,
 `systemctl` or `cursor-fx` can not run by accident.
 """
+import json
 import os
 import pathlib
 import shutil
@@ -34,8 +35,13 @@ Item {
 }
 """
 
-MANIFEST = ('{"schemaVersion":1,"id":"omarchy.lock","name":"Lock","version":"1",'
-            '"kinds":["lock"],"entryPoints":{"lock":"LockView.qml"}}\n')
+# Same shape as /usr/share/omarchy/shell/plugins/lock/manifest.json in Omarchy 4.5: a "service" plugin whose
+# entry point is Service.qml, marked as a lock by the "authentication" capability. Files: LockView.qml (the
+# one the script patches), Service.qml, FingerprintModel.js, poster.sh.
+MANIFEST = json.dumps({
+    "schemaVersion": 1, "id": "omarchy.lock", "name": "Lock Screen", "version": "1.0.0", "author": "Omarchy",
+    "omarchy": {"capabilities": ["authentication"]}, "kinds": ["service"], "keepLoaded": True,
+    "entryPoints": {"service": "Service.qml"}}, indent=2) + "\n"
 
 # --- stub commands (bash). SB = the sandbox root; every call is appended to $SB/calls.log ----------
 STUBS = {
@@ -45,14 +51,16 @@ for f in "$SB"/plugins/*.state; do
   [[ -e $f ]] || continue
   id=$(basename "$f" .state)
   case $id in omarchy.*) src=first-party ;; *) src=third-party ;; esac
-  echo "$id $(cat "$f") $src lock Lock"
+  echo "$id $(cat "$f") $src service Name"
 done
 ''',
     "omarchy-plugin-enable": r'''#!/bin/bash
 echo "omarchy-plugin-enable $*" >> "$SB/calls.log"
 id=${1:-}
 [[ -f $SB/plugins/$id.state ]] || { echo "plugin '$id' is not known" >&2; exit 1; }
-for f in "$SB"/plugins/*.lock.state; do echo disabled > "$f"; done   # one lock screen at a time
+if [[ -e $SB/plugins/$id.islock ]]; then   # one lock screen at a time
+  for f in "$SB"/plugins/*.islock; do echo disabled > "${f%.islock}.state"; done
+fi
 echo enabled > "$SB/plugins/$id.state"
 echo "Enabled $id"
 ''',
@@ -66,14 +74,14 @@ target="$HOME/.config/omarchy/plugins/$new_id"
 [[ ${STUB_CLONE_FAIL:-} != pre ]] || { echo "omarchy-plugin-clone: boom" >&2; exit 1; }
 mkdir -p "$HOME/.config/omarchy/plugins"
 cp -a "$LOCK_EMBERS_OMARCHY_PATH/shell/plugins/lock" "$target"
-jq --arg id "$new_id" '.id = $id | .name = "My Lock" | .omarchy = {clonedFrom: "omarchy.lock"}' \
+jq --arg id "$new_id" '.id = $id | .name = "My Lock Screen" | .omarchy = (.omarchy + {clonedFrom: "omarchy.lock"})' \
   "$target/manifest.json" > "$target/manifest.json.tmp" && mv "$target/manifest.json.tmp" "$target/manifest.json"
 [[ ${STUB_CLONE_BREAK_ANCHOR:-} != 1 ]] || sed -i 's/^    MouseArea {$/    MouseArea2 {/' "$target/LockView.qml"
-for f in "$SB"/plugins/*.lock.state; do echo disabled > "$f"; done   # switching away from the built-in
+for f in "$SB"/plugins/*.islock; do echo disabled > "${f%.islock}.state"; done   # switching away from the built-in
 if [[ $new_id == omarchy.* ]]; then
   echo "WARN qml: PluginRegistry: plugin $new_id rejected: id is reserved for first-party Omarchy plugins" >&2
 else
-  echo enabled > "$SB/plugins/$new_id.state"
+  echo enabled > "$SB/plugins/$new_id.state"; touch "$SB/plugins/$new_id.islock"
 fi
 [[ ${STUB_CLONE_FAIL:-} != mid ]] || { rm -rf "$target"; echo "omarchy-plugin-clone: boom after switching" >&2; exit 1; }
 [[ ${STUB_CLONE_NODIR:-} != 1 ]] || rm -rf "$target"
@@ -86,7 +94,7 @@ dir="$HOME/.config/omarchy/plugins/$id"
 [[ -e $dir ]] || { echo "plugin '$id' is not installed" >&2; exit 1; }
 was=$(cat "$SB/plugins/$id.state" 2>/dev/null || true)
 cloned=$(jq -r '.omarchy.clonedFrom // empty' "$dir/manifest.json")
-[[ $id == omarchy.* ]] || rm -f "$SB/plugins/$id.state"
+[[ $id == omarchy.* ]] || rm -f "$SB/plugins/$id.state" "$SB/plugins/$id.islock"
 [[ $id != omarchy.* ]] || echo disabled > "$SB/plugins/$id.state"
 mv "$dir" "$HOME/.config/omarchy/plugins/.$id.bak.1"
 if [[ -n $cloned && $was == enabled && $id != omarchy.* ]]; then echo enabled > "$SB/plugins/$cloned.state"; fi
@@ -138,6 +146,7 @@ class Sandbox:
         lock.mkdir(parents=True)
         (lock / "manifest.json").write_text(MANIFEST)
         (lock / "LockView.qml").write_text(LOCK_VIEW)
+        (lock / "Service.qml").write_text("// service\n")
         self.set_plugin("omarchy.lock", "enabled")
         # The installed-theme path the CLI and hook expect, pointing at this checkout.
         themes = self.home / ".config" / "omarchy" / "themes"
@@ -169,16 +178,36 @@ class Sandbox:
     def marker(self):
         return self.state_dir / "lock-embers"
 
-    def set_plugin(self, pid, state):
+    def set_plugin(self, pid, state, lock=True):
+        """Register a plugin in the fake shell. lock=True: it is a lock screen (the stub keeps one active)."""
         (self.root / "plugins" / f"{pid}.state").write_text(state + "\n")
+        if lock:
+            (self.root / "plugins" / f"{pid}.islock").touch()
+
+    def add_user_plugin(self, pid, state="enabled", *, lock=True, manifest="ok", folder=None):
+        """A third-party plugin folder in ~/.config/omarchy/plugins. manifest: ok, broken (not JSON) or none."""
+        self.set_plugin(pid, state, lock=lock)
+        d = self.plugins_dir / (folder or pid)
+        d.mkdir(parents=True)
+        if manifest == "broken":
+            (d / "manifest.json").write_text("{ this is not json")
+        elif manifest == "ok":
+            m = json.loads(MANIFEST)
+            m.update(id=pid, name=pid)
+            if lock:
+                m["omarchy"] = {"capabilities": ["authentication"], "clonedFrom": "omarchy.lock"}
+            else:
+                m["omarchy"] = {}
+                m["kinds"] = ["bar-widget"]
+            (d / "manifest.json").write_text(json.dumps(m))
 
     def plugin_state(self, pid):
         f = self.root / "plugins" / f"{pid}.state"
         return f.read_text().strip() if f.exists() else None
 
     def enabled_locks(self):
-        return sorted(f.name[:-len(".state")] for f in (self.root / "plugins").glob("*.lock.state")
-                      if f.read_text().strip() == "enabled")
+        return sorted(f.name[:-len(".islock")] for f in (self.root / "plugins").glob("*.islock")
+                      if (f.with_suffix(".state")).read_text().strip() == "enabled")
 
     def call_log(self):
         return self.calls.read_text().splitlines()
@@ -187,8 +216,11 @@ class Sandbox:
         """An install made by the old script: ~/.config/omarchy/plugins/<user>.lock, active."""
         d = self.plugins_dir / pid
         d.mkdir(parents=True)
-        (d / "manifest.json").write_text(
-            MANIFEST.replace('"omarchy.lock"', f'"{pid}"').replace('"kinds"', '"omarchy":{"clonedFrom":"omarchy.lock"},"kinds"'))
+        m = json.loads(MANIFEST)
+        m.update(id=pid, name="My Lock Screen")
+        m["omarchy"]["clonedFrom"] = "omarchy.lock"
+        (d / "manifest.json").write_text(json.dumps(m))
+        (d / "Service.qml").write_text("// service\n")
         (d / "LockView.qml").write_text(LOCK_VIEW)
         (d / "EmberLayer.qml").write_text("// old embers ffc48a ff5a1f 7a3e16\n")
         self.set_plugin("omarchy.lock", "disabled")

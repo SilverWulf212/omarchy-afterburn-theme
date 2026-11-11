@@ -1,6 +1,9 @@
 import unittest
 
-from support import LOCK_SH, REPO, UNINSTALL, Sandbox
+try:  # `unittest discover -s tests` and `unittest tests.test_x` both work
+    from support import LOCK_SH, REPO, UNINSTALL, Sandbox
+except ImportError:
+    from tests.support import LOCK_SH, REPO, UNINSTALL, Sandbox
 
 
 class LockEmbersBase(unittest.TestCase):
@@ -108,6 +111,71 @@ class FailSafeTests(LockEmbersBase):
         r = sb.lock("install")
         self.assertEqual(r.returncode, 3, r.stdout + r.stderr)
         self.assertEqual(sb.enabled_locks(), ["hello.lock"])
+
+
+class OtherLockDetectionTests(LockEmbersBase):
+    """Is someone else's lock screen enabled? Decided from manifests, not from names or the KINDS column."""
+
+    def assert_untouched(self, sb, r, expect_enabled):
+        self.assertEqual(r.returncode, 3, r.stdout + r.stderr)
+        self.assertFalse(any("omarchy-plugin-clone" in c or "omarchy-plugin-enable" in c for c in sb.call_log()),
+                         sb.call_log())
+        self.assertEqual(sb.enabled_locks(), expect_enabled)
+        self.assertFalse((sb.plugins_dir / "afterburn.lock").exists())
+
+    def test_third_party_lock_whose_id_does_not_end_in_lock_is_detected(self):
+        for pid in ("lockscreen-x", "hello-lock-v2"):
+            with self.subTest(pid=pid):
+                sb = self.make("alice")
+                sb.set_plugin("omarchy.lock", "disabled")
+                sb.add_user_plugin(pid, "enabled", lock=True)
+                self.assert_untouched(sb, sb.lock("install"), [pid])
+
+    def test_manifest_is_found_by_its_id_when_the_folder_is_named_differently(self):
+        sb = self.make("alice")
+        sb.set_plugin("omarchy.lock", "disabled")
+        sb.add_user_plugin("greeter", "enabled", lock=True, folder="greeter-checkout")
+        self.assert_untouched(sb, sb.lock("install"), ["greeter"])
+
+    def test_enabled_clock_is_not_mistaken_for_a_lock(self):
+        # omarchy.clock is a first-party bar widget. With no lock enabled at all, the built-in comes back.
+        sb = self.make("alice")
+        sb.set_plugin("omarchy.lock", "disabled")
+        sb.set_plugin("omarchy.clock", "enabled", lock=False)
+        sb.set_plugin("omarchy.polkit", "enabled", lock=False)   # first-party, also has the capability
+        r = sb.lock("install")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(sb.enabled_locks(), ["afterburn.lock"])
+
+    def test_enabled_third_party_clock_widget_is_not_a_lock(self):
+        sb = self.make("alice")
+        sb.set_plugin("omarchy.lock", "disabled")
+        sb.add_user_plugin("tmn73.clock", "enabled", lock=False)
+        r = sb.lock("install")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(sb.enabled_locks(), ["afterburn.lock"])
+
+    def test_unreadable_manifest_with_an_id_ending_in_lock_still_counts(self):
+        for manifest in ("broken", "none"):
+            with self.subTest(manifest=manifest):
+                sb = self.make("alice")
+                sb.set_plugin("omarchy.lock", "disabled")
+                sb.add_user_plugin("hello-lock", "enabled", manifest=manifest)
+                self.assert_untouched(sb, sb.lock("install"), ["hello-lock"])
+
+    def test_unreadable_manifest_and_an_unrevealing_id_means_hands_off(self):
+        sb = self.make("alice")
+        sb.set_plugin("omarchy.lock", "disabled")
+        sb.add_user_plugin("lockscreen-x", "enabled", manifest="broken")
+        self.assert_untouched(sb, sb.lock("install"), ["lockscreen-x"])
+
+    def test_empty_plugin_list_means_hands_off(self):
+        sb = self.make("alice")
+        sb.set_plugin("omarchy.lock", "disabled")
+        (sb.bin / "omarchy-plugin-list").write_text("#!/bin/bash\nexit 1\n")
+        r = sb.lock("install")
+        self.assertEqual(r.returncode, 3, r.stdout + r.stderr)
+        self.assertFalse(any("omarchy-plugin-enable" in c for c in sb.call_log()))
 
 
 class BackwardsCompatTests(LockEmbersBase):

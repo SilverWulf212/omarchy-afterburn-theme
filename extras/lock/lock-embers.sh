@@ -181,6 +181,46 @@ on_exit() {
   exit "$rc"
 }
 
+# Path of the manifest of a user plugin (the catalog reads ~/.config/omarchy/plugins/<folder>/manifest.json
+# and takes the id from inside it), by folder name first, then by the id the manifest declares.
+user_manifest() {
+  local id=$1 f
+  [[ -f $PLUGINS_DIR/$id/manifest.json ]] && { echo "$PLUGINS_DIR/$id/manifest.json"; return 0; }
+  for f in "$PLUGINS_DIR"/*/manifest.json; do
+    [[ -f $f && $(jq -r '.id // empty' "$f" 2>/dev/null) == "$id" ]] && { echo "$f"; return 0; }
+  done
+  return 1
+}
+
+# Is anyone else's lock screen enabled? Prints the plugin id and returns 0 if so, 1 if we can positively
+# see that none is, 2 if we cannot tell (then the caller must change nothing).
+# Omarchy lists a lock as a "service" like any other, so the kind says nothing. A lock is a plugin whose
+# manifest has the "authentication" capability or is cloned from omarchy.lock (hello-lock has both). First-party
+# plugins are skipped: omarchy.polkit also has the capability, and omarchy.lock itself is the built-in. An
+# enabled plugin whose manifest cannot be read counts as a lock when its id ends in "lock", else we cannot tell.
+other_lock_enabled() {
+  local rows id m doubt=0
+  rows=$(omarchy-plugin-list 2>/dev/null | awk 'NR > 1 && $2 == "enabled" { print $1 }') || return 2
+  # An empty list is not "no lock": the list command may have failed.
+  omarchy-plugin-list 2>/dev/null | awk 'NR > 1 { n++ } END { exit n ? 0 : 1 }' || return 2
+  while IFS= read -r id; do
+    [[ -n $id && $id != omarchy.* ]] || continue
+    if m=$(user_manifest "$id") && jq -e . "$m" >/dev/null 2>&1; then
+      if jq -e '((.omarchy.capabilities // []) | index("authentication")) != null or .omarchy.clonedFrom == "omarchy.lock"' "$m" >/dev/null 2>&1; then
+        echo "$id"
+        return 0
+      fi
+    elif [[ $id =~ (^|[._-])lock$ ]]; then
+      echo "$id"
+      return 0
+    else
+      doubt=1
+    fi
+  done <<<"$rows"
+  (( doubt )) && return 2
+  return 1
+}
+
 install_layer() {
   [[ -f $EMBER_SRC ]] || die "missing $EMBER_SRC"
   [[ -f $OFFICIAL_LOCK_DIR/LockView.qml ]] || die "official lock not found at $OFFICIAL_LOCK_DIR"
@@ -201,14 +241,16 @@ install_layer() {
   # using another lock plugin (e.g. hello-lock) keeps theirs untouched.
   if command -v omarchy-plugin-list >/dev/null && [[ -z ${LOCK_EMBERS_PLUGINS_DIR:-} ]]; then
     local state other
-    state=$(omarchy-plugin-list 2>/dev/null | awk -v id="$SOURCE_ID" '$1 == id { print $2 }')
+    state=$(omarchy-plugin-list 2>/dev/null | awk -v id="$SOURCE_ID" '$1 == id { print $2 }') || state=""
     if [[ $state != enabled && ! -d $PLUGINS_DIR/$CLONE_ID ]]; then
-      other=$(omarchy-plugin-list 2>/dev/null | awk '$1 ~ /(^|[._-])lock$/ && $2 == "enabled" { print $1 }' | head -1)
-      if [[ -n $other ]]; then
-        say "your active lock screen is $other; embers only support Omarchy's built-in lock, so nothing changed"
+      local rc=0
+      other=$(other_lock_enabled) || rc=$?
+      if (( rc != 1 )); then
+        # 0: a lock plugin of someone else is enabled. 2: cannot tell. Either way, touch nothing.
+        say "your active lock screen is ${other:-a third-party lock}; embers only support Omarchy's built-in lock, so nothing changed"
         exit 3
       fi
-      # No lock screen is enabled at all (an earlier failed install can leave it so): fix that first.
+      # Positively no lock screen is enabled (an earlier failed install can leave it so): fix that first.
       say "no lock screen is enabled ($SOURCE_ID is disabled); enabling it so you are never left without one"
       omarchy-plugin-enable "$SOURCE_ID" >/dev/null || die "could not enable $SOURCE_ID. Run: omarchy plugin enable $SOURCE_ID"
     fi
