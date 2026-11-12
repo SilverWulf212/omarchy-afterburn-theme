@@ -113,16 +113,20 @@ put() {
   install -m 0644 "$1" "$tmp" && mv "$tmp" "$2" || { rm -f "$tmp"; return 1; }
 }
 
-# Make $2 the clone $1's embers: a new embers.<n>/Embers.qml, then the older folders go. Nothing changes when the
+# Make $2 the clone $1's embers: a new embers.<n>/Embers.qml, then the older folders go. Only older ones: two recolours
+# at once (quick theme switches) must not delete each other's, so the newest always stays. Nothing changes when the
 # newest folder already holds the same embers, or when a write fails.
 put_embers() {
-  local cur new tmp
+  local cur new tmp d
   cur=$(find "$1" -mindepth 1 -maxdepth 1 -type d -name 'embers.*' | sort | tail -n 1)
   [[ -n $cur ]] && cmp -s "$2" "$cur/Embers.qml" && return 0
   tmp=$(mktemp -d "$1/.embers.XXXXXX") || return
   new="$1/embers.$(date +%s%N)"
   install -m 0644 "$2" "$tmp/Embers.qml" && chmod 0755 "$tmp" && mv -T "$tmp" "$new" || { rm -rf "$tmp"; return 1; }
-  find "$1" -mindepth 1 -maxdepth 1 -type d -name 'embers.*' ! -path "$new" -exec rm -rf {} +
+  for d in "$1"/embers.*; do
+    [[ $d < "$new" && -d $d ]] || continue
+    rm -rf -- "$d"
+  done
 }
 
 is_our_clone() {
@@ -333,6 +337,7 @@ recolor_layer() {
   fi
   # An install from before the loader: its EmberLayer.qml holds the embers. It loads the new ones from the next login on.
   cmp -s "$LOADER" "$clone_dir/EmberLayer.qml" || put "$LOADER" "$clone_dir/EmberLayer.qml"
+  rm -f "$clone_dir/Embers.qml"   # the embers' place in a pre-release layout
   tmp=$(mktemp "$clone_dir/.EmberLayer.XXXXXX")
   sed -e 's/ffc48a/@FLARE@/g; s/ff5a1f/@EMBER@/g; s/7a3e16/@RUST@/g' "$src" |
     sed -e "s/@FLARE@/${flare,,}/g; s/@EMBER@/${ember,,}/g; s/@RUST@/${rust,,}/g" > "$tmp" &&

@@ -16,13 +16,20 @@ Loader {
     return null
   }
 
+  // Folders only. nameFilters do not apply to folders, so the newest embers.<n> is picked by name below.
   FolderListModel {
     id: versions
     folder: Qt.resolvedUrl(".")
-    nameFilters: ["embers.*"]
     showFiles: false
   }
 
-  source: (!view || view.loadBackground) && versions.count
-    ? versions.folder + versions.get(versions.count - 1, "fileName") + "/Embers.qml" : ""
+  function newest() {
+    for (var i = versions.count - 1; i >= 0; i--) {
+      var name = versions.get(i, "fileName")
+      if (name.startsWith("embers.")) return versions.folder + name + "/Embers.qml"
+    }
+    return ""
+  }
+
+  source: !view || view.loadBackground ? newest() : ""
 }

@@ -296,7 +296,9 @@ class LiveRecolorTests(LockEmbersBase):
         self.assertEqual((clone / "EmberLayer.qml").read_bytes(), LOADER.read_bytes())
         first = self.embers(clone)
         self.assertEqual(first.read_bytes(), (REPO / "extras/lock/EmberLayer.qml").read_bytes())
+        (clone / "Embers.qml").write_text("// pre-release layout\n")
         r = sb.lock("recolor", "aaaaaa", "bbbbbb", "cccccc", "spark")
+        self.assertFalse((clone / "Embers.qml").exists(), "the pre-release root Embers.qml is gone")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         spark = (REPO / "extras/lock/styles/spark.qml").read_text()
         second = self.embers(clone)
@@ -308,6 +310,25 @@ class LiveRecolorTests(LockEmbersBase):
         self.assertEqual([p.name for p in clone.iterdir() if p.name.startswith(".")], [], "no temp left")
         self.assertEqual((clone / "EmberLayer.qml").read_bytes(), LOADER.read_bytes())
 
+    def test_concurrent_recolours_always_leave_the_newest_folder(self):
+        """Two quick theme switches run two recolours at once: one must not delete the other's new folder."""
+        sb = self.make("alice")
+        d = sb.root / "clone"
+        d.mkdir()
+        (sb.root / "a.qml").write_text("// a\n")
+        (sb.root / "b.qml").write_text("// b\n")
+        script = (f'source "{LOCK_SH}"; for i in {{1..30}}; do '
+                  f'put_embers "{d}" "{sb.root}/a.qml" & put_embers "{d}" "{sb.root}/b.qml" & wait; '
+                  f'echo "round $i: $(find "{d}" -mindepth 1 -maxdepth 1 -name "embers.*" | wc -l)"; '
+                  f'cp "{sb.root}/a.qml" "{sb.root}/c.qml"; cp "{sb.root}/b.qml" "{sb.root}/a.qml"; cp "{sb.root}/c.qml" "{sb.root}/b.qml"; done')
+        r = sb.run(["/bin/bash", "-c", script])
+        self.assertEqual(r.returncode, 0, r.stderr)
+        rounds = [line for line in r.stdout.splitlines() if line.startswith("round")]
+        self.assertEqual(len(rounds), 30, r.stdout + r.stderr)
+        self.assertEqual([x for x in rounds if x.endswith(": 0")], [], "a round left no embers at all")
+        newest = sorted(d.glob("embers.*"))[-1]
+        self.assertIn((newest / "Embers.qml").read_text(), ("// a\n", "// b\n"))
+
     @unittest.skipUnless(shutil.which("qml6"), "needs Qt's qml6 runner")
     def test_loader_shows_the_newest_embers_without_a_restart(self):
         """Real Qt, offscreen. As in Omarchy's LockView, the layer sits in a Rectangle below the view that has
@@ -316,6 +337,8 @@ class LiveRecolorTests(LockEmbersBase):
         sb = self.make("alice")
         d = sb.root / "qml"
         (d / "embers.1").mkdir(parents=True)
+        (d / "styles").mkdir()          # any other folder (it sorts after embers.*) is never picked
+        (d / "styles" / "Embers.qml").write_text('import QtQuick\nItem { property string tag: "styles" }\n')
         shutil.copy(LOADER, d / "EmberLayer.qml")
         (d / "embers.1" / "Embers.qml").write_text('import QtQuick\nItem { property string tag: "old" }\n')
         (d / "LockView.qml").write_text(
