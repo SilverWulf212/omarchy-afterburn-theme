@@ -1,9 +1,8 @@
 """uninstall.sh keeps what is yours: the settings file and every .bashrc line it did not add."""
 import unittest
 
-from support import REPO, UNINSTALL, Sandbox
+from support import THEME_SH, UNINSTALL, Sandbox
 
-THEME_SH = REPO / "extras" / "afterburn-theme.sh"
 # The line every release since the subtle pack has written. Pinned, so a change here is a decision.
 LINE = ('[[ -f "$HOME/.config/omarchy/themes/afterburn/extras/afterburn-fail.bash" ]] && '
         'source "$HOME/.config/omarchy/themes/afterburn/extras/afterburn-fail.bash"  # afterburn')

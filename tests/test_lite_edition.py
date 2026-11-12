@@ -5,11 +5,10 @@ import re
 import subprocess
 import unittest
 
-from support import REPO, Sandbox
+from support import REPO, THEME_SH, Sandbox
 
 SRC = REPO / "tools" / "edition-extras" / "lite"
 BUILT = REPO / ".editions" / "lite"
-THEME_SH = REPO / "extras" / "afterburn-theme.sh"
 HOOK = REPO / "extras" / "afterburn-theme-set-hook"
 
 TEXT_KEYS = ("accent foreground light_foreground red yellow green cyan blue magenta "
@@ -148,10 +147,10 @@ class CursorFollowsTheBackground(unittest.TestCase):
 
     def hook(self, theme):
         self.sb.write_state_text(self.sb.home / ".local/state/omarchy/current/theme.name", theme)
-        before = len(self.sb.calls.read_text().splitlines())
+        before = len(self.sb.call_log())
         r = self.sb.run(["/bin/bash", str(HOOK), theme])
         self.assertEqual(r.returncode, 0, r.stderr)
-        return [l for l in self.sb.calls.read_text().splitlines()[before:] if l.startswith("cursor-fx ")]
+        return [l for l in self.sb.call_log()[before:] if l.startswith("cursor-fx ")]
 
     def test_same_effect_same_mode_does_not_switch(self):
         self.assertEqual(self.hook("afterburn"), [])

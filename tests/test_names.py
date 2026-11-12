@@ -4,9 +4,8 @@ import shutil
 import subprocess
 import unittest
 
-from support import REPO, Sandbox
+from support import REPO, THEME_SH, UNINSTALL, Sandbox
 
-THEME_SH = REPO / "extras" / "afterburn-theme.sh"
 INSTALL_TEXT = (REPO / "extras" / "install.sh").read_text()
 
 
@@ -75,7 +74,7 @@ class EditionList(unittest.TestCase):
         (themes / "afterburn-lite2").mkdir()
         (themes / "afterburn-lite2" / "colors.toml").write_text("x")
         self.sb.write_state_text(self.sb.state_dir / "editions", "lite2\n")
-        r = self.sb.run(["/bin/bash", str(REPO / "extras" / "uninstall.sh")])
+        r = self.sb.run(["/bin/bash", str(UNINSTALL)])
         self.assertIn("edition removed: afterburn-lite2", r.stdout, r.stdout + r.stderr)
         self.assertFalse((themes / "afterburn-lite2").exists())
 

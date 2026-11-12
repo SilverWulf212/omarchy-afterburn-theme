@@ -14,6 +14,7 @@ import tempfile
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 LOCK_SH = REPO / "extras" / "lock" / "lock-embers.sh"
+THEME_SH = REPO / "extras" / "afterburn-theme.sh"
 AFTERBURN = REPO / "extras" / "bin" / "afterburn"
 WATCH = REPO / "extras" / "bin" / "afterburn-watch"
 UNINSTALL = REPO / "extras" / "uninstall.sh"
@@ -200,10 +201,6 @@ class Sandbox:
                 m["omarchy"] = {}
                 m["kinds"] = ["bar-widget"]
             (d / "manifest.json").write_text(json.dumps(m))
-
-    def plugin_state(self, pid):
-        f = self.root / "plugins" / f"{pid}.state"
-        return f.read_text().strip() if f.exists() else None
 
     def enabled_locks(self):
         return sorted(f.name[:-len(".islock")] for f in (self.root / "plugins").glob("*.islock")
