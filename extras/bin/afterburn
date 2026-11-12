@@ -24,13 +24,13 @@ CONF_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/afterburn"
 CONF="$CONF_DIR/afterburn.conf"
 STATE_ROOT="${XDG_STATE_HOME:-$HOME/.local/state}"
 STATE="$STATE_ROOT/afterburn"
-OMARCHY_CUR="$STATE_ROOT/omarchy/current"
+OMARCHY_CUR="$HOME/.local/state/omarchy/current"
 CUR_THEME="$OMARCHY_CUR/theme"
 CUR_BG_LINK="$OMARCHY_CUR/background"
 THEME_DIR="$HOME/.config/omarchy/themes/afterburn"
 GLOW_TEMPLATE="$THEME_DIR/extras/hyprland-glow.lua"
 LOCK_SH="$THEME_DIR/extras/lock/lock-embers.sh"
-GHOSTTY="$HOME/.config/ghostty/config"
+GHOSTTY=${XDG_CONFIG_HOME:-$HOME/.config}/ghostty/config; [[ -e $GHOSTTY ]] || GHOSTTY+=.ghostty
 # The extras always live in the base theme dir, also while a colour edition is active.
 # shellcheck disable=SC1091
 . "$THEME_DIR/extras/afterburn-theme.sh" 2>/dev/null || {
@@ -250,11 +250,8 @@ live_level() {
 apply_visuals() {
   write_lua
   hyprctl reload >/dev/null 2>&1 || true
-  if effective_quiet; then
-    cfx_sync
-  else
-    live_level "$(state_get level normal)"
-  fi
+  cfx_sync
+  effective_quiet || live_level "$(state_get level normal)"
 }
 
 cmd_apply() {
@@ -297,7 +294,7 @@ cfx_sync() {
   fi
   if flag_on saver; then
     if [[ ! -f $SUBTLE_REC && $(cfx_subtle_state) == off ]]; then : > "$SUBTLE_REC"; fi
-    cursor-fx subtle on >/dev/null 2>&1 || true
+    [[ -f $SUBTLE_REC ]] && cursor-fx subtle on >/dev/null 2>&1 || true
   elif [[ -f $SUBTLE_REC ]]; then
     cursor-fx subtle off >/dev/null 2>&1 || true
     rm -f "$SUBTLE_REC"
@@ -450,9 +447,15 @@ heat_wall_dir() {
 # Swap a still wallpaper for its variant at this level. A theme without that variant, a live loop
 # and a wallpaper of your own all stay as they are.
 swap_wallpaper() {
-  local cur base target
+  local cur base target dir level
   cur=$(readlink -f "$CUR_BG_LINK" 2>/dev/null) || return 0
   [[ -n $cur ]] || return 0
+  dir=$(dirname -- "$cur")
+  for level in normal cool hot; do
+    target=$(realpath -m "$(heat_wall_dir "$level")")
+    [[ $dir == "$target" ]] && break
+  done
+  [[ $dir == "$target" ]] || return 0
   base=$(basename -- "$cur")
   target="$(heat_wall_dir "$1")/$base"
   [[ -f $target ]] || return 0
@@ -484,8 +487,6 @@ cmd_mode() { # quiet|saver on|off
   state_set "$name" "$v"
   if is_afterburn; then
     load_conf
-    # Turning a mode off must restore the cursor here; turning one on is handled inside apply_visuals.
-    effective_quiet || cfx_sync
     apply_visuals
   fi
 }

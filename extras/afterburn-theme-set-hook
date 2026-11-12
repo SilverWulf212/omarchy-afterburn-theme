@@ -10,7 +10,8 @@
 set -u
 THEME="${1:-}"
 EXTRAS="$HOME/.config/omarchy/themes/afterburn/extras"
-CURRENT="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/current/theme"
+CURRENT="$HOME/.local/state/omarchy/current/theme"
+[[ $THEME == "$(cat "$CURRENT.name" 2>/dev/null)" ]] || exit 0
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/afterburn"
 STATE="$STATE_DIR/prev-cursor-fx"
 # Written by `afterburn quiet` only while it holds the cursor effect off (saver leaves the effect running).
@@ -24,7 +25,7 @@ OURS_FX="$STATE_DIR/cursor-fx-set"
 FX_MODE="$STATE_DIR/cursor-fx-mode"
 # Written by `afterburn saver on` when it turned `cursor-fx subtle` on from off. Not the user's own setting.
 SUBTLE_REC="$STATE_DIR/subtle-by-afterburn"
-GHOSTTY="$HOME/.config/ghostty/config"
+GHOSTTY=${XDG_CONFIG_HOME:-$HOME/.config}/ghostty/config; [[ -e $GHOSTTY ]] || GHOSTTY+=.ghostty
 LOCK_SH="$EXTRAS/lock/lock-embers.sh"
 LOCK_MARK="$STATE_DIR/lock-embers"
 AFTERBURN="$(command -v afterburn 2>/dev/null || echo "$HOME/.local/bin/afterburn")"

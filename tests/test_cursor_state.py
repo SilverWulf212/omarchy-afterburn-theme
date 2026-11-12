@@ -61,6 +61,19 @@ class CursorBookkeeping(unittest.TestCase):
         self.ab("saver", "off")
         self.assertEqual((self.effect(), self.subtle(), self.pre.exists()), ("lightning", "off", False))
 
+    def test_saver_preserves_mixed_or_already_on_subtle_preferences(self):
+        for subtle in ("mixed", "on"):
+            with self.subTest(subtle=subtle):
+                self.sb.write_state_text(self.sb.state_dir / "saver", "off\n")
+                self.sb.write_state_text(self.sb.root / "subtle", subtle + "\n")
+                self.sb.calls.write_text("")
+                self.ab("saver", "on")
+                self.assertEqual(self.subtle(), subtle)
+                self.assertFalse((self.sb.state_dir / "subtle-by-afterburn").exists())
+                self.ab("saver", "off")
+                self.assertEqual(self.subtle(), subtle)
+                self.assertFalse([c for c in self.sb.call_log() if c.startswith("cursor-fx subtle ")])
+
     def test_quiet_ending_while_saver_is_on_brings_the_effect_back(self):  # spec bug 1
         self.ab("saver", "on")
         self.ab("quiet", "on")
@@ -97,12 +110,38 @@ class CursorBookkeeping(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual((self.effect(), self.pre.exists()), ("neon", False))
 
+    def test_stale_hook_does_nothing_in_either_direction(self):
+        self.sb.use_stubs(["afterburn"])
+        bash = self.sb.bin / "bash"
+        bash.unlink()
+        bash.write_text('#!/bin/bash\necho "lock $*" >> "$SB/calls.log"\n')
+        bash.chmod(0o755)
+        self.sb.write_state_text(self.sb.state_dir / "lock-embers", "installed\n")
+        self.sb.write_state_text(self.sb.state_dir / "prev-cursor-fx", "cyber\n")
+        for current, stale in (("other", "afterburn"), ("afterburn", "other")):
+            with self.subTest(current=current, stale=stale):
+                self.sb.write_state_text(self.sb.home / ".local/state/omarchy/current/theme.name", current)
+                self.sb.calls.write_text("")
+                r = self.sb.run(["/bin/bash", str(HOOK), stale])
+                self.assertEqual(r.returncode, 0, r.stderr)
+                self.assertEqual(self.sb.call_log(), [])
+                self.assertEqual(self.effect(), "lightning")
+                self.assertEqual((self.sb.state_dir / "prev-cursor-fx").read_text(), "cyber\n")
+
     def test_a_stale_pre_quiet_from_an_older_version_is_cleared_while_only_saver_is_on(self):
         self.sb.write_state_text(self.sb.state_dir / "saver", "on\n")
         self.sb.write_state_text(self.pre, "lightning\n")
         self.start("off")
         self.ab("apply")
         self.assertEqual((self.effect(), self.subtle(), self.pre.exists()), ("lightning", "on", False))
+
+    def test_apply_recovers_a_cursor_left_off_by_interrupted_quiet_exit(self):
+        self.sb.write_state_text(self.sb.state_dir / "quiet", "off\n")
+        self.sb.write_state_text(self.pre, "lightning\n")
+        self.ghostty.write_text("")
+        self.ab("apply")
+        self.assertEqual((self.effect(), self.pre.exists()), ("lightning", False))
+        self.assertIn("cursor-fx lightning", self.sb.call_log())
 
 
 if __name__ == "__main__":

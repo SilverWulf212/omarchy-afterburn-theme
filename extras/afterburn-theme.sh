@@ -24,7 +24,7 @@ AB_BASHRC_LINE="[[ -f \"$AB_FAIL_SH\" ]] && source \"$AB_FAIL_SH\"  # afterburn"
 
 # Theme name as Omarchy stores it (lowercase, dashes). Empty if unknown.
 ab_theme_name() {
-  cat "${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/current/theme.name" 2>/dev/null || true
+  cat "$HOME/.local/state/omarchy/current/theme.name" 2>/dev/null || true
 }
 
 # True for `afterburn` and `afterburn-<edition>`.
@@ -35,7 +35,7 @@ ab_is_afterburn() { [[ ${1:-} == afterburn || ${1:-} == afterburn-* ]]; }
 ab_colors_file() {
   local name=${1:-} f
   for f in "$HOME/.config/omarchy/themes/$name/colors.toml" \
-           "${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/current/theme/colors.toml" \
+           "$HOME/.local/state/omarchy/current/theme/colors.toml" \
            "$HOME/.config/omarchy/themes/afterburn/colors.toml"; do
     [[ -n $name && -f $f ]] && { echo "$f"; return 0; }
   done
@@ -216,7 +216,7 @@ ab_edition_file() {
   local name=${1:-} f
   [[ $name =~ ^afterburn-[a-z0-9]+$ ]] || return 1
   for f in "$HOME/.config/omarchy/themes/$name/edition.conf" \
-           "${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/current/theme/edition.conf" \
+           "$HOME/.local/state/omarchy/current/theme/edition.conf" \
            "$HOME/.config/omarchy/themes/afterburn/.editions/${name#afterburn-}/edition.conf"; do
     [[ -f $f ]] && { AB_EDITION_FILE=$f; return 0; }
   done

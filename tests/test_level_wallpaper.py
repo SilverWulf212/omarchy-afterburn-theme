@@ -33,6 +33,36 @@ class LevelWallpaperInModes(unittest.TestCase):
     def test_quiet_on_still_swaps_wallpaper_but_not_glow(self):
         self.level_in("quiet")
 
+    def test_personal_wallpaper_with_the_same_basename_is_left_alone(self):
+        personal = self.sb.home / "Pictures" / self.name
+        self.sb.write_state_text(personal, "personal wallpaper")
+        link = self.sb.home / ".local/state/omarchy/current/background"
+        link.unlink()
+        link.symlink_to(personal)
+        r = self.sb.afterburn("level", "hot")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertFalse([c for c in self.sb.call_log() if c.startswith("omarchy-theme-bg-set ")])
+        self.assertEqual(link.resolve(), personal)
+        self.assertEqual(personal.read_text(), "personal wallpaper")
+
+    def test_all_theme_wallpaper_directories_can_swap_through_symlinks(self):
+        current = self.sb.home / ".local/state/omarchy/current"
+        theme = self.sb.home / ".config/omarchy/themes/afterburn"
+        dirs = {"normal": current / "theme/backgrounds",
+                "cool": theme / "extras/heat-wallpapers/cool", "hot": theme / "extras/heat-wallpapers/hot"}
+        alias = self.sb.root / "wallpapers"
+        for source, target in (("normal", "hot"), ("cool", "normal"), ("hot", "cool")):
+            with self.subTest(source=source, target=target):
+                if alias.is_symlink():
+                    alias.unlink()
+                alias.symlink_to(dirs[source], target_is_directory=True)
+                (current / "background").unlink()
+                (current / "background").symlink_to(alias / self.name)
+                self.sb.calls.write_text("")
+                r = self.sb.afterburn("level", target)
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                self.assertIn(f"omarchy-theme-bg-set {dirs[target] / self.name}", self.sb.call_log())
+
 
 if __name__ == "__main__":
     unittest.main()

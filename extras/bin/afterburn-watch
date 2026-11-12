@@ -11,7 +11,7 @@ export PATH="$HOME/.local/bin:$PATH"   # systemd's PATH may lack ~/.local/bin
 
 CONF=${XDG_CONFIG_HOME:-$HOME/.config}/afterburn/afterburn.conf
 STATE=${XDG_STATE_HOME:-$HOME/.local/state}/afterburn
-THEME_FILE=${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/current/theme.name
+THEME_FILE=$HOME/.local/state/omarchy/current/theme.name
 WEATHER=$STATE/weather.json
 PSI_FILE=${PSI_FILE:-/proc/pressure/cpu}          # overridable for tests
 POWER_DIR=${POWER_DIR:-/sys/class/power_supply}   # overridable for tests
