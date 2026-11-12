@@ -1,8 +1,8 @@
 # Changelog
 
-Dates are 2026. The theme installs from `main`, so "Unreleased" below is what a v1.1.0 tag would carry.
+Dates are 2026. The theme installs from `main`, so the 2.0.0 section below is the current release.
 
-## Unreleased (for v1.1.0)
+## 2.0.0 — 2026-11-12
 
 ### Added
 - **Afterburn Lite**, the first light edition: burnt-orange ink on warm paper. Its own palette (body text, the accent and the ANSI colours and their bright variants are at least 4.5:1 on the paper, checked by the build; muted and secondary text is deliberately fainter at about 3:1, and `orange` is 3.75:1), eight wallpapers, the live loop `live-heat-shield`, and boot and login art. Install it with the other editions, then `omarchy theme set afterburn-lite`.
@@ -11,13 +11,17 @@ Dates are 2026. The theme installs from `main`, so "Unreleased" below is what a 
 - A test suite for the code that runs on your machine (lock screen, battery detection, the light edition, the installer's edition list).
 
 ### Fixed
+- **Watcher.** It re-applies the heat level after any Hyprland config reload and after a reconnect. It skips dead Hyprland instances (leftover sockets) and talks to the live one. The user service now stops with the graphical session (`PartOf=graphical-session.target`).
+- `afterburn set LAPTOP_MODE` now behaves like `afterburn laptop`. `EVENING_HOURS` must be 0-23, `LAT` -90 to 90 and `LON` -180 to 180.
+- **Uninstall and re-install.** Uninstall restores the default terminal for a user who had no terminal list before install: it removes the list the installer created, only if Ghostty is its only entry. Terminal and font are left alone if you changed them since. A failed starship or `.bashrc` restore keeps the original and reports "not restored". Preview backups are kept. The watcher stops before the cursor effect is restored. Uninstall restores the cursor effect from before install; it does not detect one you picked afterwards. Re-installing restarts an already-running watcher.
+- **Lock embers.** They change on the next lock after a theme switch or `afterburn set EMBER_STYLE`, with no restart or re-login (the clone now has a small loader, `EmberLayer.qml`, plus `Embers.qml`). An install made before this version switches at its next recolour and updates live from its next login. Uninstall leaves no hidden `.afterburn.lock.bak.*` folder.
 - **Heat levels.** On current Hyprland (a Lua config) the cool and hot levels never reached the screen: the border and glow stayed at normal while `afterburn status` reported the new level. The level is now sent in the form Hyprland accepts and shows at once.
 - **Lock screen (#5).** With the login name `omarchy`, saying yes to lock-screen embers could leave you with no lock screen. The clone is now always `afterburn.lock`, and any failure re-enables the built-in lock before the script exits. Another lock screen you use is detected from its plugin manifest and left alone.
 - **Desktops losing their effects (#3, #4).** A wireless mouse or keyboard battery was mistaken for a laptop battery, which switched the battery saver on. Only the machine's own battery counts now, and a saver left on by the old behaviour is cleared.
 - Cursor effect on battery: it comes back after fullscreen ends, and a new edition's cursor effect or `afterburn set CURSOR_FX` applies on battery.
 - The heat wallpaper now swaps in battery saver and fullscreen too; only the glow change waits.
-- `afterburn laptop auto` puts the saver in line with the power source at once, leaving fullscreen always ends quiet mode, and the watcher reconnects after a Hyprland restart.
-- The installer saves the heat source even if the config lacks the line, and uninstall leaves a font or terminal you picked after installing.
+- `afterburn laptop auto` puts the saver in line with the power source at once, leaving fullscreen always ends quiet mode, and the watcher reconnects after a Hyprland restart and re-applies the heat level.
+- The installer saves the heat source even if the config lacks the line, and uninstall leaves a font or terminal you changed after installing.
 - Uninstalling lock-screen embers no longer reports a false "no lock screen" or skips its cleanup.
 - `afterburn locate` works in locales that use a decimal comma.
 - The fail flash no longer replays when you press Enter on an empty line after a failed command, and no longer plays on the first prompt of a new shell.
