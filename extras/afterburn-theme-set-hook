@@ -11,20 +11,21 @@ set -u
 THEME="${1:-}"
 EXTRAS="$HOME/.config/omarchy/themes/afterburn/extras"
 CURRENT="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/current/theme"
-STATE="${XDG_STATE_HOME:-$HOME/.local/state}/afterburn/prev-cursor-fx"
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/afterburn"
+STATE="$STATE_DIR/prev-cursor-fx"
 # Written by `afterburn quiet|saver` while they hold the cursor effect off. Not the user's own effect.
-PRE_QUIET="$(dirname "$STATE")/cursor-pre-quiet"
+PRE_QUIET="$STATE_DIR/cursor-pre-quiet"
 # The effect this hook (or `afterburn set CURSOR_FX`) last switched on. Moving from one edition to the
 # next must not mistake it for your own effect and save it as the one to restore.
-OURS_FX="$(dirname "$STATE")/cursor-fx-set"
+OURS_FX="$STATE_DIR/cursor-fx-set"
 # dark|light of the Afterburn theme this hook last set. cursor-fx reads the terminal background only
 # when it switches effects, so going dark -> light (or back) has to switch even if the effect is the same.
-FX_MODE="$(dirname "$STATE")/cursor-fx-mode"
+FX_MODE="$STATE_DIR/cursor-fx-mode"
 # Written by `afterburn saver on` when it turned `cursor-fx subtle` on from off. Not the user's own setting.
-SUBTLE_REC="$(dirname "$STATE")/subtle-by-afterburn"
+SUBTLE_REC="$STATE_DIR/subtle-by-afterburn"
 GHOSTTY="$HOME/.config/ghostty/config"
 LOCK_SH="$EXTRAS/lock/lock-embers.sh"
-LOCK_MARK="${XDG_STATE_HOME:-$HOME/.local/state}/afterburn/lock-embers"
+LOCK_MARK="$STATE_DIR/lock-embers"
 AFTERBURN="$(command -v afterburn 2>/dev/null || echo "$HOME/.local/bin/afterburn")"
 
 cursor_now() { grep -oP '^config-file\s*=\s*\??cursor-effects/\K[^.]+' "$GHOSTTY" 2>/dev/null || echo off; }
@@ -68,12 +69,12 @@ if ab_is_afterburn "$THEME"; then
       # Also when it is the very effect this theme wants: it is still yours, and the next edition may
       # switch it, so leaving Afterburn has to know it.
       if [[ -z $ours || $cur != "$ours" ]]; then
-        mkdir -p "$(dirname "$STATE")" && echo "$cur" > "$STATE"
+        mkdir -p "$STATE_DIR" && echo "$cur" > "$STATE"
       fi
       was_mode=$(cat "$FX_MODE" 2>/dev/null || echo dark)
       [[ $cur == "$WANT_FX" && $was_mode == "${AB_MODE:-dark}" ]] || cursor-fx "$WANT_FX" >/dev/null 2>&1 || true
     fi
-    mkdir -p "$(dirname "$STATE")" && echo "$WANT_FX" > "$OURS_FX" && echo "${AB_MODE:-dark}" > "$FX_MODE"
+    mkdir -p "$STATE_DIR" && echo "$WANT_FX" > "$OURS_FX" && echo "${AB_MODE:-dark}" > "$FX_MODE"
   fi
   if [[ -x $AFTERBURN ]]; then
     "$AFTERBURN" apply >/dev/null 2>&1 || true
@@ -100,9 +101,9 @@ else
   fi
   rm -f "$SUBTLE_REC"
   # Drop the fullscreen and battery flags: the watcher is stopped, so it can't clear them later.
-  rm -f "$(dirname "$STATE")/quiet" "$(dirname "$STATE")/saver" "$PRE_QUIET"
+  rm -f "$STATE_DIR/quiet" "$STATE_DIR/saver" "$PRE_QUIET"
   # Back to the base palette for the fail flash and the lock embers.
-  rm -f "$(dirname "$STATE")/palette.env"
+  rm -f "$STATE_DIR/palette.env"
   if [[ -f $LOCK_MARK && -f $LOCK_SH ]]; then bash "$LOCK_SH" recolor >/dev/null 2>&1 || true; fi
 fi
 exit 0

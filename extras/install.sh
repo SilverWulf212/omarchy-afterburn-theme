@@ -345,7 +345,7 @@ fi
 
 # Which theme the installer leaves active: the current Afterburn edition if one is active, else the base.
 FINAL_THEME=afterburn
-CUR_NAME=$(cat "${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/current/theme.name" 2>/dev/null || true)
+CUR_NAME=$(ab_theme_name)
 [[ $CUR_NAME == afterburn-* && -d $THEMES_HOME/$CUR_NAME ]] && FINAL_THEME=$CUR_NAME
 
 # 7. Boot/login screen (optional). Default No: needs sudo and changes the system outside your home folder.

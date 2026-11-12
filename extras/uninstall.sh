@@ -31,7 +31,7 @@ fi
 # dir). A folder of the same name that the installer did not create is never in that list.
 THEMES_HOME="$HOME/.config/omarchy/themes"
 if [[ -s $STATE_DIR/editions ]]; then
-  cur=$(cat "${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/current/theme.name" 2>/dev/null || true)
+  cur=$(ab_theme_name)
   while IFS= read -r e || [[ -n $e ]]; do
     [[ $e =~ ^[a-z0-9]+$ ]] || continue       # the state file is data: only plain edition names (same rule as install.sh)
     dir="$THEMES_HOME/afterburn-$e"
@@ -40,7 +40,7 @@ if [[ -s $STATE_DIR/editions ]]; then
       # Decision: switch to the base theme first, so the desktop is never left on a theme that is gone.
       # stdin is the editions list this loop is reading: keep the command away from it.
       omarchy theme set afterburn >/dev/null 2>&1 </dev/null || true
-      cur=$(cat "${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/current/theme.name" 2>/dev/null || true)
+      cur=$(ab_theme_name)
       if [[ $cur == afterburn ]]; then
         echo "  ✓ switched from afterburn-$e to afterburn"
       else
