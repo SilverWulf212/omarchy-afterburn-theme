@@ -104,7 +104,6 @@ class WatcherTests(PowerBase):
         self.assertEqual((r.returncode, r.stdout, r.stderr), (0, "", ""))
         self.assertEqual([c for c in sb.call_log() if c in SAVER_CALLS], ["afterburn saver off", "afterburn saver on"])
 
-
     def test_a_non_auto_period_clears_the_cache_so_auto_applies_again(self):  # bug 3b
         sb = self.make()
         sb.supply("BAT0", "Battery", scope="System", status="Charging", capacity=70)

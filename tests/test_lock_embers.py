@@ -217,6 +217,7 @@ class UninstallLeavesOtherLocksTests(LockEmbersBase):
         sb = self.installed()
         sb.set_plugin("omarchy.lock", "disabled")             # nothing is enabled, so uninstall tries to enable it
         r = sb.lock("uninstall", STUB_ENABLE_FAIL="1")
+        self.assertNotEqual(r.returncode, 0, r.stdout + r.stderr)   # uninstall.sh then says "not restored"
         self.assertFalse(sb.marker.exists(), r.stdout + r.stderr)
         self.assertFalse((sb.plugins_dir / "afterburn.lock").exists())
 

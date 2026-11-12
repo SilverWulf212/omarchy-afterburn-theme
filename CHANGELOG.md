@@ -14,7 +14,6 @@ Dates are 2026. The theme installs from `main`, so "Unreleased" below is what a 
 - **Heat levels.** On current Hyprland (a Lua config) the cool and hot levels never reached the screen: the border and glow stayed at normal while `afterburn status` reported the new level. The level is now sent in the form Hyprland accepts and shows at once.
 - **Lock screen (#5).** With the login name `omarchy`, saying yes to lock-screen embers could leave you with no lock screen. The clone is now always `afterburn.lock`, and any failure re-enables the built-in lock before the script exits. Another lock screen you use is detected from its plugin manifest and left alone.
 - **Desktops losing their effects (#3, #4).** A wireless mouse or keyboard battery was mistaken for a laptop battery, which switched the battery saver on. Only the machine's own battery counts now, and a saver left on by the old behaviour is cleared.
-- **History rewrite (12 Nov 2026).** `omarchy theme update` fails on installs from before that day. One-time fix in the README under "Installed before 12 November 2026?".
 - Cursor effect on battery: it comes back after fullscreen ends, and a new edition's cursor effect or `afterburn set CURSOR_FX` applies on battery.
 - The heat wallpaper now swaps in battery saver and fullscreen too; only the glow change waits.
 - `afterburn laptop auto` puts the saver in line with the power source at once, leaving fullscreen always ends quiet mode, and the watcher reconnects after a Hyprland restart.
@@ -28,6 +27,7 @@ Dates are 2026. The theme installs from `main`, so "Unreleased" below is what a 
 - README and the first-run config comment now match the code: what the installer asks about, what Super + Ctrl + Space does, which shell the fail flash needs, and the border turn times (10 s, 5 s, 2.5 s).
 
 ### Changed
+- **History rewrite (12 Nov 2026).** `omarchy theme update` fails on installs from before that day. One-time fix in the README's Update section.
 - The watcher and the `afterburn` command start far fewer helper processes: the theme name, power supplies and settings are read by bash itself, the weather cache needs one helper process per sample instead of four, and the battery check runs once per watcher start (`afterburn status` takes about half the time).
 - The watcher ignores compositor events it does not need before doing any work (it used to re-read its config on every window focus change).
 - The installer builds its list of editions from the folders that exist, so a new edition needs no code change there.

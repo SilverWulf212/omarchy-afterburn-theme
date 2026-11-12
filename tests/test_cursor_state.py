@@ -49,9 +49,6 @@ class CursorBookkeeping(unittest.TestCase):
         r = self.sb.afterburn(*args)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
-    def fx_calls(self, since=0):
-        return [c for c in self.sb.call_log()[since:] if c.startswith("cursor-fx ") and c != "cursor-fx subtle"]
-
     def test_quiet_alone_saves_the_effect_and_puts_it_back(self):
         self.ab("quiet", "on")
         self.assertEqual((self.effect(), self.pre.read_text().strip()), ("off", "lightning"))

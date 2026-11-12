@@ -45,7 +45,7 @@ You get the colors, the ember-gradient borders, the wallpapers and the icons. Th
 ~/.config/omarchy/themes/afterburn/extras/uninstall.sh
 ```
 
-It removes only what the installer created and puts your previous terminal, font and cursor effect back. Your `afterburn.conf` is kept as `afterburn.conf.bak` (`.bak.1`, `.bak.2`, ... if a backup is already there; an earlier backup is never overwritten). The table in [What the full stack changes](#what-the-full-stack-changes) lists the undo for each piece.
+It removes only what the installer created and puts your previous terminal, font and cursor effect back (unless you changed them since). Your `afterburn.conf` is kept as `afterburn.conf.bak` (`.bak.1`, `.bak.2`, ... if a backup is already there; an earlier backup is never overwritten). The table in [What the full stack changes](#what-the-full-stack-changes) lists the undo for each piece.
 
 ## Update
 
@@ -73,7 +73,7 @@ git -C ~/.config/omarchy/themes/afterburn reflog expire --expire=now --all
 git -C ~/.config/omarchy/themes/afterburn gc --prune=now
 ```
 
-The clean alternative is `omarchy theme install https://github.com/silverwulf212/omarchy-afterburn-theme`. It clones from scratch and switches the active theme to base Afterburn.
+The clean alternative is `omarchy theme install https://github.com/silverwulf212/omarchy-afterburn-theme`. It clones from scratch and switches the active theme to base Afterburn. Then run the installer as above, otherwise the hook and watcher copies stay old.
 
 ## New edition wallpapers
 
