@@ -1,7 +1,7 @@
 #!/bin/bash
 # Remove Afterburn extras: the hook, your old cursor effect, your old default terminal,
-# the subtle pack (links, watcher service, ~/.bashrc line, starship prompt, desktop entry,
-# afterburn.conf), the lock-screen embers and the colour editions if the installer added them.
+# the subtle pack (links, watcher service, ~/.bashrc line, starship prompt, desktop entry;
+# afterburn.conf is kept as afterburn.conf.bak), the lock-screen embers and the colour editions if the installer added them.
 # The boot/login screen is put back with Omarchy's omarchy-plymouth-reset if the installer set it
 # (it needs sudo, so you are asked; or the exact command is printed).
 # Ghostty and cursor-fx stay installed; how to remove them is printed at the end.
@@ -11,6 +11,8 @@ D="$HOME/.config/omarchy/hooks/theme-set.d"
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/afterburn"
 CONF_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 BIN="$HOME/.local/bin"
+# shellcheck disable=SC1091
+. "$HERE/afterburn-theme.sh"   # AB_BASHRC_LINE
 
 if [[ -s $STATE_DIR/prev-terminal ]]; then
   prev=$(cat "$STATE_DIR/prev-terminal")
@@ -31,7 +33,7 @@ THEMES_HOME="$HOME/.config/omarchy/themes"
 if [[ -s $STATE_DIR/editions ]]; then
   cur=$(cat "${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/current/theme.name" 2>/dev/null || true)
   while IFS= read -r e || [[ -n $e ]]; do
-    [[ $e =~ ^[a-z]+$ ]] || continue          # the state file is data: only plain edition names
+    [[ $e =~ ^[a-z0-9]+$ ]] || continue       # the state file is data: only plain edition names (same rule as install.sh)
     dir="$THEMES_HOME/afterburn-$e"
     [[ -d $dir && ! -L $dir ]] || continue
     if [[ $cur == "afterburn-$e" ]]; then
@@ -104,16 +106,16 @@ if [[ -f $STATE_DIR/starship-error-symbol && -f $STARSHIP ]]; then
   fi
 fi
 
-# ~/.bashrc: delete only the line(s) carrying the marker. Written to a temp file, then moved into place.
-if grep -q '# afterburn$' "$HOME/.bashrc" 2>/dev/null; then
+# ~/.bashrc: delete only the line the installer added, matched whole. Written to a temp file, then moved into place.
+if grep -qxF "$AB_BASHRC_LINE" "$HOME/.bashrc" 2>/dev/null; then
   real=$(readlink -f "$HOME/.bashrc")
   tmp=$(mktemp "$(dirname "$real")/.bashrc.XXXXXX")
-  if [[ -f $STATE_DIR/bashrc-newline && $(tail -n1 "$real") == *'# afterburn' ]]; then
+  if [[ -f $STATE_DIR/bashrc-newline && $(tail -n1 "$real") == "$AB_BASHRC_LINE" ]]; then
     # The installer added a newline before its line because the file had none, and the marker line is last:
     # drop the marker line and that newline, so the file is byte-for-byte the original.
     head -n -1 "$real" | head -c -1 > "$tmp"
   else
-    grep -v '# afterburn$' "$real" > "$tmp" || true
+    grep -vxF "$AB_BASHRC_LINE" "$real" > "$tmp" || true
   fi
   chmod --reference="$real" "$tmp"
   mv "$tmp" "$real"
@@ -123,8 +125,15 @@ if grep -q '# afterburn$' "$HOME/.bashrc" 2>/dev/null; then
 fi
 APPS_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 rm -f "$APPS_DIR/afterburn-colors.desktop"
-# Only the file the installer wrote; then the folder, if nothing else is in it.
-rm -f "$CONF_HOME/afterburn/afterburn.conf"
+# Your settings are kept as afterburn.conf.bak (the installer promises an existing conf keeps them).
+if [[ -f $CONF_HOME/afterburn/afterburn.conf ]]; then
+  # Never overwrite an earlier backup: use the first free name (.bak, .bak.1, .bak.2, ...).
+  bak="$CONF_HOME/afterburn/afterburn.conf.bak"
+  n=0
+  while [[ -e $bak || -L $bak ]]; do n=$((n + 1)); bak="$CONF_HOME/afterburn/afterburn.conf.bak.$n"; done
+  mv "$CONF_HOME/afterburn/afterburn.conf" "$bak"
+  echo "  · kept your settings: $bak (delete it if you do not want them)"
+fi
 rmdir "$CONF_HOME/afterburn" 2>/dev/null || true
 # The cursor-fx checkout is the one thing the installer puts in ~/.local/share/afterburn.
 DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
