@@ -111,9 +111,10 @@ hypr_socket() { echo "${XDG_RUNTIME_DIR:-/run/user/$UID}/hypr/${HYPRLAND_INSTANC
 watch_fullscreen() {
   local line first=1
   while :; do
-    # After a reconnect, read the fullscreen state again: a toggle during the gap sent no event we saw.
-    # (The first pass follows main's sync_quiet.) Only while an instance is up, so a long outage costs nothing.
-    if hypr_pick && (( ! first )); then sync_quiet; fi
+    # After a reconnect, read the fullscreen state again (a toggle during the gap sent no event we saw) and put the
+    # heat level back (a restarted Hyprland loads the normal-level file). The first pass follows main's sync_quiet.
+    # Only while an instance is up, so a long outage costs nothing.
+    if hypr_pick && (( ! first )); then sync_quiet; reload_event; fi
     first=0
     socat -U - "UNIX-CONNECT:$(hypr_socket)" 2>/dev/null | while IFS= read -r line; do
       fullscreen_event "$line"

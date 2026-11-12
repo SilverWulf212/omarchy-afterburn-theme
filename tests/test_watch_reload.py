@@ -1,7 +1,7 @@
 """Watcher survives Hyprland reloads and restarts: configreloaded re-applies the heat level, a dead instance's
 leftover socket is skipped, and the chosen signature reaches the `afterburn` calls the loops make."""
 import os
-import pathlib
+import shutil
 import unittest
 
 try:
@@ -142,7 +142,11 @@ class SignatureReachesCallsTests(unittest.TestCase):
     def test_the_heat_call(self):
         conf = self.sb.home / ".config/afterburn/afterburn.conf"
         conf.parent.mkdir(parents=True)
-        conf.write_text("HEAT_SOURCE=time\nEVENING_HOURS=0-24\n")
+        conf.write_text("HEAT_SOURCE=time\nEVENING_HOURS=10-14\n")
+        date = self.sb.bin / "date"           # the hour is fixed at 12: inside 10-14, whatever the clock says
+        date.unlink()
+        date.write_text('#!/bin/bash\n[[ $1 == +%H ]] && echo 12 || exec ' + shutil.which("date") + ' "$@"\n')
+        date.chmod(0o755)
         r = self.sb.watch_func("sleep() { exit 0; }; watch_heat", **self.env)
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(self.sb.call_log(), ["afterburn level cool sig=live"])
@@ -161,6 +165,25 @@ class ReconnectTests(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         # main() reads it once at start; after that, once per reconnect (2 sleeps = 2 reconnects before the exit).
         self.assertEqual([c for c in sb.call_log() if c.startswith("hyprctl activewindow")], ["hyprctl activewindow -j"] * 2)
+
+
+    def reconnects(self, level):
+        sb = Sandbox()
+        self.addCleanup(sb.cleanup)
+        sb.use_stubs(["afterburn"])
+        sb.write_state_text(sb.state_dir / "level", level + "\n")
+        (sb.bin / "socat").write_text("#!/bin/bash\nexit 1\n")
+        (sb.bin / "socat").chmod(0o755)
+        run = sb.root / "run"
+        instance(run, "live", 2000, os.getpid())
+        r = sb.watch_func("n=0; sleep() { n=$((n+1)); (( n < 3 )) || exit 0; }; watch_fullscreen", XDG_RUNTIME_DIR=str(run))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return [c for c in sb.call_log() if c.startswith("afterburn level")]
+
+    def test_the_heat_level_is_put_back_after_a_reconnect(self):
+        # A restarted Hyprland loads the generated Lua (normal level) and sends no configreloaded for it.
+        self.assertEqual(self.reconnects("hot"), ["afterburn level hot"] * 2)
+        self.assertEqual(self.reconnects("normal"), [])
 
 
 class UnitTests(unittest.TestCase):
