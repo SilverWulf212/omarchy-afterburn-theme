@@ -148,10 +148,10 @@ fetch_weather() {  # NWS: points -> first station -> latest obs; forecastHourly 
 }
 
 # The cached fields in one jq: sets checked, f (tempF), night and txt (lowercased). The text comes last, so nothing
-# in it can shift the others.
+# in it can shift the others. A text that is not a string counts as none, so the level is still worked out.
 weather_fields() {
   IFS=$'\x1f' read -r -d '' checked f night txt < <(jq -j \
-    '[.checked // 0, .tempF // "", .night, (.text // "" | ascii_downcase)] | map(tostring) | join("\u001f")' "$WEATHER" 2>/dev/null)
+    '[.checked // 0, .tempF // "", .night, (.text // "" | if type == "string" then ascii_downcase else "" end)] | map(tostring) | join("\u001f")' "$WEATHER" 2>/dev/null)
 }
 
 weather_level() {  # cached NWS data -> level; no data means no change

@@ -57,7 +57,8 @@ class WeatherTests(unittest.TestCase):
         for cache, want in (({"tempF": 95, "text": "Sunny", "night": False}, "hot"),
                             ({"tempF": 95, "text": "Sunny", "night": True}, "normal"),
                             ({"tempF": 70, "text": "Light Rain | Fog", "night": False}, "cool"),
-                            ({"tempF": 40}, "cool")):
+                            ({"tempF": 40}, "cool"),
+                            ({"tempF": 95, "text": 5}, "hot")):           # a text that is not a string: no text
             with self.subTest(cache=cache):
                 self.sb.calls.write_text("")
                 self.assertEqual(self.level(60, **cache), ([want, "rc=0"], 1))

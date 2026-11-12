@@ -71,6 +71,7 @@ class ModeSwitch(unittest.TestCase):
         r = sb.afterburn("saver", "off")                 # what the watcher says at every start
         self.assertEqual((r.returncode, r.stdout), (0, "saver: off\n"), r.stderr)
         self.assertEqual(sb.call_log(), [])
+        self.assertFalse((sb.state_dir / "saver").exists())   # nothing to write: off is what a missing file means
         r = sb.afterburn("saver", "on")
         self.assertEqual((r.returncode, r.stdout), (0, "saver: on\n"), r.stderr)
         self.assertEqual((sb.state_dir / "saver").read_text(), "on\n")
