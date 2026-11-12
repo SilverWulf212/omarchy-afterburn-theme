@@ -13,7 +13,8 @@ EXTRAS="$HOME/.config/omarchy/themes/afterburn/extras"
 CURRENT="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/current/theme"
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/afterburn"
 STATE="$STATE_DIR/prev-cursor-fx"
-# Written by `afterburn quiet|saver` while they hold the cursor effect off. Not the user's own effect.
+# Written by `afterburn quiet` only while it holds the cursor effect off (saver leaves the effect running).
+# Not the user's own effect.
 PRE_QUIET="$STATE_DIR/cursor-pre-quiet"
 # The effect this hook (or `afterburn set CURSOR_FX`) last switched on. Moving from one edition to the
 # next must not mistake it for your own effect and save it as the one to restore.
@@ -61,7 +62,7 @@ if ab_is_afterburn "$THEME"; then
     # effect is saved and embers is running, that embers is ours: do not save it over your own.
     if [[ -z $ours && -f $STATE && $cur == embers ]]; then ours=embers; fi
     if [[ -f $PRE_QUIET ]]; then
-      # Fullscreen or battery has the effect off for now. Leave it off, and make the one that comes back
+      # Fullscreen has the effect off for now. Leave it off, and make the one that comes back
       # afterwards this theme's. What was saved is not your own effect, so it is not touched either.
       echo "$WANT_FX" > "$PRE_QUIET"
     else

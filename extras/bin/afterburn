@@ -262,11 +262,13 @@ cmd_apply() {
   apply_visuals
 }
 
-# cursor-fx helpers. quiet and saver switch the effect for a while: the one that was running is saved
-# once in cursor-pre-quiet and put back when both end. (prev-cursor-fx is a different thing: the
-# effect from before Afterburn took over, kept by the theme-set hook and restored when you leave it.)
-# subtle-by-afterburn is a third record: it exists only when saver turned `cursor-fx subtle` on from off, so
-# that only that case is turned off again. A subtle you had on yourself is never touched.
+# cursor-fx helpers. quiet and saver each own one thing, and either can end first:
+#   quiet holds the effect off. The one that was running is saved in cursor-pre-quiet (the file exists only
+#   while quiet holds it off) and put back when quiet ends. (prev-cursor-fx is a different thing: the effect
+#   from before Afterburn took over, kept by the theme-set hook and restored when you leave it.)
+#   saver turns `cursor-fx subtle` on and never touches the effect itself. subtle-by-afterburn is its record:
+#   it exists only when saver turned subtle on from off, so only that case is turned off again. A subtle you
+#   had on yourself is never touched.
 CFX_PRE="$STATE/cursor-pre-quiet"
 SUBTLE_REC="$STATE/subtle-by-afterburn"
 cfx_now() {
@@ -280,22 +282,18 @@ cfx_subtle_state() {
 
 cfx_sync() {
   command -v cursor-fx >/dev/null 2>&1 || return 0
-  local want
-  if flag_on quiet; then want=off
-  elif flag_on saver; then want='subtle on'
-  else want=""
-  fi
-  if [[ -n $want ]]; then
-    mkdir -p "$STATE"
+  mkdir -p "$STATE"
+  if flag_on quiet; then
     [[ -f $CFX_PRE ]] || cfx_now > "$CFX_PRE"
-    if [[ $want == 'subtle on' && ! -f $SUBTLE_REC && $(cfx_subtle_state) == off ]]; then : > "$SUBTLE_REC"; fi
-    cursor-fx $want >/dev/null 2>&1 || true
+    cursor-fx off >/dev/null 2>&1 || true
   elif [[ -f $CFX_PRE ]]; then
     cursor-fx "$(cat "$CFX_PRE")" >/dev/null 2>&1 || true
     rm -f "$CFX_PRE"
   fi
-  # Saver is over: put subtle back off, but only if saver was what turned it on.
-  if [[ -f $SUBTLE_REC ]] && ! flag_on saver; then
+  if flag_on saver; then
+    if [[ ! -f $SUBTLE_REC && $(cfx_subtle_state) == off ]]; then : > "$SUBTLE_REC"; fi
+    cursor-fx subtle on >/dev/null 2>&1 || true
+  elif [[ -f $SUBTLE_REC ]]; then
     cursor-fx subtle off >/dev/null 2>&1 || true
     rm -f "$SUBTLE_REC"
   fi
@@ -310,7 +308,7 @@ apply_extra() {
       command -v cursor-fx >/dev/null 2>&1 || return 0
       mkdir -p "$STATE"
       if [[ -f $CFX_PRE ]]; then
-        printf '%s\n' "$CURSOR_FX" > "$CFX_PRE"   # fullscreen or battery holds the effect off: this one comes back after
+        printf '%s\n' "$CURSOR_FX" > "$CFX_PRE"   # fullscreen holds the effect off: this one comes back after
       else
         # Nothing saved yet (the hook has not run since an older install): the running effect is yours, keep it
         # for the day you leave Afterburn.
