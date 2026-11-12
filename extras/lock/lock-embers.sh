@@ -335,16 +335,22 @@ uninstall_layer() {
     return 0
   fi
 
-  # omarchy-plugin-remove switches back to omarchy.lock when the clone was active. Enable the built-in
-  # ourselves only when positively no lock is enabled: a lock you chose after our clone must stay yours
-  # (enabling omarchy.lock would switch it off).
-  local other rc=0
-  other=$(other_lock_enabled) || rc=$?
-  if (( rc == 1 )); then
-    say "no lock screen is enabled; making $SOURCE_ID the active lock screen"
-    omarchy-plugin-enable "$SOURCE_ID"
+  # omarchy-plugin-remove switches back to omarchy.lock when the clone was active: if it is enabled already,
+  # nothing is left to do. Otherwise enable the built-in ourselves only when positively no lock is enabled:
+  # a lock you chose after our clone must stay yours (enabling omarchy.lock would switch it off).
+  # A failed enable must not skip the marker removal below (this script runs under set -e).
+  local state other rc=0
+  state=$(omarchy-plugin-list 2>/dev/null | awk -v id="$SOURCE_ID" '$1 == id { print $2 }') || state=""
+  if [[ $state == enabled ]]; then
+    say "$SOURCE_ID is the active lock screen"
   else
-    say "your lock screen is ${other:-one we cannot identify}; leaving it as it is"
+    other=$(other_lock_enabled) || rc=$?
+    if (( rc == 1 )); then
+      say "no lock screen is enabled; making $SOURCE_ID the active lock screen"
+      omarchy-plugin-enable "$SOURCE_ID" || say "could not enable $SOURCE_ID. Run: omarchy plugin enable $SOURCE_ID"
+    else
+      say "your lock screen is ${other:-one we cannot identify}; leaving it as it is"
+    fi
   fi
   rm -f "$MARKER"
   say "uninstalled"

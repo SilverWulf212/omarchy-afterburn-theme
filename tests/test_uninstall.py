@@ -63,5 +63,40 @@ class UninstallKeepsYourThings(unittest.TestCase):
         self.assertNotIn("~/.bashrc line removed", r.stdout)
 
 
+class UninstallKeepsYourLaterChoices(unittest.TestCase):
+    """The installer's terminal and font are put back only while they are still the ones it set."""
+
+    def setUp(self):
+        self.sb = Sandbox()
+        self.addCleanup(self.sb.cleanup)
+        self.sb.write_state_text(self.sb.state_dir / "prev-terminal", "Alacritty.desktop\n")
+        self.sb.write_state_text(self.sb.state_dir / "prev-font", "Cascadia Mono\n")
+
+    def uninstall(self, terminal, font):
+        self.sb.write_state_text(self.sb.home / ".config" / "xdg-terminals.list",
+                                 f"# comment\n{terminal}\n")
+        self.sb.write_state_text(self.sb.root / "font", font + "\n")
+        r = self.sb.run(["/bin/bash", str(UNINSTALL)])
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        return r
+
+    def test_terminal_and_font_the_installer_set_are_restored(self):
+        r = self.uninstall("com.mitchellh.ghostty.desktop", "JetBrainsMono Nerd Font")
+        calls = self.sb.call_log()
+        self.assertIn("omarchy default terminal alacritty", calls)
+        self.assertIn("omarchy font set Cascadia Mono", calls)
+        self.assertIn("default terminal restored to alacritty", r.stdout)
+
+    def test_a_terminal_chosen_after_the_install_is_left_alone(self):
+        r = self.uninstall("kitty.desktop", "JetBrainsMono Nerd Font")
+        self.assertFalse([c for c in self.sb.call_log() if "default terminal" in c], self.sb.call_log())
+        self.assertIn("default terminal changed since install; left as is", r.stdout)
+
+    def test_a_font_chosen_after_the_install_is_left_alone(self):
+        r = self.uninstall("com.mitchellh.ghostty.desktop", "Fira Code")
+        self.assertFalse([c for c in self.sb.call_log() if "font set" in c], self.sb.call_log())
+        self.assertIn("font changed since install; left as is", r.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

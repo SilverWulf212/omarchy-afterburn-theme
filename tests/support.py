@@ -58,6 +58,7 @@ done
     "omarchy-plugin-enable": r'''#!/bin/bash
 echo "omarchy-plugin-enable $*" >> "$SB/calls.log"
 id=${1:-}
+[[ ${STUB_ENABLE_FAIL:-} != 1 ]] || { echo "omarchy-plugin-enable: boom" >&2; exit 1; }
 [[ -f $SB/plugins/$id.state ]] || { echo "plugin '$id' is not known" >&2; exit 1; }
 if [[ -e $SB/plugins/$id.islock ]]; then   # one lock screen at a time
   for f in "$SB"/plugins/*.islock; do echo disabled > "${f%.islock}.state"; done
@@ -108,6 +109,12 @@ id=$(jq -r .id "$1/manifest.json")
 [[ $id != omarchy.* ]] || { echo "omarchy-plugin-validate: plugin id '$id' uses the reserved omarchy.* namespace" >&2; exit 1; }
 ''',
     "omarchy-shell": "#!/bin/bash\nexit 0\n",
+    # The `omarchy` front door: record the call; `font current` prints $SB/font (the font a test says is set).
+    "omarchy": r'''#!/bin/bash
+echo "omarchy $*" >> "$SB/calls.log"
+[[ "$1 $2" == "font current" ]] && cat "$SB/font" 2>/dev/null
+exit 0
+''',
     "systemctl": r'''#!/bin/bash
 echo "systemctl $*" >> "$SB/calls.log"
 [[ $* == *is-active* ]] && echo "${STUB_WATCHER:-active}"

@@ -204,6 +204,22 @@ class UninstallLeavesOtherLocksTests(LockEmbersBase):
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertEqual(sb.enabled_locks(), ["omarchy.lock"])
 
+    def test_builtin_already_restored_by_the_remove_is_not_enabled_again(self):
+        sb = self.make("alice")
+        self.assertEqual(sb.lock("install").returncode, 0)    # the clone is the active lock
+        r = sb.lock("uninstall")                               # omarchy-plugin-remove switches omarchy.lock back on
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(sb.enabled_locks(), ["omarchy.lock"])
+        self.assertEqual(self.enables(sb), [], sb.call_log())
+        self.assertNotIn("no lock screen is enabled", r.stdout + r.stderr)
+
+    def test_a_failed_enable_still_removes_the_marker(self):
+        sb = self.installed()
+        sb.set_plugin("omarchy.lock", "disabled")             # nothing is enabled, so uninstall tries to enable it
+        r = sb.lock("uninstall", STUB_ENABLE_FAIL="1")
+        self.assertFalse(sb.marker.exists(), r.stdout + r.stderr)
+        self.assertFalse((sb.plugins_dir / "afterburn.lock").exists())
+
     def test_cannot_tell_touches_no_lock(self):
         sb = self.installed()
         sb.add_user_plugin("lockscreen-x", "enabled", manifest="broken")

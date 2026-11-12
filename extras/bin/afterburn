@@ -563,8 +563,9 @@ cmd_locate() {
   lat=$(jq -r '.places[0].latitude // empty' <<< "$json")
   lon=$(jq -r '.places[0].longitude // empty' <<< "$json")
   [[ -n $lat && -n $lon ]] || die "ZIP $zip not found"
-  lat=$(printf '%.4f' "$lat")
-  lon=$(printf '%.4f' "$lon")
+  # LC_ALL, not LC_NUMERIC: LC_ALL outranks it, and a comma decimal makes the LAT/LON check throw the value away.
+  lat=$(LC_ALL=C printf '%.4f' "$lat")
+  lon=$(LC_ALL=C printf '%.4f' "$lon")
   load_conf
   set_key ZIP "$zip"
   set_key LAT "$lat"

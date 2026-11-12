@@ -172,7 +172,15 @@ UNIT_DIR="$CONF_HOME/systemd/user"
 APPS_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 STARSHIP="$CONF_HOME/starship.toml"
 BASHRC="$HOME/.bashrc"
-conf_set() { sed -i --follow-symlinks -E "s/^$1=[^ #]*/$1=$2/" "$CONF"; }
+# Rewrite KEY=VALUE in place, or append it when the conf has no such line (as set_key in bin/afterburn does).
+conf_set() {
+  if grep -q "^$1=" "$CONF"; then
+    sed -i --follow-symlinks -E "s/^$1=[^ #]*/$1=$2/" "$CONF"
+  else
+    [[ ! -s $CONF || -z $(tail -c1 "$CONF") ]] || printf '\n' >> "$CONF"
+    printf '%s=%s\n' "$1" "$2" >> "$CONF"
+  fi
+}
 
 echo
 # Never overwrite a file of the user's own: if a name is taken by something that is not our link,

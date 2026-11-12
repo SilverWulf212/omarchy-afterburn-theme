@@ -14,17 +14,25 @@ BIN="$HOME/.local/bin"
 # shellcheck disable=SC1091
 . "$HERE/afterburn-theme.sh"   # AB_BASHRC_LINE
 
+# Terminal and font: put the old one back only while the installer's is still current (Ghostty, and the
+# font install.sh sets). A later choice of yours is left alone, like the starship line below.
 if [[ -s $STATE_DIR/prev-terminal ]]; then
   prev=$(cat "$STATE_DIR/prev-terminal")
   name=$(basename "$prev" .desktop | sed -E 's/.*\.//; s/^(ghostty|alacritty|kitty|foot).*/\1/' | tr '[:upper:]' '[:lower:]')
-  if [[ $name =~ ^(alacritty|foot|ghostty|kitty)$ ]]; then
+  if ! grep -qi ghostty <(grep -v '^#' "$HOME/.config/xdg-terminals.list" 2>/dev/null | head -1); then
+    echo "  · default terminal changed since install; left as is"
+  elif [[ $name =~ ^(alacritty|foot|ghostty|kitty)$ ]]; then
     omarchy default terminal "$name" >/dev/null && echo "  ✓ default terminal restored to $name"
   else
     echo "  · previous terminal was $prev; set it again with: omarchy default terminal <name>"
   fi
 fi
 if [[ -s $STATE_DIR/prev-font ]]; then
-  omarchy font set "$(cat "$STATE_DIR/prev-font")" >/dev/null && echo "  ✓ font restored to $(cat "$STATE_DIR/prev-font")"
+  if [[ $(omarchy font current 2>/dev/null) == "JetBrainsMono Nerd Font" ]]; then   # the FONT install.sh sets
+    omarchy font set "$(cat "$STATE_DIR/prev-font")" >/dev/null && echo "  ✓ font restored to $(cat "$STATE_DIR/prev-font")"
+  else
+    echo "  · font changed since install; left as is"
+  fi
 fi
 
 # Colour editions: remove only the afterburn-<name> folders the installer copied (listed in the state
