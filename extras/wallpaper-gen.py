@@ -16,9 +16,7 @@ for f in glob.glob("/usr/share/fonts/**/JetBrainsMonoNerdFont-Bold.ttf", recursi
 
 
 def glow(layer, radii=(2, 8, 30), gains=(1.0, 0.8, 0.6)):
-    out = np.zeros((H, W, 3), np.float32)
-    base = np.asarray(layer, np.float32)
-    out += base
+    out = np.array(layer, np.float32)
     for r, g in zip(radii, gains):
         out += np.asarray(layer.filter(ImageFilter.GaussianBlur(r)), np.float32) * g
     return out
@@ -54,8 +52,6 @@ def horizon():
         d.line([(x_far, hz), (x_near, H + 200)], fill=95, width=2)
     z = 1.0
     while True:
-        y = hz + (H - hz) * (0.06 / z)
-        if y > H: break
         y = hz + 18 * (1.32 ** (z * 3)) - 18
         if y > H: break
         d.line([(0, y), (W, y)], fill=int(min(140, 50 + z * 9)), width=2)
