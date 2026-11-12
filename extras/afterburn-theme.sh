@@ -44,9 +44,10 @@ ab_colors_file() {
 
 # mix HEX1 HEX2 PERCENT_OF_HEX2 -> hex (6 digits, no #)
 ab_mix() {
-  local a=$1 b=$2 p=$3 i out=""
+  local a=$1 b=$2 p=$3 i h out=""
   for i in 0 2 4; do
-    out+=$(printf '%02x' $(( ( 0x${a:i:2} * (100 - p) + 0x${b:i:2} * p + 50 ) / 100 )))
+    printf -v h '%02x' $(( ( 0x${a:i:2} * (100 - p) + 0x${b:i:2} * p + 50 ) / 100 ))
+    out+=$h
   done
   echo "$out"
 }

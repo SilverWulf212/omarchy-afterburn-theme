@@ -60,6 +60,23 @@ class FailFlashTests(unittest.TestCase):
         out = interactive(sb, [], after="; false")[0]
         self.assertNotIn("\x1b[2K", out)
 
+    def test_fail_fx_off_plays_nothing(self):
+        sb = Sandbox()
+        self.addCleanup(sb.cleanup)
+        sb.write_state_text(sb.home / ".config/afterburn/afterburn.conf", "FAIL_FX=off\n")
+        self.assertEqual(["\x1b[2K" in out for out in interactive(sb, ["false\n", "true\n"])[1:]], [False, False])
+
+    def test_the_hook_goes_first_in_an_array_or_a_string_also_under_set_u(self):
+        sb = Sandbox()
+        self.addCleanup(sb.cleanup)
+        again = f"unset __AFTERBURN_FAIL_HOOKED; set -u; source {FAIL_BASH}; declare -p PROMPT_COMMAND; set +u\n"
+        out = interactive(sb, ["PROMPT_COMMAND=(mine); " + again, "unset PROMPT_COMMAND; " + again,
+                               "PROMPT_COMMAND=mine; " + again])[1:]
+        self.assertIn('declare -a PROMPT_COMMAND=([0]="__afterburn_fail_hook" [1]="mine")', out[0])
+        self.assertIn('declare -- PROMPT_COMMAND="__afterburn_fail_hook"', out[1])
+        self.assertIn('declare -- PROMPT_COMMAND="__afterburn_fail_hook; mine"', out[2])
+        self.assertNotIn("unbound variable", "".join(out))
+
 
 if __name__ == "__main__":
     unittest.main()

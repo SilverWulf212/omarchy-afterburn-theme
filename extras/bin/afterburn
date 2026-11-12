@@ -476,10 +476,10 @@ cmd_mode() { # quiet|saver on|off
   local name=$1 v=${2:-} was
   case $v in on|off) ;; *) die "usage: afterburn $name on|off" ;; esac
   was=$(state_get "$name" off)
-  state_set "$name" "$v"
   echo "$name: $v"
-  # Same state again (the watcher says so at every start): no rewrite and no Hyprland reload.
+  # Same state again (the watcher says so at every start): nothing to write, no rewrite and no Hyprland reload.
   [[ $was == "$v" ]] && return 0
+  state_set "$name" "$v"
   if is_afterburn; then
     load_conf
     # Turning a mode off must restore the cursor here; turning one on is handled inside apply_visuals.

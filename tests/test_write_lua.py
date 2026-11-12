@@ -63,5 +63,22 @@ class LiveLevel(unittest.TestCase):
                     self.assertEqual(out, [*(f"rgba({x})" for x in stops), "45", str(rng), f"rgba({shadow})", "true"])
 
 
+class ModeSwitch(unittest.TestCase):
+    def test_the_same_mode_again_writes_and_reloads_nothing(self):
+        sb = Sandbox()
+        self.addCleanup(sb.cleanup)
+        (sb.home / ".local/state/omarchy/current/theme").mkdir(parents=True)
+        r = sb.afterburn("saver", "off")                 # what the watcher says at every start
+        self.assertEqual((r.returncode, r.stdout), (0, "saver: off\n"), r.stderr)
+        self.assertEqual(sb.call_log(), [])
+        r = sb.afterburn("saver", "on")
+        self.assertEqual((r.returncode, r.stdout), (0, "saver: on\n"), r.stderr)
+        self.assertEqual((sb.state_dir / "saver").read_text(), "on\n")
+        self.assertIn("hyprctl reload", sb.call_log())
+        r = sb.afterburn("saver", "on")
+        self.assertEqual(sb.call_log().count("hyprctl reload"), 1)
+        self.assertEqual((sb.state_dir / "saver").read_text(), "on\n")
+
+
 if __name__ == "__main__":
     unittest.main()

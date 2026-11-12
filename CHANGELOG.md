@@ -21,6 +21,7 @@ Dates are 2026. The theme installs from `main`, so "Unreleased" below is what a 
 - README and the first-run config comment now match the code: what the installer asks about, what Super + Ctrl + Space does, which shell the fail flash needs, and the border turn times (10 s, 5 s, 2.5 s).
 
 ### Changed
+- The watcher and the `afterburn` command start far fewer helper processes: the theme name, power supplies, settings and weather cache are read by bash itself, and the battery check runs once per watcher start (`afterburn status` takes about half the time).
 - The watcher ignores compositor events it does not need before doing any work (it used to re-read its config on every window focus change).
 - The installer builds its list of editions from the folders that exist, so a new edition needs no code change there.
 - README: install, requirements, undo and update come first, with a note on what live wallpapers cost in memory.

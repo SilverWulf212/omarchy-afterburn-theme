@@ -112,7 +112,6 @@ if [[ $- == *i* && -t 1 && -z ${__AFTERBURN_FAIL_HOOKED-} ]]; then
   # PROMPT_COMMAND hook. Must be first so later entries (Starship) see $?.
   __afterburn_fail_hook() {
     local rc=$?
-    local LC_ALL=C.UTF-8   # so ${#text} and ${text:i:1} count characters, not bytes
     # \# is the prompt's command number: it rises only when a command ran. HISTCMD would not
     # do: HISTCONTROL=ignoredups (Omarchy's default) leaves it still on a repeated command.
     local num=\\#
@@ -122,7 +121,10 @@ if [[ $- == *i* && -t 1 && -z ${__AFTERBURN_FAIL_HOOKED-} ]]; then
     __AFB_CMDNUM=$num
     if (( ran && rc != 0 && rc != 130 && rc != 148 )) \
        && [[ $- == *i* && -t 1 && -z ${NO_MOTION+x} ]]; then
+      # So ${#text} and ${text:i:1} count characters, not bytes. Set only here: every prompt would pay for it.
+      local LC_ALL=C.UTF-8
       __afterburn_fail_load_conf
+      [[ $__AFTERBURN_FAIL_FX == off ]] && return "$rc"   # nothing to play: no palette, no history
       __afterburn_fail_load_palette
       local line cmd
       line=$(builtin history 1 2>/dev/null)
@@ -131,7 +133,6 @@ if [[ $- == *i* && -t 1 && -z ${__AFTERBURN_FAIL_HOOKED-} ]]; then
       cmd=${cmd:0:40}
       [[ -n $cmd ]] || cmd=command
       case $__AFTERBURN_FAIL_FX in
-        off) ;;
         burn|cascade|dissolve) __afterburn_fail_play "$rc" "$__AFTERBURN_FAIL_FX" "$cmd" ;;
         *)
           local -a fxs=(burn cascade dissolve)
@@ -143,9 +144,9 @@ if [[ $- == *i* && -t 1 && -z ${__AFTERBURN_FAIL_HOOKED-} ]]; then
 
   # Prepend the hook to PROMPT_COMMAND (array on bash 5.1+, string otherwise).
   __afterburn_fail_register() {
-    local decl e
-    decl=$(declare -p PROMPT_COMMAND 2>/dev/null) || decl=""
-    if [[ $decl == "declare -a"* ]]; then
+    local - e
+    set +u   # ${PROMPT_COMMAND@a} (its attributes, no subshell) fails on an unset name under set -u
+    if [[ ${PROMPT_COMMAND@a} == *a* ]]; then
       for e in ${PROMPT_COMMAND[@]+"${PROMPT_COMMAND[@]}"}; do
         [[ $e == __afterburn_fail_hook* ]] && return 0
       done
