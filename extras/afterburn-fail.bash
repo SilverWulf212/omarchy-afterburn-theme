@@ -15,16 +15,9 @@
 if [[ $- == *i* && -t 1 && -z ${__AFTERBURN_FAIL_HOOKED-} ]]; then
   __AFTERBURN_FAIL_HOOKED=1
   __AFTERBURN_FAIL_MTIME=${__AFTERBURN_FAIL_MTIME-}
-  __AFTERBURN_FAIL_FX=${__AFTERBURN_FAIL_FX-random}
 
   __AFB_FRAMES=8
   __AFB_DELAY=0.05
-  # Base theme colours. An edition's colours replace these from palette.env (see below).
-  __AFB_FLARE=$'\e[38;2;255;196;138m'   # #ffc48a
-  __AFB_EMBER=$'\e[38;2;255;90;31m'     # #ff5a1f
-  __AFB_RUST=$'\e[38;2;122;62;22m'      # #7a3e16
-  __AFB_ASH=$'\e[38;2;94;91;85m'        # #5e5b55
-  __AFB_BURN=("$__AFB_FLARE" "$__AFB_EMBER" "$__AFB_RUST" "$__AFB_ASH")
   __AFTERBURN_PAL_MTIME=${__AFTERBURN_PAL_MTIME-}
   __AFB_CASCADE=('▀' '▄' '_' '.')
   __AFB_DISSOLVE=('▓' '▒' '░')
