@@ -251,6 +251,14 @@ class Sandbox:
         return subprocess.run(argv, env=self.env(**extra), capture_output=True, text=True, timeout=60,
                               stdin=subprocess.DEVNULL)
 
+    def install(self, **extra):
+        """Run the real install.sh --yes. The omarchy stub installs no hook, so leave the file it moves."""
+        hook = self.home / ".config" / "omarchy" / "hooks" / "theme-set.d"
+        hook.mkdir(parents=True, exist_ok=True)
+        (hook / "afterburn-theme-set-hook").write_text("#!/bin/bash\n")
+        self.write_state_text(self.root / "font", "JetBrainsMono Nerd Font\n")
+        return self.run(["/bin/bash", str(INSTALL), "--yes"], **extra)
+
     def lock(self, *args, **extra):
         return self.run(["/bin/bash", str(LOCK_SH), *args], **extra)
 

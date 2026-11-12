@@ -103,10 +103,20 @@ ask "Continue?" || { echo "  Nothing changed."; exit 0; }
 mkdir -p "$STATE_DIR"
 echo
 
+# What the default terminal was before: the first line of your own list, or "none" when you have no list
+# (a fresh Omarchy user: the system default applies, and uninstall.sh removes the list this step creates).
+record_prev_terminal() {
+  if [[ -f $HOME/.config/xdg-terminals.list ]]; then
+    grep -v '^#' "$HOME/.config/xdg-terminals.list" 2>/dev/null | head -1 > "$STATE_DIR/prev-terminal" || true
+  else
+    echo none > "$STATE_DIR/prev-terminal"
+  fi
+}
+
 # 1. Ghostty
 if ! command -v ghostty >/dev/null; then
   if ask "Install Ghostty and make it your default terminal? (the cursor effects need it)"; then
-    grep -v '^#' "$HOME/.config/xdg-terminals.list" 2>/dev/null | head -1 > "$STATE_DIR/prev-terminal" || true
+    record_prev_terminal
     CHANGED+=("Ghostty installed and made default terminal")
     omarchy install terminal ghostty
     ok "Ghostty installed and set as default"
@@ -115,7 +125,7 @@ if ! command -v ghostty >/dev/null; then
   fi
 elif ! grep -qi ghostty <(grep -v '^#' "$HOME/.config/xdg-terminals.list" 2>/dev/null | head -1); then
   if ask "Make Ghostty your default terminal (Super + Return), replacing your current one?"; then
-    grep -v '^#' "$HOME/.config/xdg-terminals.list" 2>/dev/null | head -1 > "$STATE_DIR/prev-terminal" || true
+    record_prev_terminal
     CHANGED+=("default terminal set to Ghostty")
     omarchy default terminal ghostty >/dev/null
     ok "Ghostty is now the default terminal"
@@ -267,7 +277,10 @@ elif ask "Add the subtle pack? (slow-turning border, dimmed background windows, 
   CHANGED+=("afterburn-watch user service enabled")
   cp "$HERE/afterburn-watch.service" "$UNIT_DIR/afterburn-watch.service"
   systemctl --user daemon-reload >/dev/null 2>&1 || true
-  if systemctl --user enable --now afterburn-watch.service >/dev/null 2>&1; then
+  # enable --now leaves a running unit as it is, so a re-install restarts it to pick up new watcher code.
+  watcher_was=$(systemctl --user is-active afterburn-watch.service 2>/dev/null || true)
+  if systemctl --user enable --now afterburn-watch.service >/dev/null 2>&1 &&
+     { [[ $watcher_was != active ]] || systemctl --user restart afterburn-watch.service >/dev/null 2>&1; }; then
     ok "watcher service enabled (user unit: afterburn-watch)"
   else
     skip "couldn't start the watcher; run: systemctl --user enable --now afterburn-watch.service"

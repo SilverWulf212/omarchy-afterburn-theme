@@ -1,4 +1,5 @@
 """uninstall.sh keeps what is yours: the settings file and every .bashrc line it did not add."""
+import shutil
 import unittest
 
 from support import THEME_SH, UNINSTALL, Sandbox
@@ -96,6 +97,93 @@ class UninstallKeepsYourLaterChoices(unittest.TestCase):
         r = self.uninstall("com.mitchellh.ghostty.desktop", "Fira Code")
         self.assertFalse([c for c in self.sb.call_log() if "font set" in c], self.sb.call_log())
         self.assertIn("font changed since install; left as is", r.stdout)
+
+
+class UninstallRestoresExactlyWhatInstallChanged(unittest.TestCase):
+    def setUp(self):
+        self.sb = Sandbox()
+        self.addCleanup(self.sb.cleanup)
+        self.list = self.sb.home / ".config" / "xdg-terminals.list"
+
+    def uninstall(self, **extra):
+        return self.sb.run(["/bin/bash", str(UNINSTALL)], **extra)
+
+    def test_a_fresh_user_gets_the_system_default_back(self):
+        # No list before the install; `omarchy default terminal ghostty` creates one (the stub does not).
+        self.assertEqual(self.sb.install().returncode, 0)
+        self.sb.write_state_text(self.list, "# written by omarchy\ncom.mitchellh.ghostty.desktop\n")
+        r = self.uninstall()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertFalse(self.list.exists())
+        self.assertIn("default terminal", r.stdout)
+        self.assertFalse([c for c in self.sb.call_log() if "default terminal" in c and "ghostty" not in c])
+
+    def test_reinstall_after_uninstall_records_no_list_again(self):
+        self.sb.install()
+        self.sb.write_state_text(self.list, "com.mitchellh.ghostty.desktop\n")
+        self.uninstall()
+        self.sb.install()
+        self.assertEqual((self.sb.state_dir / "prev-terminal").read_text().strip(), "none")
+
+    def test_a_terminal_chosen_after_a_fresh_install_is_left_alone(self):
+        self.sb.write_state_text(self.sb.state_dir / "prev-terminal", "none\n")
+        self.sb.write_state_text(self.list, "kitty.desktop\n")
+        r = self.uninstall()
+        self.assertEqual(self.list.read_text(), "kitty.desktop\n")
+        self.assertIn("default terminal changed since install; left as is", r.stdout)
+
+    def failing_writes(self):
+        """mktemp hands out a dangling link, so writing the temp file fails (a link to /dev/full would read as endless zeros
+        if a regression moved it over the user's file)."""
+        stub = self.sb.bin / "mktemp"
+        stub.unlink()
+        stub.write_text(f'''#!/bin/bash
+f=$({shutil.which("mktemp")} "$@") || exit 1
+rm -f "$f"; ln -s /nonexistent/dir/x "$f"; echo "$f"
+''')
+        stub.chmod(0o755)
+
+    def test_a_failed_starship_write_keeps_the_file_and_says_so(self):
+        starship = self.sb.home / ".config" / "starship.toml"
+        text = '[character]\nerror_symbol = "[❯](bold red)"\n'
+        self.sb.write_state_text(starship, text)
+        self.sb.write_state_text(self.sb.state_dir / "starship-error-symbol", 'error_symbol = "[x](red)"\n')
+        self.failing_writes()
+        r = self.uninstall()
+        self.assertEqual(starship.read_text(), text)
+        self.assertIn("not restored", r.stdout)
+        self.assertNotIn("✓ starship", r.stdout)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertTrue((self.sb.state_dir / "starship-error-symbol").exists())
+        self.assertEqual([p.name for p in starship.parent.glob(".starship.*")], [])
+
+    def test_a_failed_bashrc_write_keeps_the_file_and_says_so(self):
+        rc = self.sb.home / ".bashrc"
+        text = f"alias a=b\n{LINE}\n"
+        rc.write_text(text)
+        self.failing_writes()
+        r = self.uninstall()
+        self.assertEqual(rc.read_text(), text)
+        self.assertIn("not restored", r.stdout)
+        self.assertNotIn("✓ ~/.bashrc", r.stdout)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertEqual([p.name for p in rc.parent.glob(".bashrc.*")], [])
+
+    def test_preview_backups_survive_for_the_manual_undo(self):
+        keep = self.sb.state_dir / "preview-backups" / "hyprland.lua.bak"
+        self.sb.write_state_text(keep, "mine\n")
+        self.sb.write_state_text(self.sb.state_dir / "editions", "")
+        self.assertEqual(self.uninstall().returncode, 0)
+        self.assertEqual(keep.read_text(), "mine\n")
+        self.assertFalse((self.sb.state_dir / "editions").exists())
+
+    def test_the_watcher_stops_before_the_cursor_effect_is_restored(self):
+        self.sb.write_state_text(self.sb.state_dir / "prev-cursor-fx", "ember\n")
+        r = self.uninstall()     # no unit file on disk: the stop does not depend on it
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        calls = self.sb.call_log()
+        stop = calls.index("systemctl --user disable --now afterburn-watch.service")
+        self.assertLess(stop, calls.index("cursor-fx ember"))
 
 
 if __name__ == "__main__":

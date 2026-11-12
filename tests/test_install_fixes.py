@@ -65,5 +65,31 @@ class LocateLocaleTests(unittest.TestCase):
         self.assertIn("LAT 34.0901, LON -118.4065", r.stdout)
 
 
+class InstallRecordsWhatItChanges(unittest.TestCase):
+    def setUp(self):
+        self.sb = Sandbox()
+        self.addCleanup(self.sb.cleanup)
+
+    def test_a_fresh_user_without_a_terminal_list_is_recorded_as_none(self):
+        r = self.sb.install()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual((self.sb.state_dir / "prev-terminal").read_text().strip(), "none")
+
+    def test_the_users_own_terminal_list_is_recorded(self):
+        self.sb.write_state_text(self.sb.home / ".config" / "xdg-terminals.list", "# mine\nfoot.desktop\n")
+        self.sb.install()
+        self.assertEqual((self.sb.state_dir / "prev-terminal").read_text().strip(), "foot.desktop")
+
+    def test_a_running_watcher_is_restarted_so_new_code_takes_effect(self):
+        self.sb.install(STUB_WATCHER="active")
+        calls = self.sb.call_log()
+        enable = calls.index("systemctl --user enable --now afterburn-watch.service")
+        self.assertIn("systemctl --user restart afterburn-watch.service", calls[enable:])
+
+    def test_a_watcher_that_was_not_running_is_only_started(self):
+        self.sb.install(STUB_WATCHER="inactive")
+        self.assertFalse([c for c in self.sb.call_log() if " restart " in c], self.sb.call_log())
+
+
 if __name__ == "__main__":
     unittest.main()

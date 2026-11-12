@@ -11,6 +11,8 @@ D="$HOME/.config/omarchy/hooks/theme-set.d"
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/afterburn"
 CONF_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 BIN="$HOME/.local/bin"
+KEEP=(preview-backups)   # state files that stay: the manual undo in the README needs preview-backups; a failed restore adds its own
+RC=0
 # shellcheck disable=SC1091
 . "$HERE/afterburn-theme.sh"   # AB_BASHRC_LINE
 
@@ -21,6 +23,10 @@ if [[ -s $STATE_DIR/prev-terminal ]]; then
   name=$(basename "$prev" .desktop | sed -E 's/.*\.//; s/^(ghostty|alacritty|kitty|foot).*/\1/' | tr '[:upper:]' '[:lower:]')
   if ! grep -qi ghostty <(grep -v '^#' "$HOME/.config/xdg-terminals.list" 2>/dev/null | head -1); then
     echo "  · default terminal changed since install; left as is"
+  elif [[ $prev == none ]]; then
+    # No list of your own before the install (a fresh Omarchy user): remove the one it created, so the
+    # system default applies again.
+    rm -f "$HOME/.config/xdg-terminals.list" && echo "  ✓ default terminal back to Omarchy's own (the list the installer created was removed)"
   elif [[ $name =~ ^(alacritty|foot|ghostty|kitty)$ ]]; then
     omarchy default terminal "$name" >/dev/null && echo "  ✓ default terminal restored to $name"
   else
@@ -61,6 +67,15 @@ if [[ -s $STATE_DIR/editions ]]; then
   done < "$STATE_DIR/editions"
 fi
 
+# Watcher: stopped before the cursor effect is restored (a running watcher could re-apply its own), and after
+# the edition switch above, which runs the theme-set hook. Stopped whether or not the unit file is still there.
+systemctl --user disable --now afterburn-watch.service >/dev/null 2>&1 || true
+if [[ -f $CONF_HOME/systemd/user/afterburn-watch.service ]]; then
+  rm -f "$CONF_HOME/systemd/user/afterburn-watch.service"
+  systemctl --user daemon-reload >/dev/null 2>&1 || true
+  echo "  ✓ watcher service removed"
+fi
+
 # Cursor effect: after the edition switch above, not before. Switching to the base theme runs the theme-set
 # hook, which sets that theme's effect; restoring first would let it overwrite your own effect again.
 if [[ -f $STATE_DIR/prev-cursor-fx ]] && command -v cursor-fx >/dev/null; then
@@ -87,12 +102,6 @@ for f in afterburn afterburn-watch; do
     rm -f "$BIN/$f"; echo "  ✓ unlinked $BIN/$f"
   fi
 done
-if [[ -f $CONF_HOME/systemd/user/afterburn-watch.service ]]; then
-  systemctl --user disable --now afterburn-watch.service >/dev/null 2>&1 || true
-  rm -f "$CONF_HOME/systemd/user/afterburn-watch.service"
-  systemctl --user daemon-reload >/dev/null 2>&1 || true
-  echo "  ✓ watcher service removed"
-fi
 # Starship: put back only the original error_symbol line, and only if the line is still the one we wrote.
 STARSHIP="$CONF_HOME/starship.toml"
 OURS_SYMBOL='error_symbol = "[❯](bold red)"'
@@ -102,13 +111,16 @@ if [[ -f $STATE_DIR/starship-error-symbol && -f $STARSHIP ]]; then
     real=$(readlink -f "$STARSHIP")
     tmp=$(mktemp "$(dirname "$real")/.starship.XXXXXX")
     # ENVIRON, not -v: awk -v would turn a backslash in your original line (\u2717, \\) into something else.
-    OURS="$OURS_SYMBOL" ORIG="$orig" awk '
+    # Write, then chmod, then move: if any step fails (a full disk) your file is left as it was.
+    if OURS="$OURS_SYMBOL" ORIG="$orig" awk '
       $0 == ENVIRON["OURS"] && !done { done = 1; if (ENVIRON["ORIG"] != "absent") print ENVIRON["ORIG"]; next }
       { print }
-    ' "$real" > "$tmp"
-    chmod --reference="$real" "$tmp"
-    mv "$tmp" "$real"
-    echo "  ✓ starship error_symbol restored"
+    ' "$real" > "$tmp" && chmod --reference="$real" "$tmp" && mv "$tmp" "$real"; then
+      echo "  ✓ starship error_symbol restored"
+    else
+      rm -f "$tmp"; KEEP+=(starship-error-symbol); RC=1
+      echo "  ✗ starship error_symbol not restored (your file is unchanged); original line is in $STATE_DIR/starship-error-symbol"
+    fi
   else
     echo "  · starship error_symbol changed since install; left as is"
   fi
@@ -118,18 +130,23 @@ fi
 if grep -qxF "$AB_BASHRC_LINE" "$HOME/.bashrc" 2>/dev/null; then
   real=$(readlink -f "$HOME/.bashrc")
   tmp=$(mktemp "$(dirname "$real")/.bashrc.XXXXXX")
-  if [[ -f $STATE_DIR/bashrc-newline && $(tail -n1 "$real") == "$AB_BASHRC_LINE" ]]; then
-    # The installer added a newline before its line because the file had none, and the marker line is last:
-    # drop the marker line and that newline, so the file is byte-for-byte the original.
-    head -n -1 "$real" | head -c -1 > "$tmp"
+  # Write, then chmod, then move (as for starship above). awk, not grep -v: grep exits 1 when nothing is left.
+  if {
+    if [[ -f $STATE_DIR/bashrc-newline && $(tail -n1 "$real") == "$AB_BASHRC_LINE" ]]; then
+      # The installer added a newline before its line because the file had none, and the marker line is last:
+      # drop the marker line and that newline, so the file is byte-for-byte the original.
+      head -n -1 "$real" | head -c -1 > "$tmp"
+    else
+      LINE="$AB_BASHRC_LINE" awk '$0 != ENVIRON["LINE"]' "$real" > "$tmp"
+    fi
+  } && chmod --reference="$real" "$tmp" && mv "$tmp" "$real"; then
+    echo "  ✓ ~/.bashrc line removed"
+    # The installer made this file (there was none): take it away again if nothing else is in it.
+    if [[ -f $STATE_DIR/bashrc-created && ! -s $real ]]; then rm -f "$real" && echo "  ✓ ~/.bashrc removed (the installer had created it, and it is empty)"; fi
   else
-    grep -vxF "$AB_BASHRC_LINE" "$real" > "$tmp" || true
+    rm -f "$tmp"; KEEP+=(bashrc-newline bashrc-created); RC=1
+    echo "  ✗ ~/.bashrc line not restored (your file is unchanged); remove the line ending in '# afterburn' yourself"
   fi
-  chmod --reference="$real" "$tmp"
-  mv "$tmp" "$real"
-  echo "  ✓ ~/.bashrc line removed"
-  # The installer made this file (there was none): take it away again if nothing else is in it.
-  if [[ -f $STATE_DIR/bashrc-created && ! -s $real ]]; then rm -f "$real" && echo "  ✓ ~/.bashrc removed (the installer had created it, and it is empty)"; fi
 fi
 APPS_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 rm -f "$APPS_DIR/afterburn-colors.desktop"
@@ -170,12 +187,12 @@ fi
 
 rm -f "$D/50-afterburn-extras"
 # The whole-file starship backup stays in the state dir as a safety copy. Nothing restores from it.
-if [[ -f $STATE_DIR/starship.toml.bak ]]; then
-  find "$STATE_DIR" -mindepth 1 -maxdepth 1 ! -name starship.toml.bak -exec rm -rf {} +
-  echo "  · kept a safety copy of your old starship.toml: $STATE_DIR/starship.toml.bak"
-else
-  rm -rf "$STATE_DIR"
-fi
+KEEP+=(starship.toml.bak)
+find_keep=(); for k in "${KEEP[@]}"; do find_keep+=(! -name "$k"); done
+find "$STATE_DIR" -mindepth 1 -maxdepth 1 "${find_keep[@]}" -exec rm -rf {} + 2>/dev/null
+rmdir "$STATE_DIR" 2>/dev/null || true
+[[ -f $STATE_DIR/starship.toml.bak ]] && echo "  · kept a safety copy of your old starship.toml: $STATE_DIR/starship.toml.bak"
+[[ -d $STATE_DIR/preview-backups ]] && echo "  · kept your preview backups: $STATE_DIR/preview-backups"
 echo "  ✓ Afterburn hook removed"
 cat <<'EOF'
 
@@ -185,3 +202,4 @@ cat <<'EOF'
     Ghostty:    omarchy pkg drop ghostty   (set another default terminal first)
   The glow disappears the next time you apply any theme.
 EOF
+exit $RC
