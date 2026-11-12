@@ -56,6 +56,15 @@ omarchy theme update
 
 Run the installer again so the hook and the service copies refresh. Installed edition folders keep their existing files; the installer only adds files they lack.
 
+**Installed before 12 November 2026?** The repository's history was rewritten that day to drop about 85 MiB of replaced wallpapers from every download. Your files are unchanged, but `omarchy theme update` (a `git pull`) now stops with a "divergent branches" error for Afterburn. Run this once, then update as above from then on:
+
+```bash
+git -C ~/.config/omarchy/themes/afterburn fetch origin
+git -C ~/.config/omarchy/themes/afterburn reset --hard origin/main
+```
+
+`reset --hard` discards any edits you made inside that folder; your settings in `~/.config/afterburn` are not touched.
+
 ## New edition wallpapers
 
 ![New Voltage, Cyber, Overdrive, Redline and Phantom wallpaper artwork](docs/wallpapers/preview.jpg)
