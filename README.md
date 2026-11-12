@@ -56,14 +56,24 @@ omarchy theme update
 
 Run the installer again so the hook and the service copies refresh. Installed edition folders keep their existing files; the installer only adds files they lack.
 
-**Installed before 12 November 2026?** The repository's history was rewritten that day to drop about 85 MiB of replaced wallpapers from every download. Your files are unchanged, but `omarchy theme update` (a `git pull`) now stops with a "divergent branches" error for Afterburn. Run this once, then update as above from then on:
+**Installed before 12 November 2026?** The repository's history was rewritten that day to drop about 85 MiB of replaced wallpapers from every download. For an older install, `omarchy theme update` (a `git pull`) fails or stops with a git error about divergent or unrelated histories, or about not being able to fast-forward. The exact words depend on your git pull settings. With `pull.rebase=true` it may even look like it worked. Run this once either way, then update as above from then on:
 
 ```bash
-git -C ~/.config/omarchy/themes/afterburn fetch origin
+git -C ~/.config/omarchy/themes/afterburn fetch --prune --prune-tags --force origin
 git -C ~/.config/omarchy/themes/afterburn reset --hard origin/main
+~/.config/omarchy/themes/afterburn/extras/install.sh
 ```
 
-`reset --hard` discards any edits you made inside that folder; your settings in `~/.config/afterburn` are not touched.
+Your settings in `${XDG_CONFIG_HOME:-~/.config}/afterburn` are kept. The reset replaces only the theme folder's tracked files, so it discards any edits you made inside that folder. The installer run makes the hook and watcher copies match the new files.
+
+To also free the old 85 MiB from that folder, run:
+
+```bash
+git -C ~/.config/omarchy/themes/afterburn reflog expire --expire=now --all
+git -C ~/.config/omarchy/themes/afterburn gc --prune=now
+```
+
+The clean alternative is `omarchy theme install https://github.com/silverwulf212/omarchy-afterburn-theme`. It clones from scratch and switches the active theme to base Afterburn.
 
 ## New edition wallpapers
 
@@ -88,7 +98,9 @@ All six selector thumbnails show each theme's actual default wallpaper. The
 Afterburn wordmark is reserved for boot/login artwork.
 
 For an existing installation, update the checkout and refresh only its selector
-images (rerunning the extras installer preserves existing preview files):
+images (rerunning the extras installer preserves existing preview files). If you
+installed before 12 November 2026, run the one-time fix under Update first; a plain
+`git pull --ff-only` fails on the rewritten history.
 
 ```bash
 cd ~/.config/omarchy/themes/afterburn

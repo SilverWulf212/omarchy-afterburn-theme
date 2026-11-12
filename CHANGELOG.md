@@ -14,6 +14,13 @@ Dates are 2026. The theme installs from `main`, so "Unreleased" below is what a 
 - **Heat levels.** On current Hyprland (a Lua config) the cool and hot levels never reached the screen: the border and glow stayed at normal while `afterburn status` reported the new level. The level is now sent in the form Hyprland accepts and shows at once.
 - **Lock screen (#5).** With the login name `omarchy`, saying yes to lock-screen embers could leave you with no lock screen. The clone is now always `afterburn.lock`, and any failure re-enables the built-in lock before the script exits. Another lock screen you use is detected from its plugin manifest and left alone.
 - **Desktops losing their effects (#3, #4).** A wireless mouse or keyboard battery was mistaken for a laptop battery, which switched the battery saver on. Only the machine's own battery counts now, and a saver left on by the old behaviour is cleared.
+- **History rewrite (12 Nov 2026).** `omarchy theme update` fails on installs from before that day. One-time fix in the README under "Installed before 12 November 2026?".
+- Cursor effect on battery: it comes back after fullscreen ends, and a new edition's cursor effect or `afterburn set CURSOR_FX` applies on battery.
+- The heat wallpaper now swaps in battery saver and fullscreen too; only the glow change waits.
+- `afterburn laptop auto` puts the saver in line with the power source at once, leaving fullscreen always ends quiet mode, and the watcher reconnects after a Hyprland restart.
+- The installer saves the heat source even if the config lacks the line, and uninstall leaves a font or terminal you picked after installing.
+- Uninstalling lock-screen embers no longer reports a false "no lock screen" or skips its cleanup.
+- `afterburn locate` works in locales that use a decimal comma.
 - The fail flash no longer replays when you press Enter on an empty line after a failed command, and no longer plays on the first prompt of a new shell.
 - Uninstall keeps your settings as `afterburn.conf.bak` instead of deleting them, and removes only the exact line the installer added to `~/.bashrc` (it used to remove any line ending in `# afterburn`).
 - `afterburn apply` writes the glow file in one step, so Hyprland can never read half a file.
