@@ -243,7 +243,7 @@ class Sandbox:
     def env(self, **extra):
         e = {"PATH": str(self.bin), "HOME": str(self.home), "USER": self.user, "SB": str(self.root),
              "LOCK_EMBERS_OMARCHY_PATH": str(self.omarchy), "POWER_DIR": str(self.sysfs),
-             "TERM": "dumb", "LANG": "C"}
+             "TERM": "dumb", "LANG": "C", "XDG_RUNTIME_DIR": str(self.root / "run")}   # never the real hypr dir
         e.update(extra)
         return e
 

@@ -2,7 +2,7 @@
 # afterburn-watch: keeps Afterburn in step with the machine and the sky.
 # Long-running user service (extras/afterburn-watch.service). Acts only while
 # the active theme is afterburn or an afterburn colour edition. Three loops, one per concern:
-#   fullscreen  Hyprland socket2 events      -> afterburn quiet on|off
+#   fullscreen  Hyprland socket2 events      -> afterburn quiet on|off; configreloaded -> put the heat level back
 #   power       upower (or 30s poll)         -> afterburn saver on|off (battery = on)
 #   heat        every 60s                    -> afterburn level cool|normal|hot
 # Calls happen only on change. Needs bash, awk, jq, curl, socat; upower optional.
@@ -37,6 +37,7 @@ is_afterburn() { local t=; { IFS= read -r t < "$THEME_FILE"; } 2>/dev/null; [[ $
 # watcher was stopped would otherwise leave quiet stuck on (or off) until the next toggle.
 sync_quiet() {
   is_afterburn || return 0
+  hypr_pick
   load_conf
   local fs
   fs=$(hyprctl activewindow -j 2>/dev/null | jq -r '.fullscreen // 0' 2>/dev/null)
@@ -47,11 +48,28 @@ sync_quiet() {
   fi
 }
 
+# Hyprland rebuilt its config (afterburn's own reload, an Omarchy toggle, a monitor change, an autoreload). The
+# rebuild comes from the generated Lua, which holds the normal level only, so put the saved level back. `afterburn
+# level` pushes it with one `hyprctl eval` and never reloads, so its own pass cannot start another one. Normal needs
+# nothing (the file says normal); quiet and saver hold the glow still, and their own end re-applies it.
+# Builtin reads only: no fork unless there is something to put back.
+reload_event() {
+  is_afterburn || return 0
+  local lvl=normal q= s=
+  { IFS= read -r lvl < "$STATE/level"; } 2>/dev/null
+  { IFS= read -r q < "$STATE/quiet"; } 2>/dev/null
+  { IFS= read -r s < "$STATE/saver"; } 2>/dev/null
+  [[ $lvl == cool || $lvl == hot ]] && [[ $q != on && $s != on ]] || return 0
+  hypr_pick
+  afterburn level "$lvl"
+}
+
 # One socket2 line. The case runs first, so the many unrelated events (focus, title, workspace)
 # cost nothing: no source, no fork.
 fullscreen_event() {
   case $1 in
     'fullscreen>>1'|'fullscreen>>0') ;;
+    'configreloaded>>'*) reload_event; return 0 ;;
     *) return 0 ;;
   esac
   load_conf
@@ -67,16 +85,36 @@ fullscreen_event() {
   return 0
 }
 
-# Hyprland's event socket. Asked again on every reconnect: a restarted Hyprland has a new instance signature.
-hypr_socket() {
-  local dir=${XDG_RUNTIME_DIR:-/run/user/$UID}/hypr sig=${HYPRLAND_INSTANCE_SIGNATURE:-}
-  [[ -e $dir/$sig/.socket2.sock ]] || sig=$(ls -t "$dir" 2>/dev/null | head -n1)
-  echo "$dir/$sig/.socket2.sock"
+# A live Hyprland instance has a hyprland.lock holding its pid. A dead one can leave .socket2.sock behind (and a
+# crashed one its lock), so a socket file alone proves nothing. Builtins only.
+hypr_alive() {
+  local p=; { IFS= read -r p < "$1/hyprland.lock"; } 2>/dev/null
+  [[ $p =~ ^[0-9]+$ ]] && kill -0 "$p" 2>/dev/null
 }
 
+# Choose the live instance: keep ours while it lives, else the newest live one, else the newest folder (returns 1;
+# the socket will not connect and the caller retries). Exported, so every `afterburn` and `hyprctl` this process
+# runs talks to the compositor that is up now. Each loop is its own process and calls this before it acts.
+hypr_pick() {
+  local dir=${XDG_RUNTIME_DIR:-/run/user/$UID}/hypr s newest=
+  hypr_alive "$dir/${HYPRLAND_INSTANCE_SIGNATURE:-}" && return 0   # the usual case: no fork
+  for s in $(ls -t "$dir" 2>/dev/null); do
+    [[ -n $newest ]] || newest=$s
+    hypr_alive "$dir/$s" && { export HYPRLAND_INSTANCE_SIGNATURE=$s; return 0; }
+  done
+  [[ -z $newest ]] || export HYPRLAND_INSTANCE_SIGNATURE=$newest
+  return 1
+}
+
+hypr_socket() { echo "${XDG_RUNTIME_DIR:-/run/user/$UID}/hypr/${HYPRLAND_INSTANCE_SIGNATURE:-}/.socket2.sock"; }
+
 watch_fullscreen() {
-  local line
+  local line first=1
   while :; do
+    # After a reconnect, read the fullscreen state again: a toggle during the gap sent no event we saw.
+    # (The first pass follows main's sync_quiet.) Only while an instance is up, so a long outage costs nothing.
+    if hypr_pick && (( ! first )); then sync_quiet; fi
+    first=0
     socat -U - "UNIX-CONNECT:$(hypr_socket)" 2>/dev/null | while IFS= read -r line; do
       fullscreen_event "$line"
     done
@@ -100,7 +138,7 @@ power_tick() {  # reads and sets $saver, the last value we applied, and $battery
     # used up on the first desktop tick whether or not there was anything to clear; a failed clear may retry.
     if [[ -z ${saver:-} ]]; then
       if [[ $(cat "$STATE/saver" 2>/dev/null) == on ]]; then
-        afterburn saver off && saver=off
+        hypr_pick; afterburn saver off && saver=off
       else
         saver=off
       fi
@@ -109,7 +147,7 @@ power_tick() {  # reads and sets $saver, the last value we applied, and $battery
   fi
   local want=on
   ab_on_ac && want=off
-  if [[ $want != "${saver:-}" ]] && afterburn saver "$want"; then saver=$want; fi
+  if [[ $want != "${saver:-}" ]]; then hypr_pick; afterburn saver "$want" && saver=$want; fi
 }
 
 watch_power() {
@@ -197,7 +235,7 @@ watch_heat() {
       cand=$(heat_level)
       # pressure is jumpy: switch only after two equal readings in a row
       if [[ -n $cand && $cand != "$applied" ]] && { [[ $HEAT_SOURCE != pressure || $cand == "$prev" ]]; }; then
-        afterburn level "$cand" && applied=$cand
+        hypr_pick; afterburn level "$cand" && applied=$cand
       fi
       prev=$cand
     fi

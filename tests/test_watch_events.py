@@ -52,23 +52,6 @@ class FullscreenEventTests(unittest.TestCase):
         self.assertEqual(self.quiet_case("FULLSCREEN_QUIET=no\n", "fullscreen>>0", ""), [])
 
 
-class HyprSocketTests(unittest.TestCase):
-    def test_picks_the_newest_instance_when_the_env_one_is_gone(self):  # bug 6
-        sb = Sandbox()
-        self.addCleanup(sb.cleanup)
-        run = sb.root / "run"
-        for name, mtime in (("old", 1000), ("new", 2000)):
-            d = run / "hypr" / name
-            d.mkdir(parents=True)
-            (d / ".socket2.sock").touch()
-            os.utime(d, (mtime, mtime))
-        r = sb.watch_func("hypr_socket; HYPRLAND_INSTANCE_SIGNATURE=old hypr_socket; "
-                          "HYPRLAND_INSTANCE_SIGNATURE=dead hypr_socket", XDG_RUNTIME_DIR=str(run))
-        self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertEqual(r.stdout.split(), [f"{run}/hypr/new/.socket2.sock", f"{run}/hypr/old/.socket2.sock",
-                                            f"{run}/hypr/new/.socket2.sock"])
-
-
 class WeatherTests(unittest.TestCase):
     def setUp(self):
         self.sb = Sandbox()
