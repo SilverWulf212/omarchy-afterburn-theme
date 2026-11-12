@@ -78,8 +78,15 @@ power_tick() {  # reads and sets $saver, the last value we applied (set by watch
   is_afterburn && [[ $LAPTOP_MODE == auto ]] || return 0
   if ! ab_has_battery; then
     # Not a laptop. Older versions counted a mouse battery and may have left the saver on: switch it off
-    # once per watcher start. After that the saver is yours (afterburn saver on|off).
-    if [[ -z ${saver:-} && $(cat "$STATE/saver" 2>/dev/null) == on ]] && afterburn saver off; then saver=off; fi
+    # once per watcher start. After that the saver is yours (afterburn saver on|off). The one-time check is
+    # used up on the first desktop tick whether or not there was anything to clear; a failed clear may retry.
+    if [[ -z ${saver:-} ]]; then
+      if [[ $(cat "$STATE/saver" 2>/dev/null) == on ]]; then
+        afterburn saver off && saver=off
+      else
+        saver=off
+      fi
+    fi
     return 0
   fi
   local want=on

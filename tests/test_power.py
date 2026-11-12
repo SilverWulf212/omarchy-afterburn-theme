@@ -64,6 +64,16 @@ class WatcherTests(PowerBase):
         sb.write_state_text(sb.state_dir / "saver", "on\n")
         self.assertEqual(self.tick(sb), ["afterburn saver off"])
 
+    def test_a_later_manual_saver_on_stands_on_a_desktop(self):
+        sb = self.make()
+        sb.supply("hidpp_battery_0", "Battery", scope="Device", status="Discharging", capacity=15)
+        body = (f'saver=""; power_tick; printf "on\\n" > "{sb.state_dir}/saver"; power_tick')
+        sb.state_dir.mkdir(parents=True, exist_ok=True)
+        (sb.state_dir / "saver").write_text("off\n")
+        r = sb.watch_func(body)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual([c for c in sb.call_log() if c in SAVER_CALLS], [])
+
     def test_forced_laptop_mode_is_not_touched(self):
         sb = self.make()
         sb.write_state_text(sb.home / ".config/afterburn/afterburn.conf", "LAPTOP_MODE=on\n")
