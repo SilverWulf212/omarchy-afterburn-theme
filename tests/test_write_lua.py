@@ -1,4 +1,7 @@
-"""`afterburn apply` replaces hyprland.lua whole or not at all: Hyprland reloads on change."""
+"""What `afterburn` hands Hyprland: `apply` replaces hyprland.lua whole or not at all (Hyprland reloads on
+change), and `level` pushes the heat level live in the Lua form Hyprland accepts."""
+import shutil
+import subprocess
 import unittest
 
 from support import Sandbox
@@ -30,6 +33,34 @@ class WriteLua(unittest.TestCase):
         self.assertIn("old file is untouched", r.stderr)
         self.assertEqual(self.lua.read_text(), "-- the old file\n")
         self.assertEqual(sorted(p.name for p in self.cur.iterdir()), ["hyprland.lua"])
+
+
+class LiveLevel(unittest.TestCase):
+    # Base theme: the stops and shadow of each level, and its range at GLOW_RANGE 14.
+    LEVELS = {"hot": (("ffc48aff", "fff1e0ff", "ff5a1fff"), 22, "ffb37a77"),
+              "cool": (("7a3e16ee", "e8703aee", "ff5a1fcc"), 8, "e8703a33")}
+
+    def test_level_is_one_eval_with_its_colours_range_and_shadow(self):
+        for level, (stops, rng, shadow) in self.LEVELS.items():
+            with self.subTest(level=level):
+                sb = Sandbox()
+                self.addCleanup(sb.cleanup)
+                r = sb.afterburn("level", level)
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                calls = [c for c in sb.call_log() if c.startswith("hyprctl")]
+                self.assertEqual(len(calls), 1, calls)   # Lua configs refuse `hyprctl keyword`
+                self.assertTrue(calls[0].startswith("hyprctl eval hl.config({"), calls[0])
+                lua = calls[0][len("hyprctl eval "):]
+                for stop in stops:
+                    self.assertIn(f'"rgba({stop})"', lua)
+                self.assertIn(f"range = {rng},", lua)
+                self.assertIn(f'color = "rgba({shadow})"', lua)
+                self.assertIn("enabled = true", lua)
+                if shutil.which("lua"):   # and it is Lua that sets exactly those values
+                    probe = ("hl = { config = function(t) local b, s = t.general.col.active_border, t.decoration.shadow "
+                             "print(table.concat(b.colors, ' '), b.angle, s.range, s.color, s.enabled) end } " + lua)
+                    out = subprocess.run(["lua", "-e", probe], capture_output=True, text=True).stdout.split()
+                    self.assertEqual(out, [*(f"rgba({x})" for x in stops), "45", str(rng), f"rgba({shadow})", "true"])
 
 
 if __name__ == "__main__":

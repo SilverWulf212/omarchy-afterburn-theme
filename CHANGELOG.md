@@ -11,6 +11,7 @@ Dates are 2026. The theme installs from `main`, so "Unreleased" below is what a 
 - A test suite for the code that runs on your machine (lock screen, battery detection, the light edition, the installer's edition list).
 
 ### Fixed
+- **Heat levels.** On current Hyprland (a Lua config) the cool and hot levels never reached the screen: the border and glow stayed at normal while `afterburn status` reported the new level. The level is now sent in the form Hyprland accepts and shows at once.
 - **Lock screen (#5).** With the login name `omarchy`, saying yes to lock-screen embers could leave you with no lock screen. The clone is now always `afterburn.lock`, and any failure re-enables the built-in lock before the script exits. Another lock screen you use is detected from its plugin manifest and left alone.
 - **Desktops losing their effects (#3, #4).** A wireless mouse or keyboard battery was mistaken for a laptop battery, which switched the battery saver on. Only the machine's own battery counts now, and a saver left on by the old behaviour is cleared.
 - The fail flash no longer replays when you press Enter on an empty line after a failed command, and no longer plays on the first prompt of a new shell.

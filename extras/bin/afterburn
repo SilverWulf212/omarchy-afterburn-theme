@@ -172,18 +172,18 @@ is_base() { [[ $THEME_NAME == afterburn ]]; }
 # Colours come from the active theme's colors.toml (AB_* in afterburn-theme.sh).
 ab_load_palette "$THEME_NAME"
 
-# Heat level table (from docs spec). Sets L_* for the named level.
+# Heat level table (from docs spec). Sets L_* for the named level; L_BORDER is the gradient stops as a Lua list.
 # GLOW_RANGE is the normal level's shadow range (base 14). Cool and hot keep their ratio to it (8:14 and
 # 22:14), so the order of the levels holds for every edition and the base theme gets exactly 8, 14 and 22.
 level_vals() {
   local g=${GLOW_RANGE:-14}
   case $1 in
-    cool)   L_BORDER="rgba(${AB_RUST}ee) rgba(${AB_COOL}ee) rgba(${AB_EMBER}cc) 45deg"
+    cool)   L_BORDER="\"rgba(${AB_RUST}ee)\", \"rgba(${AB_COOL}ee)\", \"rgba(${AB_EMBER}cc)\""
             L_RANGE=$(( (g * 8 + 7) / 14 )); L_SHADOW="rgba(${AB_COOL}33)"
             (( L_RANGE >= 3 )) || L_RANGE=3 ;;
-    normal) L_BORDER="rgba(${AB_ACCENT}ee) rgba(${AB_EMBER}ee) rgba(${AB_FLARE}ee) 45deg"
+    normal) L_BORDER="\"rgba(${AB_ACCENT}ee)\", \"rgba(${AB_EMBER}ee)\", \"rgba(${AB_FLARE}ee)\""
             L_RANGE=$g; L_SHADOW="rgba(${AB_ACCENT}55)" ;;
-    hot)    L_BORDER="rgba(${AB_FLARE}ff) rgba(${AB_HOTWHITE}ff) rgba(${AB_EMBER}ff) 45deg"
+    hot)    L_BORDER="\"rgba(${AB_FLARE}ff)\", \"rgba(${AB_HOTWHITE}ff)\", \"rgba(${AB_EMBER}ff)\""
             L_RANGE=$(( (g * 22 + 7) / 14 )); L_SHADOW="rgba(${AB_HOTGLOW}77)"
             (( L_RANGE <= 40 )) || L_RANGE=40 ;;
     *) die "level must be cool|normal|hot" ;;
@@ -233,16 +233,14 @@ EOF
     { rm -f "$tmp"; die "could not write $CUR_THEME/hyprland.lua; the old file is untouched"; }
 }
 
-# Push one heat level into the running compositor (no config reload needed).
+# Push one heat level into the running compositor (no config reload needed). With a Lua config Hyprland
+# refuses `hyprctl keyword` ("can't work with non-legacy parsers"), so it is one eval, in the glow file's shape.
 live_level() {
   level_vals "$1"
-  hyprctl keyword general:col.active_border "$L_BORDER" >/dev/null 2>&1 || true
-  hyprctl keyword decoration:shadow:range "$L_RANGE" >/dev/null 2>&1 || true
-  hyprctl keyword decoration:shadow:color "$L_SHADOW" >/dev/null 2>&1 || true
-  hyprctl keyword decoration:shadow:enabled true >/dev/null 2>&1 || true
+  hyprctl eval "hl.config({ general = { col = { active_border = { colors = { $L_BORDER }, angle = 45 } } }, decoration = { shadow = { enabled = true, range = $L_RANGE, color = \"$L_SHADOW\" } } })" >/dev/null 2>&1 || true
 }
 
-# Regenerate the Lua, reload Hyprland (which resets live keywords), then re-apply the level.
+# Regenerate the Lua, reload Hyprland (which resets the live level), then re-apply the level.
 apply_visuals() {
   write_lua
   hyprctl reload >/dev/null 2>&1 || true
