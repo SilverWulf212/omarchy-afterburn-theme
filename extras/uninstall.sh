@@ -21,12 +21,17 @@ RC=0
 if [[ -s $STATE_DIR/prev-terminal ]]; then
   prev=$(cat "$STATE_DIR/prev-terminal")
   name=$(basename "$prev" .desktop | sed -E 's/.*\.//; s/^(ghostty|alacritty|kitty|foot).*/\1/' | tr '[:upper:]' '[:lower:]')
-  if ! grep -qi ghostty <(grep -v '^#' "$HOME/.config/xdg-terminals.list" 2>/dev/null | head -1); then
+  if ! grep -qi ghostty <(grep -vE '^[[:space:]]*(#|$)' "$HOME/.config/xdg-terminals.list" 2>/dev/null | head -1); then
     echo "  · default terminal changed since install; left as is"
   elif [[ $prev == none ]]; then
     # No list of your own before the install (a fresh Omarchy user): remove the one it created, so the
-    # system default applies again.
-    rm -f "$HOME/.config/xdg-terminals.list" && echo "  ✓ default terminal back to Omarchy's own (the list the installer created was removed)"
+    # system default applies again. Only if Ghostty is its one and only entry; lines you added are yours.
+    list="$HOME/.config/xdg-terminals.list"
+    if [[ $(grep -cvE '^[[:space:]]*(#|$)' "$list") == 1 ]]; then
+      rm -f "$list" && echo "  ✓ default terminal back to Omarchy's own (the list the installer created was removed)"
+    else
+      echo "  · terminal list has your own lines; left as is"
+    fi
   elif [[ $name =~ ^(alacritty|foot|ghostty|kitty)$ ]]; then
     omarchy default terminal "$name" >/dev/null && echo "  ✓ default terminal restored to $name"
   else

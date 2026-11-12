@@ -103,14 +103,12 @@ ask "Continue?" || { echo "  Nothing changed."; exit 0; }
 mkdir -p "$STATE_DIR"
 echo
 
-# What the default terminal was before: the first line of your own list, or "none" when you have no list
-# (a fresh Omarchy user: the system default applies, and uninstall.sh removes the list this step creates).
+# What the default terminal was before: the first entry of your own list, or "none" when you have no list
+# or it has no entries (a fresh Omarchy user: the system default applies, and uninstall.sh removes the list this step creates).
 record_prev_terminal() {
-  if [[ -f $HOME/.config/xdg-terminals.list ]]; then
-    grep -v '^#' "$HOME/.config/xdg-terminals.list" 2>/dev/null | head -1 > "$STATE_DIR/prev-terminal" || true
-  else
-    echo none > "$STATE_DIR/prev-terminal"
-  fi
+  local first
+  first=$(grep -vE '^[[:space:]]*(#|$)' "$HOME/.config/xdg-terminals.list" 2>/dev/null | head -1) || true
+  echo "${first:-none}" > "$STATE_DIR/prev-terminal"
 }
 
 # 1. Ghostty

@@ -132,6 +132,20 @@ class UninstallRestoresExactlyWhatInstallChanged(unittest.TestCase):
         self.assertEqual(self.list.read_text(), "kitty.desktop\n")
         self.assertIn("default terminal changed since install; left as is", r.stdout)
 
+    def test_a_list_with_your_own_fallback_lines_is_kept(self):
+        self.sb.write_state_text(self.sb.state_dir / "prev-terminal", "none\n")
+        text = "com.mitchellh.ghostty.desktop\nfoot.desktop\n"
+        self.sb.write_state_text(self.list, text)
+        r = self.uninstall()
+        self.assertEqual(self.list.read_text(), text)
+        self.assertIn("terminal list has your own lines; left as is", r.stdout)
+
+    def test_a_list_of_ghostty_and_comments_only_is_removed(self):
+        self.sb.write_state_text(self.sb.state_dir / "prev-terminal", "none\n")
+        self.sb.write_state_text(self.list, "# mine\n\ncom.mitchellh.ghostty.desktop\n")
+        self.uninstall()
+        self.assertFalse(self.list.exists())
+
     def failing_writes(self):
         """mktemp hands out a dangling link, so writing the temp file fails (a link to /dev/full would read as endless zeros
         if a regression moved it over the user's file)."""

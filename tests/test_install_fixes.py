@@ -80,6 +80,11 @@ class InstallRecordsWhatItChanges(unittest.TestCase):
         self.sb.install()
         self.assertEqual((self.sb.state_dir / "prev-terminal").read_text().strip(), "foot.desktop")
 
+    def test_a_list_with_only_comments_and_blanks_is_recorded_as_none(self):
+        self.sb.write_state_text(self.sb.home / ".config" / "xdg-terminals.list", "# nothing yet\n\n")
+        self.sb.install()
+        self.assertEqual((self.sb.state_dir / "prev-terminal").read_text().strip(), "none")
+
     def test_a_running_watcher_is_restarted_so_new_code_takes_effect(self):
         self.sb.install(STUB_WATCHER="active")
         calls = self.sb.call_log()
