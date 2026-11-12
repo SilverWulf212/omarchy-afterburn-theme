@@ -127,8 +127,12 @@ APPS_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 rm -f "$APPS_DIR/afterburn-colors.desktop"
 # Your settings are kept as afterburn.conf.bak (the installer promises an existing conf keeps them).
 if [[ -f $CONF_HOME/afterburn/afterburn.conf ]]; then
-  mv -f "$CONF_HOME/afterburn/afterburn.conf" "$CONF_HOME/afterburn/afterburn.conf.bak"
-  echo "  · kept your settings: $CONF_HOME/afterburn/afterburn.conf.bak (delete it if you do not want them)"
+  # Never overwrite an earlier backup: use the first free name (.bak, .bak.1, .bak.2, ...).
+  bak="$CONF_HOME/afterburn/afterburn.conf.bak"
+  n=0
+  while [[ -e $bak || -L $bak ]]; do n=$((n + 1)); bak="$CONF_HOME/afterburn/afterburn.conf.bak.$n"; done
+  mv "$CONF_HOME/afterburn/afterburn.conf" "$bak"
+  echo "  · kept your settings: $bak (delete it if you do not want them)"
 fi
 rmdir "$CONF_HOME/afterburn" 2>/dev/null || true
 # The cursor-fx checkout is the one thing the installer puts in ~/.local/share/afterburn.

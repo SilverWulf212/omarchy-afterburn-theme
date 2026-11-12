@@ -31,6 +31,20 @@ class UninstallKeepsYourThings(unittest.TestCase):
         self.assertEqual(conf.with_name("afterburn.conf.bak").read_text(), "HEAT_SOURCE=weather\nZIP=90210\n")
         self.assertIn("afterburn.conf.bak", r.stdout)
 
+    def test_an_earlier_backup_is_never_overwritten(self):
+        conf = self.sb.home / ".config" / "afterburn" / "afterburn.conf"
+        bak = conf.with_name("afterburn.conf.bak")
+        self.sb.write_state_text(bak, "MINE=1\n")                 # a .bak the user made
+        self.sb.write_state_text(conf, "ZIP=1\n")
+        r1 = self.uninstall()
+        self.sb.write_state_text(conf, "ZIP=2\n")                 # reinstall, new settings, uninstall again
+        r2 = self.uninstall()
+        texts = sorted(p.read_text() for p in conf.parent.glob("afterburn.conf.bak*"))
+        self.assertEqual(texts, ["MINE=1\n", "ZIP=1\n", "ZIP=2\n"])
+        self.assertEqual(bak.read_text(), "MINE=1\n")
+        self.assertIn("afterburn.conf.bak.1", r1.stdout)
+        self.assertIn("afterburn.conf.bak.2", r2.stdout)
+
     def test_no_conf_means_no_bak(self):
         self.uninstall()
         self.assertFalse((self.sb.home / ".config" / "afterburn").exists())
