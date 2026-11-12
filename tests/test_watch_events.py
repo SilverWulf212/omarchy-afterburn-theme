@@ -51,6 +51,55 @@ class FullscreenEventTests(unittest.TestCase):
         self.assertEqual(self.quiet_case("FULLSCREEN_QUIET=no\n", "fullscreen>>0", ""), [])
 
 
+def two_monitors(fs_a=0, fs_b=0, ws_b=2):
+    """Two monitors showing workspaces 1 and 2, one window on each (and one on hidden workspace 3)."""
+    mons = [{"name": "A", "activeWorkspace": {"id": 1}}, {"name": "B", "activeWorkspace": {"id": 2}}]
+    cls = [{"workspace": {"id": 1}, "fullscreen": fs_a}, {"workspace": {"id": ws_b}, "fullscreen": fs_b}]
+    return {"STUB_MONITORS": json.dumps(mons), "STUB_CLIENTS": json.dumps(cls)}
+
+
+class ScreenFullscreenTests(unittest.TestCase):
+    """Quiet follows the screen: any fullscreen window on a visible workspace, not the last event (#12)."""
+    def run_watch(self, body, quiet_state, env, conf_text=""):
+        sb = Sandbox()
+        self.addCleanup(sb.cleanup)
+        sb.use_stubs(["afterburn"])
+        if conf_text:
+            conf = sb.home / ".config" / "afterburn" / "afterburn.conf"
+            conf.parent.mkdir(parents=True)
+            conf.write_text(conf_text)
+        if quiet_state:
+            sb.write_state_text(sb.state_dir / "quiet", quiet_state + "\n")
+        r = sb.watch_func(body, **env)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return [c for c in sb.call_log() if not c.startswith("hyprctl")]
+
+    def test_leaving_fullscreen_on_one_monitor_keeps_quiet_while_the_other_is_fullscreen(self):
+        self.assertEqual(self.run_watch("fullscreen_event 'fullscreen>>0'", "on", two_monitors(fs_b=1)), [])
+
+    def test_leaving_fullscreen_with_none_left_clears_quiet(self):
+        self.assertEqual(self.run_watch("fullscreen_event 'fullscreen>>0'", "on", two_monitors()),
+                         ["afterburn quiet off"])
+
+    def test_a_fullscreen_window_on_a_hidden_workspace_does_not_hold_quiet(self):
+        self.assertEqual(self.run_watch("fullscreen_event 'fullscreen>>0'", "on", two_monitors(fs_b=1, ws_b=3)),
+                         ["afterburn quiet off"])
+
+    def test_leaving_fullscreen_clears_quiet_when_the_setting_is_no_even_if_another_is_fullscreen(self):
+        self.assertEqual(self.run_watch("fullscreen_event 'fullscreen>>0'", "on", two_monitors(fs_b=1),
+                                        "FULLSCREEN_QUIET=no\n"), ["afterburn quiet off"])
+
+    def test_startup_with_a_fullscreen_window_on_an_unfocused_monitor_turns_quiet_on(self):
+        self.assertEqual(self.run_watch("sync_quiet", "", two_monitors(fs_b=1)), ["afterburn quiet on"])
+
+    def test_startup_with_nothing_fullscreen_turns_quiet_off(self):
+        self.assertEqual(self.run_watch("sync_quiet", "", two_monitors()), ["afterburn quiet off"])
+
+    def test_startup_with_the_setting_no_never_turns_quiet_on(self):
+        self.assertEqual(self.run_watch("sync_quiet", "", two_monitors(fs_b=1), "FULLSCREEN_QUIET=no\n"),
+                         ["afterburn quiet off"])
+
+
 class WeatherTests(unittest.TestCase):
     def setUp(self):
         self.sb = Sandbox()

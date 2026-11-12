@@ -33,15 +33,23 @@ load_conf() {
 is_afterburn() { local t=; { IFS= read -r t < "$THEME_FILE"; } 2>/dev/null; [[ $t == afterburn || $t == afterburn-* ]]; }
 
 # --- fullscreen: quiet while a window is fullscreen --------------------------
+# Quiet follows the screen: any fullscreen window on a workspace a monitor shows now, not the last event (with two
+# monitors, leaving fullscreen on one must not end quiet while the other is still fullscreen). One read of each, one
+# jq. A failed read counts as nothing fullscreen.
+screen_fullscreen() {
+  local mons
+  mons=$(hyprctl -j monitors 2>/dev/null)
+  hyprctl -j clients 2>/dev/null | jq -e --argjson m "${mons:-[]}" \
+    '[$m[].activeWorkspace.id] as $v | any(.[]; .fullscreen > 0 and (.workspace.id | IN($v[])))' >/dev/null 2>&1
+}
+
 # At start, quiet follows what is on screen now. A fullscreen toggle missed while the
 # watcher was stopped would otherwise leave quiet stuck on (or off) until the next toggle.
 sync_quiet() {
   is_afterburn || return 0
   hypr_pick
   load_conf
-  local fs
-  fs=$(hyprctl activewindow -j 2>/dev/null | jq -r '.fullscreen // 0' 2>/dev/null)
-  if [[ $FULLSCREEN_QUIET == yes ]] && (( ${fs:-0} > 0 )); then
+  if [[ $FULLSCREEN_QUIET == yes ]] && screen_fullscreen; then
     afterburn quiet on
   else
     afterburn quiet off
@@ -77,10 +85,13 @@ fullscreen_event() {
   if [[ $1 == 'fullscreen>>1' ]]; then
     [[ $FULLSCREEN_QUIET == yes ]] && afterburn quiet on
   else
-    # Leaving always clears quiet, also if FULLSCREEN_QUIET was switched to no while it was on. A builtin read of
-    # the state file, so a quiet that is already off costs no `afterburn` fork.
+    # Leaving clears quiet unless a window on another visible workspace is still fullscreen (and FULLSCREEN_QUIET
+    # is yes: if it was switched to no while quiet was on, leaving always clears). A builtin read of the state file
+    # first, so a quiet that is already off costs no fork.
     local q=; { IFS= read -r q < "$STATE/quiet"; } 2>/dev/null
-    [[ $q == on ]] && afterburn quiet off
+    [[ $q == on ]] || return 0
+    hypr_pick
+    [[ $FULLSCREEN_QUIET == yes ]] && screen_fullscreen || afterburn quiet off
   fi
   return 0
 }

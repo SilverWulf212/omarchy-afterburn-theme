@@ -126,6 +126,8 @@ exit 0
     "hyprctl": r'''#!/bin/bash
 echo "hyprctl $*" >> "$SB/calls.log"
 [[ $1 == configerrors ]] && printf '%s' "${STUB_CONFIGERRORS:-}"
+[[ $* == *clients* ]] && printf '%s' "${STUB_CLIENTS:-}"      # JSON a test sets, like a real `hyprctl -j clients`
+[[ $* == *monitors* ]] && printf '%s' "${STUB_MONITORS:-}"
 exit 0
 ''',
     "cursor-fx": "#!/bin/bash\necho \"cursor-fx $*\" >> \"$SB/calls.log\"\n",

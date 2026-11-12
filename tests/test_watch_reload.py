@@ -164,7 +164,7 @@ class ReconnectTests(unittest.TestCase):
         r = sb.watch_func("n=0; sleep() { n=$((n+1)); (( n < 3 )) || exit 0; }; watch_fullscreen", XDG_RUNTIME_DIR=str(run))
         self.assertEqual(r.returncode, 0, r.stderr)
         # main() reads it once at start; after that, once per reconnect (2 sleeps = 2 reconnects before the exit).
-        self.assertEqual([c for c in sb.call_log() if c.startswith("hyprctl activewindow")], ["hyprctl activewindow -j"] * 2)
+        self.assertEqual([c for c in sb.call_log() if c == "hyprctl -j clients"], ["hyprctl -j clients"] * 2)
 
 
     def reconnects(self, level):
