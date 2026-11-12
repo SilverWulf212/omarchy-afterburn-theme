@@ -98,9 +98,12 @@ was=$(cat "$SB/plugins/$id.state" 2>/dev/null || true)
 cloned=$(jq -r '.omarchy.clonedFrom // empty' "$dir/manifest.json")
 [[ $id == omarchy.* ]] || rm -f "$SB/plugins/$id.state" "$SB/plugins/$id.islock"
 [[ $id != omarchy.* ]] || echo disabled > "$SB/plugins/$id.state"
-mv "$dir" "$HOME/.config/omarchy/plugins/.$id.bak.1"
+# Like the real tool: a folder that is not a git checkout is kept as .<id>.bak.<UTC time>[-n].
+backup="$HOME/.config/omarchy/plugins/.$id.bak.$(date -u +%Y%m%d%H%M%S)"
+[[ ! -e $backup ]] || backup+="-1"
+mv "$dir" "$backup"
 if [[ -n $cloned && $was == enabled && $id != omarchy.* ]]; then echo enabled > "$SB/plugins/$cloned.state"; fi
-echo "Removed $id."
+echo "Removed $id. Backup at: $backup"
 ''',
     "omarchy-plugin-validate": r'''#!/bin/bash
 echo "omarchy-plugin-validate $*" >> "$SB/calls.log"

@@ -5,7 +5,8 @@
 #
 # install:   clone the built-in omarchy.lock with omarchy-plugin-clone (which makes
 #            ~/.config/omarchy/plugins/afterburn.lock and switches to it), copy
-#            EmberLayer.qml next to the clone's LockView.qml, insert one
+#            EmberLoader.qml in as EmberLayer.qml and EmberLayer.qml (the embers) as Embers.qml
+#            next to the clone's LockView.qml, insert one
 #            `EmberLayer { anchors.fill: parent }` just before the lock form (after
 #            the wallpaper blur), then run omarchy-plugin-validate on the clone.
 #            If any step after the switch fails, the clone is removed and omarchy.lock is
@@ -20,7 +21,10 @@
 # back from there by recolor and uninstall. A marker without an id (installs made before this
 # change) means the old id, "$USER.lock", if that clone exists and is ours.
 #
-# recolor [FLARE EMBER RUST [STYLE]]: rewrite the installed clone's EmberLayer.qml from the shipped
+# The clone's EmberLayer.qml is only a loader: the shell keeps the lock loaded all session and reuses the
+# QML types it built, so the embers live in Embers.qml, which the loader reads again each time the lock shows.
+#
+# recolor [FLARE EMBER RUST [STYLE]]: rewrite the installed clone's Embers.qml from the shipped
 #            one with the given 6-digit hex colours (the active theme's; no arguments = the base
 #            orange) and the given motion. STYLE is rise (EmberLayer.qml itself, the default), or
 #            fall, drift, spark, pulse or burst (styles/<STYLE>.qml). An unknown STYLE gives rise.
@@ -28,7 +32,7 @@
 #            Does nothing unless the clone exists and is ours.
 #
 # Install and uninstall are idempotent. Re-running install on an existing clone refreshes
-# EmberLayer.qml and does not insert a second layer.
+# EmberLayer.qml and Embers.qml and does not insert a second layer.
 #
 # Test hooks (for dry runs only): LOCK_EMBERS_PLUGINS_DIR and LOCK_EMBERS_OMARCHY_PATH
 # override the plugin folder and the Omarchy install root. LOCK_EMBERS_CLONE_USER overrides the
@@ -38,6 +42,7 @@ set -euo pipefail
 
 SELF_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 EMBER_SRC="$SELF_DIR/EmberLayer.qml"
+LOADER="$SELF_DIR/EmberLoader.qml"
 SOURCE_ID="omarchy.lock"
 # What omarchy-plugin-clone builds the id from. Never the login name: "omarchy" would collide with the built-in.
 CLONE_USER="${LOCK_EMBERS_CLONE_USER:-afterburn}"
@@ -84,28 +89,27 @@ insert_layer() {
   local line
   line=$(find_anchor "$file") || return 1
 
-  local block tmp
-  block=$(mktemp)
+  # Written next to the file and moved over it only once complete: a failed write leaves LockView.qml as it was.
+  local tmp
   tmp=$(mktemp "$(dirname "$file")/.LockView.XXXXXX")
-  cat >"$block" <<'BLOCK'
-    // Ember layer (lock-embers.sh): ambient, input-transparent, above the blur.
-    EmberLayer {
-      anchors.fill: parent
-    }
-
-BLOCK
-  awk -v at="$line" -v blockfile="$block" '
+  awk -v at="$line" '
     NR == at {
-      while ((getline l < blockfile) > 0) print l
-      close(blockfile)
+      print "    // Ember layer (lock-embers.sh): ambient, input-transparent, above the blur."
+      print "    EmberLayer {"
+      print "      anchors.fill: parent"
+      print "    }"
+      print ""
     }
     { print }
-  ' "$file" >"$tmp"
-  rm -f "$block"
-
-  chmod --reference="$file" "$tmp"
-  mv "$tmp" "$file"
+  ' "$file" >"$tmp" && chmod --reference="$file" "$tmp" && mv "$tmp" "$file" || { rm -f "$tmp"; return 1; }
   say "inserted EmberLayer before line $line of $(basename "$file")"
+}
+
+# Copy $1 over $2 through a temp file next to it: a failed write leaves $2 as it was.
+put() {
+  local tmp
+  tmp=$(mktemp "$(dirname "$2")/.put.XXXXXX") || return
+  install -m 0644 "$1" "$tmp" && mv "$tmp" "$2" || { rm -f "$tmp"; return 1; }
 }
 
 is_our_clone() {
@@ -140,6 +144,16 @@ write_marker() {
   printf 'clone_id=%s\n' "$CLONE_ID" > "$MARKER"
 }
 
+# omarchy-plugin-remove keeps a plugin folder that is not a git checkout as .<id>.bak.<UTC time>[-n] and says so
+# ("Backup at: <path>"). The clone is ours to delete, so delete the backup this call just made, and only that one.
+remove_clone() {
+  local out bak
+  out=$(omarchy-plugin-remove "$1" --yes) || return
+  bak=$(sed -n 's/.*Backup at: //p' <<<"$out")
+  [[ $bak =~ ^"$PLUGINS_DIR/.$1.bak."[0-9]{14}(-[0-9]+)?$ && -d $bak && ! -L $bak ]] && rm -rf -- "$bak"
+  sed 's/ Backup at: .*//' <<<"$out"
+}
+
 # From the moment the built-in lock may be switched off until the install is done, a failure must leave
 # omarchy.lock enabled. GUARD is on during that window; the EXIT trap rolls back what this run made.
 GUARD=0 PRE_NEW=0 PRE_LEGACY=0 PRE_MARKER=0
@@ -152,7 +166,7 @@ rollback() {
     if [[ $id == "$NEW_ID" ]]; then (( PRE_NEW )) && continue; else (( PRE_LEGACY )) && continue; fi
     if [[ -d $d ]] && is_our_clone "$d"; then
       say "removing the clone $id this run made"
-      omarchy-plugin-remove "$id" --yes >/dev/null 2>&1 || say "could not remove $d; delete it by hand"
+      remove_clone "$id" >/dev/null 2>&1 || say "could not remove $d; delete it by hand"
     fi
   done
   (( PRE_MARKER )) || rm -f "$MARKER"
@@ -266,8 +280,9 @@ install_layer() {
     write_marker
   fi
 
-  install -m 0644 "$EMBER_SRC" "$clone_dir/EmberLayer.qml"
-  say "copied EmberLayer.qml into $clone_dir"
+  put "$LOADER" "$clone_dir/EmberLayer.qml" && put "$EMBER_SRC" "$clone_dir/Embers.qml" ||
+    die "could not write the ember layer into $clone_dir"
+  say "copied EmberLayer.qml and Embers.qml into $clone_dir"
 
   insert_layer "$clone_dir/LockView.qml" ||
     die "could not insert EmberLayer into $clone_dir/LockView.qml (Omarchy changed the lock layout?)"
@@ -280,7 +295,7 @@ install_layer() {
   say "undo with: $0 uninstall"
 }
 
-# Write EmberLayer.qml into the clone with the given colours and motion (defaults: the shipped orange,
+# Write Embers.qml into the clone with the given colours and motion (defaults: the shipped orange,
 # rising). Placeholders keep one replacement from being rewritten by the next.
 recolor_layer() {
   local flare=${1:-ffc48a} ember=${2:-ff5a1f} rust=${3:-7a3e16} style=${4:-rise} clone_dir tmp
@@ -303,18 +318,19 @@ recolor_layer() {
     say "no clone $CLONE_ID of ours, nothing to recolor"
     return 0
   fi
+  # An install from before the loader: its EmberLayer.qml holds the embers. It loads Embers.qml from the next login on.
+  cmp -s "$LOADER" "$clone_dir/EmberLayer.qml" || put "$LOADER" "$clone_dir/EmberLayer.qml"
   tmp=$(mktemp "$clone_dir/.EmberLayer.XXXXXX")
   sed -e 's/ffc48a/@FLARE@/g; s/ff5a1f/@EMBER@/g; s/7a3e16/@RUST@/g' "$src" |
     sed -e "s/@FLARE@/${flare,,}/g; s/@EMBER@/${ember,,}/g; s/@RUST@/${rust,,}/g" > "$tmp"
-  if cmp -s "$tmp" "$clone_dir/EmberLayer.qml"; then
+  if cmp -s "$tmp" "$clone_dir/Embers.qml"; then
     rm -f "$tmp"
     say "embers already #$ember, $style"
     return 0
   fi
   chmod 0644 "$tmp"
-  mv "$tmp" "$clone_dir/EmberLayer.qml"
-  say "embers recolored (#$flare #$ember #$rust), $style"
-  omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
+  mv "$tmp" "$clone_dir/Embers.qml"
+  say "embers recolored (#$flare #$ember #$rust), $style; the lock shows them the next time it opens"
 }
 
 uninstall_layer() {
@@ -324,7 +340,7 @@ uninstall_layer() {
   if [[ -e $clone_dir || -L $clone_dir ]]; then
     if is_our_clone "$clone_dir"; then
       say "removing clone $CLONE_ID"
-      omarchy-plugin-remove "$CLONE_ID" --yes
+      remove_clone "$CLONE_ID"
     else
       die "$clone_dir exists and is not a clone of $SOURCE_ID; not touching it"
     fi
