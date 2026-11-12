@@ -275,10 +275,8 @@ elif cmd == "light":  # light COLORS_SRC COLORS_DST HYPR_SRC HYPR_DST NAME TAGLI
     if lines and lines[0].startswith("-- Afterburn:"):
         lines = lines[1:]
     lua = "\n".join(lines)
-    for old, new in [("f59145", stops[0]), ("ff5a1f", stops[1]), ("ffc48a", stops[2]), ("2b2a28", inactive[0])]:
-        lua = lua.replace(old, "@" + old + "@")
-    for old, new in [("f59145", stops[0]), ("ff5a1f", stops[1]), ("ffc48a", stops[2]), ("2b2a28", inactive[0])]:
-        lua = lua.replace("@" + old + "@", new.lower())
+    swap = {"f59145": stops[0], "ff5a1f": stops[1], "ffc48a": stops[2], "2b2a28": inactive[0]}
+    lua = re.sub("|".join(swap), lambda m: swap[m.group()].lower(), lua)
     # Paper wants a short warm shadow, not the dark themes' black one, and a tighter range.
     lua = lua.replace('rgba(00000066)', f'rgba({keys["brown"].lstrip("#").lower()}26)')
     lua = re.sub(r"range = \d+", f"range = {int(grange)}", lua)
@@ -413,6 +411,21 @@ feel_rows=("| afterburn (base) | #$BASE_ACCENT | $BASE_PERSONALITY | $BASE_FEELI
 motion_rows=("| afterburn (base) | embers | $(turn_words slow) | 14 | 0.08 | rise |")
 extras_rows=("| afterburn (base) | The nine wallpapers (six stills, three live loops) |")
 
+# add_rows DIR LABEL ACCENT_TEXT FIND_TEST...: the edition's row in each table. FIND_TEST picks which files in
+# backgrounds/ count as its own (the rest are the shared stills); btop.theme and neovim.lua always count.
+add_rows() {
+  local dir=$1 label=$2 accent_text=$3 f extras_joined
+  local -a extra_list=()
+  shift 3
+  while IFS= read -r f; do extra_list+=("\`${f#"$dir/"}\`"); done < <(
+    { find "$dir/backgrounds" -type f "$@" ; find "$dir" -maxdepth 1 -type f \( -name btop.theme -o -name neovim.lua \); } | LC_ALL=C sort)
+  extras_joined=$(IFS=,; echo "${extra_list[*]}")
+  extras_joined=${extras_joined//,/, }
+  feel_rows+=("| $label | $accent_text | $CONF_PERSONALITY | $CONF_FEELING | $tagline |")
+  motion_rows+=("| $label | $CONF_CURSOR_FX | $(turn_words "$CONF_ROTATE") | $CONF_GLOW_RANGE | $CONF_DIM | $CONF_EMBER_STYLE |")
+  extras_rows+=("| $label | ${extras_joined:-none} |")
+}
+
 for spec in "${EDITIONS[@]}"; do
   IFS='|' read -r name target icon lmul smul band glow <<<"$spec"
   edition_conf "$name"
@@ -466,14 +479,7 @@ for spec in "${EDITIONS[@]}"; do
 
   copy_extras "$name" "$dir"
   python3 tools/wallpapers/selector-previews.py render "$dir/backgrounds/1-horizon.jpg" "$dir/preview.png"
-  extra_list=()
-  while IFS= read -r f; do extra_list+=("\`${f#"$dir/"}\`"); done < <(
-    { find "$dir/backgrounds" -type f -name 'live-*' ; find "$dir" -maxdepth 1 -type f \( -name btop.theme -o -name neovim.lua \); } | LC_ALL=C sort)
-  extras_joined=$(IFS=,; echo "${extra_list[*]}")
-  extras_joined=${extras_joined//,/, }
-  feel_rows+=("| $name | $accent | $CONF_PERSONALITY | $CONF_FEELING | $tagline |")
-  motion_rows+=("| $name | $CONF_CURSOR_FX | $(turn_words "$CONF_ROTATE") | $CONF_GLOW_RANGE | $CONF_DIM | $CONF_EMBER_STYLE |")
-  extras_rows+=("| $name | ${extras_joined:-none} |")
+  add_rows "$dir" "$name" "$accent" -name 'live-*'
   echo "built $name: shift ${shift} deg, accent $accent"
 done
 
@@ -521,14 +527,7 @@ for spec in "${LIGHT_EDITIONS[@]}"; do
 
   copy_extras "$name" "$dir"
   python3 tools/wallpapers/selector-previews.py render "$dir/backgrounds/1-horizon.jpg" "$dir/preview.png"
-  extra_list=()
-  while IFS= read -r f; do extra_list+=("\`${f#"$dir/"}\`"); done < <(
-    { find "$dir/backgrounds" -type f \( -name 'live-*' -o -name '1-horizon.jpg' -o -name '[7-9]-*.jpg' \) ; find "$dir" -maxdepth 1 -type f \( -name btop.theme -o -name neovim.lua \); } | LC_ALL=C sort)
-  extras_joined=$(IFS=,; echo "${extra_list[*]}")
-  extras_joined=${extras_joined//,/, }
-  feel_rows+=("| $name (light) | $accent on $paper | $CONF_PERSONALITY | $CONF_FEELING | $tagline |")
-  motion_rows+=("| $name (light) | $CONF_CURSOR_FX | $(turn_words "$CONF_ROTATE") | $CONF_GLOW_RANGE | $CONF_DIM | $CONF_EMBER_STYLE |")
-  extras_rows+=("| $name (light) | ${extras_joined:-none} |")
+  add_rows "$dir" "$name (light)" "$accent on $paper" \( -name 'live-*' -o -name '1-horizon.jpg' -o -name '[7-9]-*.jpg' \)
   echo "built $name: light edition, accent $accent on paper $paper"
 done
 
