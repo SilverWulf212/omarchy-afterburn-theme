@@ -11,17 +11,21 @@
 
 : "${POWER_DIR:=/sys/class/power_supply}"
 
-# Reads one attribute of a power supply folder; empty if missing.
-ab_ps_attr() { cat "$1/$2" 2>/dev/null || true; }
+# ab_ps_read VAR DIR ATTR: sets VAR to one attribute of a power supply folder; empty if missing or unreadable.
+# A builtin read, no fork: the watcher asks on every power event. (A sysfs attribute is one line.)
+ab_ps_read() { printf -v "$1" %s ""; { IFS= read -r "$1" < "$2/$3"; } 2>/dev/null; return 0; }
+
+# Prints one attribute of a power supply folder; empty if missing.
+ab_ps_attr() { local v; ab_ps_read v "$1" "$2"; printf '%s' "$v"; }
 
 # Prints one word: system, peripheral, mains or other. system = a battery that powers this machine.
 ab_ps_kind() {
   local d=$1 type scope
-  type=$(ab_ps_attr "$d" type)
+  ab_ps_read type "$d" type
   case $type in
     Mains) echo mains ;;
     Battery)
-      scope=$(ab_ps_attr "$d" scope)
+      ab_ps_read scope "$d" scope
       case ${scope,,} in
         ''|system) echo system ;;
         *)         echo peripheral ;;
@@ -34,7 +38,7 @@ ab_ps_kind() {
 ab_system_batteries() {
   local d
   for d in "$POWER_DIR"/*; do
-    [[ -d $d && $(ab_ps_kind "$d") == system ]] && basename "$d"
+    [[ -d $d && $(ab_ps_kind "$d") == system ]] && printf '%s\n' "${d##*/}"
   done
   return 0
 }
@@ -43,9 +47,12 @@ ab_has_battery() { [[ -n $(ab_system_batteries) ]]; }
 
 # True when a mains adapter reports online.
 ab_on_ac() {
-  local d
+  local d type online
   for d in "$POWER_DIR"/*; do
-    [[ $(ab_ps_attr "$d" type) == Mains && $(ab_ps_attr "$d" online) == 1 ]] && return 0
+    ab_ps_read type "$d" type
+    [[ $type == Mains ]] || continue
+    ab_ps_read online "$d" online
+    [[ $online == 1 ]] && return 0
   done
   return 1
 }

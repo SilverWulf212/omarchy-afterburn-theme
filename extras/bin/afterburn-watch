@@ -29,7 +29,8 @@ load_conf() {
 }
 
 # True for the base theme and for the colour editions (afterburn-voltage, -cyber, ...).
-is_afterburn() { local t; t=$(cat "$THEME_FILE" 2>/dev/null); [[ $t == afterburn || $t == afterburn-* ]]; }
+# A builtin read, no fork: every power and heat tick asks.
+is_afterburn() { local t=; { IFS= read -r t < "$THEME_FILE"; } 2>/dev/null; [[ $t == afterburn || $t == afterburn-* ]]; }
 
 # --- fullscreen: quiet while a window is fullscreen --------------------------
 # At start, quiet follows what is on screen now. A fullscreen toggle missed while the
@@ -73,10 +74,12 @@ watch_fullscreen() {
 # --- power: battery means saver mode -----------------------------------------
 # Only a system battery makes this a laptop (see afterburn-power.sh). A wireless mouse reporting
 # "discharging" on a desktop must not turn the saver on.
-power_tick() {  # reads and sets $saver, the last value we applied (set by watch_power)
+# $battery (yes|no) is asked once per watcher run: a machine does not gain or lose its own battery while up.
+power_tick() {  # reads and sets $saver, the last value we applied, and $battery (both set by watch_power)
   load_conf
   is_afterburn && [[ $LAPTOP_MODE == auto ]] || return 0
-  if ! ab_has_battery; then
+  [[ -n ${battery:-} ]] || { ab_has_battery && battery=yes || battery=no; }
+  if [[ $battery == no ]]; then
     # Not a laptop. Older versions counted a mouse battery and may have left the saver on: switch it off
     # once per watcher start. After that the saver is yours (afterburn saver on|off). The one-time check is
     # used up on the first desktop tick whether or not there was anything to clear; a failed clear may retry.
@@ -95,7 +98,7 @@ power_tick() {  # reads and sets $saver, the last value we applied (set by watch
 }
 
 watch_power() {
-  local saver=""
+  local saver="" battery=""
   while :; do
     power_tick
     if command -v upower >/dev/null; then
@@ -108,6 +111,7 @@ watch_power() {
 
 # --- heat: the level, from time, CPU pressure or weather ---------------------
 time_level() {  # cool inside EVENING_HOURS (e.g. 19-07 wraps midnight)
+  # `date`, not printf %(%H)T: a long-running bash keeps the timezone it started with, date follows a change.
   local s e h=$((10#$(date +%H))) inside=0
   IFS=- read -r s e <<<"$EVENING_HOURS"
   s=$((10#$s)); e=$((10#$e))

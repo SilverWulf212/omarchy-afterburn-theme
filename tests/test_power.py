@@ -80,6 +80,30 @@ class WatcherTests(PowerBase):
         sb.write_state_text(sb.state_dir / "saver", "on\n")
         self.assertEqual(self.tick(sb), [])
 
+    def test_mains_without_an_online_file_is_not_ac(self):
+        sb = self.make()
+        sb.supply("BAT0", "Battery", scope="System", status="Discharging", capacity=70)
+        sb.supply("AC", "Mains")
+        self.assertEqual(self.tick(sb), ["afterburn saver on"])
+
+    def test_missing_files_are_quiet_and_count_as_empty(self):
+        sb = self.make()
+        sb.supply("BAT0", "Battery", status="Discharging")
+        (sb.sysfs / "odd").mkdir()                       # a supply folder with no type file
+        (sb.home / ".local/state/omarchy/current/theme.name").unlink()
+        r = sb.watch_func('is_afterburn && echo yes; ab_ps_kind "$POWER_DIR/odd"; '
+                          'printf "[%s]" "$(ab_ps_attr "$POWER_DIR/BAT0" online)"; ab_on_ac || echo no-ac')
+        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, "other\n[]no-ac\n", ""))
+
+    def test_the_battery_is_asked_once_but_the_adapter_every_tick(self):
+        sb = self.make()
+        sb.supply("BAT0", "Battery", scope="System", status="Charging", capacity=70)
+        sb.supply("AC", "Mains", online=1)
+        off_ac = f'printf "0\\n" > "{sb.sysfs}/AC/online"'
+        r = sb.watch_func(f'saver=""; power_tick; ab_has_battery() {{ echo asked; return 1; }}; {off_ac}; power_tick')
+        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, "", ""))
+        self.assertEqual([c for c in sb.call_log() if c in SAVER_CALLS], ["afterburn saver off", "afterburn saver on"])
+
 
 class DiagnosticTests(PowerBase):
     def test_doctor_names_the_ignored_peripheral(self):
