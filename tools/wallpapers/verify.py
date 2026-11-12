@@ -2,6 +2,7 @@
 """Check delivered signature loops, motion continuity, heat assets and staged copies."""
 import hashlib
 import json
+import operator
 from pathlib import Path
 import statistics
 import subprocess
@@ -35,7 +36,7 @@ def check_loop(edition, loop):
     assert len(raw) == size * 360
     frames = [memoryview(raw)[i * size:(i + 1) * size] for i in range(360)]
     def difference(a, b):
-        return sum(abs(x - y) for x, y in zip(a, b)) / size
+        return sum(map(abs, map(operator.sub, a, b))) / size
     steps = [difference(frames[i], frames[i + 1]) for i in range(359)]
     seam = difference(frames[-1], frames[0])
     motion = max(difference(frames[0], frames[i]) for i in [90, 180, 270])
