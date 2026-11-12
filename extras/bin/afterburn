@@ -44,8 +44,8 @@ KEYS="ROTATE DIM GLOW_RANGE CURSOR_FX EMBER_STYLE HEAT_SOURCE EVENING_HOURS ZIP 
 # Settings an edition can set a default for (see afterburn-theme.sh). Everything else is yours alone.
 EDITION_KEYS="$AB_EDITION_KEYS"
 declare -A SRC=()   # where an edition key's value came from: conf, edition or default
-# What a key falls back to when it is missing, empty or fails its check.
-declare -A DEFAULT=([ROTATE]=slow [DIM]=0.08 [GLOW_RANGE]=14 [CURSOR_FX]=embers [EMBER_STYLE]=rise [HEAT_SOURCE]=time [EVENING_HOURS]=19-07 [ZIP]="" [LAT]="" [LON]=""
+# What a key falls back to when it is missing, empty or fails its check (the edition keys: see ab_base_default).
+declare -A DEFAULT=([HEAT_SOURCE]=time [EVENING_HOURS]=19-07 [ZIP]="" [LAT]="" [LON]=""
                     [HOT_F]=90 [COOL_F]=50 [HEAT_WALLPAPERS]=yes [FULLSCREEN_QUIET]=yes [LAPTOP_MODE]=auto [FAIL_FX]=random)
 
 die() { echo "afterburn: $*" >&2; exit 1; }
@@ -97,6 +97,7 @@ load_conf() {
     SRC[$k]=$AB_SRC
   done
   for k in $KEYS; do
+    [[ " $EDITION_KEYS " == *" $k "* ]] && continue
     [[ -n ${!k:-} ]] || printf -v "$k" %s "${DEFAULT[$k]}"
     value_ok "$k" "${!k}" || {
       echo "afterburn: ignoring $k='${!k}' in $CONF (allowed: $HINT); using '${DEFAULT[$k]}'" >&2
@@ -385,11 +386,8 @@ saver_reason() {
 
 cmd_status() {
   load_conf
-  local theme level
-  theme=$(cat "$OMARCHY_CUR/theme.name" 2>/dev/null || echo unknown)
-  level=$(state_get level normal)
-  echo "theme:    $theme"
-  echo "level:    $level"
+  echo "theme:    ${THEME_NAME:-unknown}"
+  echo "level:    $(state_get level normal)"
   echo "quiet:    $(mode_line quiet)"
   echo "saver:    $(mode_line saver)"
   if command -v cursor-fx >/dev/null 2>&1; then
@@ -494,8 +492,7 @@ cmd_laptop() {
   load_conf
   set_key LAPTOP_MODE "$v"
   case $v in
-    on)  cmd_mode saver on ;;
-    off) cmd_mode saver off ;;
+    on|off) cmd_mode saver "$v" ;;
     auto) echo "laptop: auto (afterburn-watch decides from the power source)" ;;
   esac
 }
