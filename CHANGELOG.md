@@ -23,7 +23,7 @@ Dates are 2026. The theme installs from `main`, so the 2.0.0 section below is th
 - **Desktops losing their effects (#3, #4).** A wireless mouse or keyboard battery was mistaken for a laptop battery, which switched the battery saver on. Only the machine's own battery counts now, and a saver left on by the old behaviour is cleared.
 - Cursor effect on battery: it comes back after fullscreen ends, and a new edition's cursor effect or `afterburn set CURSOR_FX` applies on battery.
 - The heat wallpaper now swaps in battery saver and fullscreen too; only the glow change waits.
-- `afterburn laptop auto` puts the saver in line with the power source at once, leaving fullscreen always ends quiet mode,.
+- `afterburn laptop auto` puts the saver in line with the power source at once, and leaving fullscreen always ends quiet mode.
 - The installer saves the heat source even if the config lacks the line.
 - Uninstalling lock-screen embers no longer reports a false "no lock screen" or skips its cleanup.
 - `afterburn locate` works in locales that use a decimal comma.

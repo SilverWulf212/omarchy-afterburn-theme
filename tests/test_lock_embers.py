@@ -345,7 +345,8 @@ Window {
                "XDG_RUNTIME_DIR": str(sb.root / "run"), "LANG": "C.UTF-8"}
         p = subprocess.Popen(["qml6", str(d / "Main.qml")], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                              text=True, stdin=subprocess.DEVNULL)
-        self.addCleanup(p.kill)
+        self.addCleanup(p.stdout.close)
+        self.addCleanup(p.kill)       # cleanups run last-in first-out: kill, then close the pipe
         lines = {}
         for line in p.stdout:
             word, _, rest = line.removeprefix("qml: ").partition(" ")

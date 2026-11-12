@@ -57,8 +57,9 @@ if [[ -s $STATE_DIR/editions ]]; then
     [[ -d $dir && ! -L $dir ]] || continue
     if [[ $cur == "afterburn-$e" ]]; then
       # Decision: switch to the base theme first, so the desktop is never left on a theme that is gone.
-      # stdin is the editions list this loop is reading: keep the command away from it.
-      omarchy theme set afterburn >/dev/null 2>&1 </dev/null || true
+      # stdin is the editions list this loop is reading: keep the command away from it. With no tty omarchy would
+      # run the theme hook detached, after the watcher stops below; OMARCHY_THEME_WAIT=1 makes it finish first.
+      OMARCHY_THEME_WAIT=1 omarchy theme set afterburn >/dev/null 2>&1 </dev/null || true
       cur=$(ab_theme_name)
       if [[ $cur == afterburn ]]; then
         echo "  ✓ switched from afterburn-$e to afterburn"

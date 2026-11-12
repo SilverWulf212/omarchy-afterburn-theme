@@ -191,6 +191,25 @@ rm -f "$f"; ln -s /nonexistent/dir/x "$f"; echo "$f"
         self.assertEqual(keep.read_text(), "mine\n")
         self.assertFalse((self.sb.state_dir / "editions").exists())
 
+    def test_the_edition_switch_waits_for_the_theme_hook(self):
+        """Without OMARCHY_THEME_WAIT=1 and no tty, omarchy-theme-set runs the theme hook detached, and it can land
+        after the watcher is stopped and the cursor effect is restored."""
+        themes = self.sb.home / ".config" / "omarchy" / "themes"
+        (themes / "afterburn-cool").mkdir()
+        self.sb.write_state_text(self.sb.state_dir / "editions", "cool\n")
+        self.sb.write_state_text(self.sb.home / ".local/state/omarchy/current/theme.name", "afterburn-cool")
+        stub = self.sb.bin / "omarchy"
+        stub.unlink()
+        stub.write_text('''#!/bin/bash
+echo "omarchy $* (WAIT=${OMARCHY_THEME_WAIT:-})" >> "$SB/calls.log"
+[[ "$1 $2" == "theme set" ]] && echo "$3" > "$HOME/.local/state/omarchy/current/theme.name"
+exit 0
+''')
+        stub.chmod(0o755)
+        r = self.uninstall()
+        self.assertIn("omarchy theme set afterburn (WAIT=1)", self.sb.call_log(), r.stdout)
+        self.assertIn("switched from afterburn-cool to afterburn", r.stdout)
+
     def test_the_watcher_stops_before_the_cursor_effect_is_restored(self):
         self.sb.write_state_text(self.sb.state_dir / "prev-cursor-fx", "ember\n")
         r = self.uninstall()     # no unit file on disk: the stop does not depend on it
