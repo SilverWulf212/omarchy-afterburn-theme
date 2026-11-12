@@ -100,6 +100,36 @@ class Runtime(unittest.TestCase):
         self.assertEqual(got, {"CURSOR_FX": "embers:edition", "ROTATE": "off:edition", "DIM": "0.03:edition",
                                "GLOW_RANGE": "10:edition", "EMBER_STYLE": "drift:edition"})
 
+    def effective(self, conf, theme="afterburn-lite"):
+        path = self.sb.home / ".config/afterburn/afterburn.conf"
+        self.sb.write_state_text(path, conf)
+        r = self.sb.run(["/bin/bash", "-c",
+                         f'. "{THEME_SH}"; for k in $AB_EDITION_KEYS; do ab_effective $k {theme}; echo "$k=$AB_VAL:$AB_SRC"; done'])
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return dict(line.split("=", 1) for line in r.stdout.split()), r.stderr.replace(str(path), "CONF")
+
+    def test_your_conf_against_the_edition_follows_the_rules(self):
+        # Last line wins, leading spaces and one pair of quotes are fine, a commented line is not a value, a
+        # first-run default line follows the edition, and a bad or empty value falls back to the edition.
+        got, err = self.effective(
+            "ROTATE=slow          # off|slow|medium|fast  (border gradient turn: 60s|20s|8s per turn)\n"
+            "DIM=0.5\n   DIM=\"0.2\"   # indented, quoted, last\n#CURSOR_FX=cyber\nCURSOR_FX='neon'  # set by you\n"
+            "GLOW_RANGE=20\nGLOW_RANGE=99\nEMBER_STYLE=\nEMBER_STYLE=spark")          # no newline at the end
+        self.assertEqual(got, {"ROTATE": "off:edition", "DIM": "0.2:conf", "CURSOR_FX": "neon:conf",
+                               "GLOW_RANGE": "10:edition", "EMBER_STYLE": "spark:conf"})
+        self.assertEqual(err, "afterburn: ignoring GLOW_RANGE='99' in CONF (not an allowed value)\n")
+
+    def test_a_first_run_default_line_is_judged_on_unindented_lines_only(self):
+        conf = ("  ROTATE=fast\nDIM=0.08             # dim_inactive strength, 0 = off\n DIM=0.5\n"
+                "EMBER_STYLE=\nCURSOR_FX=bogus\n")
+        got, err = self.effective(conf)
+        self.assertEqual(got, {"ROTATE": "fast:conf", "DIM": "0.03:edition", "CURSOR_FX": "embers:edition",
+                               "GLOW_RANGE": "10:edition", "EMBER_STYLE": "drift:edition"})
+        self.assertEqual(err, "afterburn: ignoring CURSOR_FX='bogus' in CONF (not an allowed value)\n")
+        got, _ = self.effective(conf, theme="afterburn")       # the base theme has no edition.conf
+        self.assertEqual(got, {"ROTATE": "fast:conf", "DIM": "0.08:default", "CURSOR_FX": "embers:default",
+                               "GLOW_RANGE": "14:default", "EMBER_STYLE": "rise:default"})
+
 
 class CursorFollowsTheBackground(unittest.TestCase):
     """cursor-fx reads the terminal background only when it switches effects. Base and Lite both use

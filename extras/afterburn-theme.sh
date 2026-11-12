@@ -138,10 +138,11 @@ ab_recolor_glow() {
 AB_EDITION_KEYS="CURSOR_FX ROTATE DIM GLOW_RANGE EMBER_STYLE"
 AB_CURSOR_FX_NAMES="cyber lightning glitch neon phosphor embers shockwave katana teleport fireworks aurora mecha hologram"
 
+# Sets AB_VAL to the base theme's value for an edition key.
 ab_base_default() {
   case ${1:-} in
-    CURSOR_FX) echo embers ;; ROTATE) echo slow ;; DIM) echo 0.08 ;;
-    GLOW_RANGE) echo 14 ;; EMBER_STYLE) echo rise ;; *) return 1 ;;
+    CURSOR_FX) AB_VAL=embers ;; ROTATE) AB_VAL=slow ;; DIM) AB_VAL=0.08 ;;
+    GLOW_RANGE) AB_VAL=14 ;; EMBER_STYLE) AB_VAL=rise ;; *) AB_VAL=; return 1 ;;
   esac
 }
 
@@ -158,13 +159,24 @@ ab_valid() {
   esac
 }
 
-# ab_file_value FILE KEY: print KEY's value from a KEY=VALUE file (last line wins; a trailing comment,
-# surrounding spaces and one pair of quotes are dropped). Fails if the key is absent or empty.
-ab_file_value() {
-  local line v
-  line=$(grep -E "^[[:space:]]*$2=" "$1" 2>/dev/null | tail -n1) || return 1
-  [[ -n $line ]] || return 1
-  v=${line#*=}
+# Every afterburn call resolves five keys, so this part reads files with builtins only: no grep, no subshells.
+# ab_scan FILE KEY: AB_LINE = the last line that assigns KEY (leading spaces allowed), AB_LINE0 = the last one
+# that starts with KEY= itself. Both empty if there is none or the file cannot be read.
+ab_scan() {
+  local line
+  AB_LINE= AB_LINE0=
+  while IFS= read -r line || [[ -n $line ]]; do
+    [[ $line == *"$2="* && $line =~ ^[[:space:]]*"$2"= ]] || continue   # the glob first: it is cheap
+    AB_LINE=$line
+    [[ $line == "$2="* ]] && AB_LINE0=$line
+  done 2>/dev/null < "$1"
+  return 0
+}
+
+# Sets AB_V to the value in AB_LINE (a trailing comment, surrounding spaces and one pair of quotes are dropped).
+# Fails if it is empty.
+ab_line_value() {
+  local v=${AB_LINE#*=}
   if [[ $v =~ ^[[:space:]]*\"([^\"]*)\" || $v =~ ^[[:space:]]*\'([^\']*)\' ]]; then
     v=${BASH_REMATCH[1]}
   else
@@ -172,28 +184,31 @@ ab_file_value() {
     v=${v#"${v%%[![:space:]]*}"}
     v=${v%"${v##*[![:space:]]}"}
   fi
-  [[ -n $v ]] || return 1
-  printf '%s' "$v"
+  AB_V=$v
+  [[ -n $v ]]
 }
 
-# The user's own conf, and where it keeps its explicit values.
-ab_conf_path() { echo "${XDG_CONFIG_HOME:-$HOME/.config}/afterburn/afterburn.conf"; }
+# ab_file_value FILE KEY: print KEY's value from a KEY=VALUE file (last line wins, see ab_line_value).
+# Fails if the key is absent or empty.
+ab_file_value() { ab_scan "$1" "$2"; ab_line_value && printf '%s' "$AB_V"; }
 
-# ab_conf_value KEY: the value you saved yourself, unless the line is an untouched first-run default.
+# The user's own conf, and where it keeps its explicit values. Sets AB_CONF.
+ab_conf_path() { AB_CONF="${XDG_CONFIG_HOME:-$HOME/.config}/afterburn/afterburn.conf"; }
+
+# ab_conf_value KEY: sets AB_V to the value you saved yourself, unless the line is an untouched first-run default.
 ab_conf_value() {
-  local f line
-  f=$(ab_conf_path)
-  [[ -f $f ]] || return 1
-  line=$(grep -E "^$1=" "$f" | tail -n1) || return 1
-  case $line in
+  ab_conf_path
+  [[ -f $AB_CONF ]] || return 1
+  ab_scan "$AB_CONF" "$1"
+  case $AB_LINE0 in
     'ROTATE=slow          # off|slow|medium|fast  (border gradient turn: 60s|20s|8s per turn)' | \
     'DIM=0.08             # dim_inactive strength, 0 = off') return 1 ;;
   esac
-  ab_file_value "$f" "$1"
+  ab_line_value
 }
 
-# The edition.conf of a theme: your installed copy, the staged current theme, then the base theme's own
-# .editions/ copy (so an edition installed by an older release still gets its defaults).
+# Sets AB_EDITION_FILE to the edition.conf of a theme: your installed copy, the staged current theme, then the
+# base theme's own .editions/ copy (so an edition installed by an older release still gets its defaults).
 # Only afterburn-<edition> names qualify, and the base theme has none.
 ab_edition_file() {
   local name=${1:-} f
@@ -201,7 +216,7 @@ ab_edition_file() {
   for f in "$HOME/.config/omarchy/themes/$name/edition.conf" \
            "${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/current/theme/edition.conf" \
            "$HOME/.config/omarchy/themes/afterburn/.editions/${name#afterburn-}/edition.conf"; do
-    [[ -f $f ]] && { echo "$f"; return 0; }
+    [[ -f $f ]] && { AB_EDITION_FILE=$f; return 0; }
   done
   return 1
 }
@@ -209,14 +224,14 @@ ab_edition_file() {
 # ab_effective KEY [THEME]: sets AB_VAL to the value to use and AB_SRC to where it came from
 # (conf, edition or default).
 ab_effective() {
-  local k=$1 theme=${2:-} v f
-  AB_VAL=$(ab_base_default "$k") AB_SRC=default
-  if v=$(ab_conf_value "$k"); then
-    if ab_valid "$k" "$v"; then AB_VAL=$v AB_SRC=conf; return 0; fi
-    echo "afterburn: ignoring $k='$v' in $(ab_conf_path) (not an allowed value)" >&2
+  local k=$1 theme=${2:-}
+  ab_base_default "$k"; AB_SRC=default
+  if ab_conf_value "$k"; then
+    if ab_valid "$k" "$AB_V"; then AB_VAL=$AB_V AB_SRC=conf; return 0; fi
+    echo "afterburn: ignoring $k='$AB_V' in $AB_CONF (not an allowed value)" >&2
   fi
-  if f=$(ab_edition_file "$theme") && v=$(ab_file_value "$f" "$k") && ab_valid "$k" "$v"; then
-    AB_VAL=$v AB_SRC=edition
+  if ab_edition_file "$theme" && ab_scan "$AB_EDITION_FILE" "$k" && ab_line_value && ab_valid "$k" "$AB_V"; then
+    AB_VAL=$AB_V AB_SRC=edition
   fi
   return 0
 }
