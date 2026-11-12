@@ -147,15 +147,19 @@ fetch_weather() {  # NWS: points -> first station -> latest obs; forecastHourly 
   return 1
 }
 
+# The cached fields in one jq: sets checked, f (tempF), night and txt (lowercased). The text comes last, so nothing
+# in it can shift the others.
+weather_fields() {
+  IFS=$'\x1f' read -r -d '' checked f night txt < <(jq -j \
+    '[.checked // 0, .tempF // "", .night, (.text // "" | ascii_downcase)] | map(tostring) | join("\u001f")' "$WEATHER" 2>/dev/null)
+}
+
 weather_level() {  # cached NWS data -> level; no data means no change
   local now checked f txt night i
   now=$(date +%s)
-  checked=$(jq -r '.checked // 0' "$WEATHER" 2>/dev/null)
-  (( now - ${checked:-0} >= 1200 )) && fetch_weather
-  f=$(jq -r '.tempF // empty' "$WEATHER" 2>/dev/null)
+  weather_fields
+  (( now - ${checked:-0} >= 1200 )) && { fetch_weather; weather_fields; }   # a failed fetch rewrites the cache too
   [[ -n $f ]] || return 1
-  txt=$(jq -r '.text // "" | ascii_downcase' "$WEATHER")
-  night=$(jq -r '.night' "$WEATHER")
   i=$(awk -v t="$f" -v h="$HOT_F" -v c="$COOL_F" 'BEGIN { print (t >= h) ? 2 : (t <= c) ? 0 : 1 }')
   [[ $txt =~ rain|drizzle|shower|snow|thunder ]] && i=0
   [[ $night == true && $i -gt 0 ]] && i=$((i - 1))
