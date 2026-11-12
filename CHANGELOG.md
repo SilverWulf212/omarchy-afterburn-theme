@@ -1,6 +1,16 @@
 # Changelog
 
-Dates are 2026. The theme installs from `main`, so the 2.0.1 section below is the current release.
+Dates are 2026. The theme installs from `main`, so the 2.0.2 section below is the current release.
+
+## 2.0.2 — 2026-11-12
+
+### Fixed
+- Fullscreen quiet follows the screen: leaving fullscreen on one monitor keeps quiet on while a window on another visible workspace is still fullscreen, and the watcher's start-up check looks at every visible workspace.
+- The theme-set hook ignores a theme switch that was already superseded by a newer one.
+- `afterburn apply` always puts the cursor effect back in line with quiet and saver, so an interrupted mode change can no longer leave it off.
+- A Ghostty config named `config.ghostty` is found, and Omarchy's own state is read from where Omarchy keeps it even when `XDG_STATE_HOME` is moved.
+- Battery saver leaves a mixed per-shader subtle setting alone.
+- A heat wallpaper swap only replaces the theme's own wallpapers, never a personal one with the same file name.
 
 ## 2.0.1 — 2026-11-12
 
