@@ -6,7 +6,7 @@ Edition: lite (burnt orange `#c2410c` on warm paper `#f5efe4`). The idea: the da
 
 ## What is different from the colour editions
 
-1. **A hand-made palette** (`colors.toml`, `mode = "light"`), not a hue rotation. The build refuses it if any text colour is under 4.5:1 on the paper. ANSI red, yellow and green keep their meaning; blue is the accent and cyan and magenta are umber and rust, like the base theme's warm family.
+1. **A hand-made palette** (`colors.toml`, `mode = "light"`), not a hue rotation. The build refuses it if body text, the accent or an ANSI colour (or its bright variant) is under 4.5:1 on the paper. `muted` and `dark_foreground` are deliberately fainter (about 3:1) and `orange` is 3.75:1; the build does not check those three. ANSI red, yellow and green keep their meaning; blue is the accent and cyan and magenta are umber and rust, like the base theme's warm family.
 2. **Printed stills.** The build inverts lightness in Lab and multiplies by the paper colour (`print_grade`), so black becomes blank paper and the brightest glow becomes the heaviest ink. The base's `1-horizon` becomes `7-sunprint`, because Lite brings its own `1-horizon`.
 3. **Heat levels in ink.** A hot source is brighter, so it prints darker: hot means more ink, cool means less. At runtime the hot border stop is the ember deepened with black instead of a near-white that would vanish on paper.
 4. **A shadow, not a glow.** Range 10, the accent at a third opacity under the focused window and a faint rust shadow (`7a3e16` at 15%) under the others, where the dark themes use black.

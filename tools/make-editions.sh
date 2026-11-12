@@ -253,7 +253,8 @@ elif cmd == "light":  # light COLORS_SRC COLORS_DST HYPR_SRC HYPR_DST NAME TAGLI
         hi, lo = sorted((lum(a), lum(b)), reverse=True)
         return (hi + 0.05) / (lo + 0.05)
 
-    # Text colours have to stay readable on the paper. 4.5:1 is the WCAG AA line for body text.
+    # Body text, the accent and the ANSI colours (and bright variants) must stay readable on the paper: 4.5:1 is the
+    # WCAG AA line. muted, dark_foreground (about 3:1) and orange (3.75:1) are deliberately not checked.
     paper = keys["background"].lstrip("#")
     for k in ["accent", "foreground", "light_foreground", "red", "yellow", "green", "cyan", "blue", "magenta",
               "bright_red", "bright_yellow", "bright_green", "bright_cyan", "bright_blue", "bright_magenta"]:
@@ -539,7 +540,7 @@ done
   echo "Each edition keeps the base palette structure and five hue-rotated alternative stills, with a bespoke default still and signature live loop. Orange's three live loops remain exclusive to the base theme. See docs/wallpapers/README.md for artwork and motion details."
   echo "Each also carries its own cool and hot heat wallpapers in \`heat-wallpapers/\`, which the \`afterburn\` command swaps in at those heat levels."
   echo
-  echo "Lite is the light edition: ink on warm paper instead of light on black. Its palette is hand-made (\`tools/edition-extras/lite/colors.toml\`, every text colour at least 4.5:1 on the paper), the six base stills are printed onto the paper colour, and it has no glow: a short warm shadow instead. A light wallpaper would jar in the dark themes, so Lite's art is not copied into the shared \`backgrounds/\` folder."
+  echo "Lite is the light edition: ink on warm paper instead of light on black. Its palette is hand-made (\`tools/edition-extras/lite/colors.toml\`, body text, the accent and the ANSI colours and their bright variants at least 4.5:1 on the paper; muted and secondary text is deliberately fainter at about 3:1, and \`orange\` is 3.75:1), the six base stills are printed onto the paper colour, and it has no glow: a short warm shadow instead. A light wallpaper would jar in the dark themes, so Lite's art is not copied into the shared \`backgrounds/\` folder."
   echo
   echo "## Who they are"
   echo

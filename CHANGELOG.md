@@ -5,7 +5,7 @@ Dates are 2026. The theme installs from `main`, so "Unreleased" below is what a 
 ## Unreleased (for v1.1.0)
 
 ### Added
-- **Afterburn Lite**, the first light edition: burnt-orange ink on warm paper. Its own palette (every text colour at least 4.5:1 on the paper, checked by the build), eight wallpapers, the live loop `live-heat-shield`, and boot and login art. Install it with the other editions, then `omarchy theme set afterburn-lite`.
+- **Afterburn Lite**, the first light edition: burnt-orange ink on warm paper. Its own palette (body text, the accent and the ANSI colours and their bright variants are at least 4.5:1 on the paper, checked by the build; muted and secondary text is deliberately fainter at about 3:1, and `orange` is 3.75:1), eight wallpapers, the live loop `live-heat-shield`, and boot and login art. Install it with the other editions, then `omarchy theme set afterburn-lite`.
 - `afterburn doctor`: a read-only report of why effects are on or off (theme, quiet and saver flags with the reason, every power supply and whether it counts, watcher state, cursor-fx and Ghostty, Hyprland config errors).
 - `afterburn status` now says why quiet or saver mode is on.
 - A test suite for the code that runs on your machine (lock screen, battery detection, the light edition, the installer's edition list).
