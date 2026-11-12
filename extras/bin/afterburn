@@ -491,7 +491,10 @@ cmd_laptop() {
   set_key LAPTOP_MODE "$v"
   case $v in
     on|off) cmd_mode saver "$v" ;;
-    auto) echo "laptop: auto (afterburn-watch decides from the power source)" ;;
+    auto)
+      echo "laptop: auto (afterburn-watch decides from the power source)"
+      # Put saver in line with the power source now, not at the watcher's next change.
+      if ab_has_battery && ! ab_on_ac; then cmd_mode saver on; else cmd_mode saver off; fi ;;
   esac
 }
 

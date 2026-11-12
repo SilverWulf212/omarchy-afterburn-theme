@@ -105,6 +105,37 @@ class WatcherTests(PowerBase):
         self.assertEqual([c for c in sb.call_log() if c in SAVER_CALLS], ["afterburn saver off", "afterburn saver on"])
 
 
+    def test_a_non_auto_period_clears_the_cache_so_auto_applies_again(self):  # bug 3b
+        sb = self.make()
+        sb.supply("BAT0", "Battery", scope="System", status="Charging", capacity=70)
+        sb.supply("AC", "Mains", online=1)
+        conf = sb.home / ".config/afterburn/afterburn.conf"
+        sb.write_state_text(conf, "LAPTOP_MODE=on\n")
+        body = f'saver=off; power_tick; printf "LAPTOP_MODE=auto\\n" > "{conf}"; power_tick'
+        r = sb.watch_func(body)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual([c for c in sb.call_log() if c in SAVER_CALLS], ["afterburn saver off"])
+
+
+class LaptopAutoTests(PowerBase):
+    """`afterburn laptop auto` puts saver in line with the power source at once (bug 3a)."""
+
+    def saver_after(self, sb, first, ac_online):
+        sb.supply("BAT0", "Battery", scope="System", status="Discharging", capacity=70)
+        sb.supply("AC", "Mains", online=ac_online)
+        (sb.home / ".local/state/omarchy/current/theme").mkdir(parents=True)
+        for args in (("laptop", first), ("laptop", "auto")):
+            r = sb.afterburn(*args)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        return (sb.state_dir / "saver").read_text().strip()
+
+    def test_laptop_on_then_auto_on_ac_turns_saver_off(self):
+        self.assertEqual(self.saver_after(self.make(), "on", 1), "off")
+
+    def test_laptop_off_then_auto_on_battery_turns_saver_on(self):
+        self.assertEqual(self.saver_after(self.make(), "off", 0), "on")
+
+
 class DiagnosticTests(PowerBase):
     def test_doctor_names_the_ignored_peripheral(self):
         sb = self.make()
