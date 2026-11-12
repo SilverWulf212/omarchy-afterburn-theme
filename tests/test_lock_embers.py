@@ -18,6 +18,12 @@ class LockEmbersBase(unittest.TestCase):
         self.addCleanup(sb.cleanup)
         return sb
 
+    def embers(self, clone):
+        """The clone's one embers.<n>/Embers.qml (the embers the loader shows)."""
+        versions = sorted(clone.glob("embers.*"))
+        self.assertEqual(len(versions), 1, versions)
+        return versions[0] / "Embers.qml"
+
 
 class InstallIdTests(LockEmbersBase):
     def test_user_omarchy_never_gets_the_builtin_id(self):  # issue #5
@@ -254,14 +260,15 @@ class FailedWriteTests(LockEmbersBase):
     """A write that fails (a full disk; `ulimit -f 1` caps every file at 1 KiB) leaves the active lock as it was."""
 
     def files(self, d):
-        return {p.name: p.read_bytes() for p in d.iterdir()}
+        return {str(p.relative_to(d)): p.read_bytes() for p in d.rglob("*") if p.is_file()}
 
     def test_failed_refresh_keeps_the_clone(self):  # codex-verified #2
         sb = self.make("alice")
         self.assertEqual(sb.lock("install").returncode, 0)
+        self.assertEqual(sb.lock("recolor", "aaaaaa", "bbbbbb", "cccccc", "spark").returncode, 0)
         clone = sb.plugins_dir / "afterburn.lock"
         before = self.files(clone)
-        r = sb.run(["/bin/bash", "-c", f'ulimit -f 1; exec /bin/bash "{LOCK_SH}" install'])
+        r = sb.run(["/bin/bash", "-c", f'ulimit -f 1; exec /bin/bash "{LOCK_SH}" install'])   # writes the orange back
         self.assertNotEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertEqual(self.files(clone), before, "no file changed and no temp file left")
         self.assertEqual(sb.enabled_locks(), ["afterburn.lock"])
@@ -278,32 +285,39 @@ class FailedWriteTests(LockEmbersBase):
 
 
 class LiveRecolorTests(LockEmbersBase):
-    """E2E I3. The shell keeps the lock service, and every QML type it built, for the whole session. So the clone's
-    EmberLayer.qml is a loader, and the embers live in Embers.qml, which it loads afresh each time the lock shows."""
+    """E2E I3. The shell keeps the lock service, and every QML type it built, for the whole session, and Quickshell keeps
+    the text of every QML file it has loaded, by path. So the clone's EmberLayer.qml is a loader, and each set of embers
+    goes into a new embers.<n>/Embers.qml; the loader shows the newest one each time the lock shows."""
 
-    def test_install_and_recolor_write_the_embers_behind_the_loader(self):
+    def test_install_and_recolor_write_a_new_embers_folder(self):
         sb = self.make("alice")
         self.assertEqual(sb.lock("install").returncode, 0)
         clone = sb.plugins_dir / "afterburn.lock"
         self.assertEqual((clone / "EmberLayer.qml").read_bytes(), LOADER.read_bytes())
-        self.assertEqual((clone / "Embers.qml").read_bytes(), (REPO / "extras/lock/EmberLayer.qml").read_bytes())
+        first = self.embers(clone)
+        self.assertEqual(first.read_bytes(), (REPO / "extras/lock/EmberLayer.qml").read_bytes())
         r = sb.lock("recolor", "aaaaaa", "bbbbbb", "cccccc", "spark")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         spark = (REPO / "extras/lock/styles/spark.qml").read_text()
-        self.assertEqual((clone / "Embers.qml").read_text(),
+        second = self.embers(clone)
+        self.assertNotEqual(second.parent.name, first.parent.name, "a new path, so the shell reads it")
+        self.assertEqual(second.read_text(),
                          spark.replace("ffc48a", "aaaaaa").replace("ff5a1f", "bbbbbb").replace("7a3e16", "cccccc"))
+        self.assertEqual(sb.lock("recolor", "aaaaaa", "bbbbbb", "cccccc", "spark").returncode, 0)
+        self.assertEqual(self.embers(clone), second, "the same embers again make no new folder")
+        self.assertEqual([p.name for p in clone.iterdir() if p.name.startswith(".")], [], "no temp left")
         self.assertEqual((clone / "EmberLayer.qml").read_bytes(), LOADER.read_bytes())
 
     @unittest.skipUnless(shutil.which("qml6"), "needs Qt's qml6 runner")
-    def test_loader_shows_the_rewritten_embers_without_a_restart(self):
+    def test_loader_shows_the_newest_embers_without_a_restart(self):
         """Real Qt, offscreen. As in Omarchy's LockView, the layer sits in a Rectangle below the view that has
-        loadBackground. Showing again with the file unchanged reuses the URL (no new copy per lock); after the file
-        is replaced, as recolor does, the next show loads the new embers."""
+        loadBackground. Showing again with nothing new reuses the URL (no new copy per lock); after a new
+        embers.<n> folder replaces the old one, as recolor does, the next show loads the new embers."""
         sb = self.make("alice")
         d = sb.root / "qml"
-        d.mkdir()
+        (d / "embers.1").mkdir(parents=True)
         shutil.copy(LOADER, d / "EmberLayer.qml")
-        (d / "Embers.qml").write_text('import QtQuick\nItem { property string tag: "old" }\n')
+        (d / "embers.1" / "Embers.qml").write_text('import QtQuick\nItem { property string tag: "old" }\n')
         (d / "LockView.qml").write_text(
             "import QtQuick\nItem {\n  property bool loadBackground: false\n  property alias embers: embers\n"
             "  Rectangle {\n    anchors.fill: parent\n    EmberLayer { id: embers; anchors.fill: parent }\n  }\n}\n")
@@ -319,7 +333,7 @@ Window {
     function() { console.log("HIDDEN", tag()); v.loadBackground = true },
     function() { console.log("SHOWN", tag()); v.loadBackground = false },
     function() { v.loadBackground = true },
-    function() { console.log("RESHOWN", tag()); v.loadBackground = false },   // the test replaces Embers.qml now
+    function() { console.log("RESHOWN", tag()); v.loadBackground = false },   // the test writes embers.2 now
     function() {}, function() {}, function() {}, function() {},
     function() { v.loadBackground = true },
     function() { console.log("AGAIN", tag()); Qt.quit() } ]
@@ -337,13 +351,17 @@ Window {
             word, _, rest = line.removeprefix("qml: ").partition(" ")
             lines[word] = rest.strip()
             if word == "RESHOWN":
-                (d / "Embers.new").write_text('import QtQuick\nItem { property string tag: "new" }\n')
-                os.replace(d / "Embers.new", d / "Embers.qml")
+                (d / ".new").mkdir()
+                (d / ".new" / "Embers.qml").write_text('import QtQuick\nItem { property string tag: "new" }\n')
+                os.rename(d / ".new", d / "embers.2")
+                shutil.rmtree(d / "embers.1")
         p.wait(timeout=30)
         self.assertEqual(lines.get("HIDDEN"), "none", lines)
         self.assertTrue(lines.get("SHOWN", "").startswith("old 64 "), lines)
-        self.assertEqual(lines.get("RESHOWN"), lines["SHOWN"], "an unchanged file keeps its URL")
+        self.assertEqual(lines.get("RESHOWN"), lines["SHOWN"], "nothing new keeps the URL")
         self.assertTrue(lines.get("AGAIN", "").startswith("new 64 "), lines)
+        self.assertIn("/embers.2/Embers.qml", lines["AGAIN"])
+
 
 class BackwardsCompatTests(LockEmbersBase):
     """Installs made before the id change used ~/.config/omarchy/plugins/<user>.lock."""
@@ -355,7 +373,7 @@ class BackwardsCompatTests(LockEmbersBase):
         r = sb.lock("recolor", "aaaaaa", "bbbbbb", "cccccc")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         clone = sb.plugins_dir / "alice.lock"
-        text = (clone / "Embers.qml").read_text()
+        text = self.embers(clone).read_text()
         self.assertIn("bbbbbb", text)
         self.assertNotIn("ff5a1f", text)
         self.assertEqual((clone / "EmberLayer.qml").read_bytes(), LOADER.read_bytes(), "the old layer becomes the loader")
