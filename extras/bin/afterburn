@@ -65,8 +65,8 @@ write_default_conf() {
 #GLOW_RANGE=14       # 4-30, shadow range at the normal heat level
 EOF
   printf '#CURSOR_FX=embers    # a cursor-fx effect (%s)\n' "$AB_CURSOR_FX_NAMES"
+  printf '#EMBER_STYLE=rise    # lock-screen embers: %s\n' "${AB_EMBER_STYLES// /|}"
   cat <<'EOF'
-#EMBER_STYLE=rise    # lock-screen embers: rise|fall|drift|spark|pulse|burst
 HEAT_SOURCE=time     # off|time|pressure|weather
 EVENING_HOURS=19-07  # time source: cool inside this window
 ZIP=                 # weather source (US only); LAT/LON filled by `afterburn locate`
@@ -120,7 +120,7 @@ value_ok() {
         DIM)         HINT='0 to 1, e.g. 0.08' ;;
         GLOW_RANGE)  HINT='4 to 30, e.g. 14' ;;
         CURSOR_FX)   HINT="$AB_CURSOR_FX_NAMES" ;;
-        EMBER_STYLE) HINT='rise|fall|drift|spark|pulse|burst' ;;
+        EMBER_STYLE) HINT="${AB_EMBER_STYLES// /|}" ;;
       esac
       ab_valid "$k" "$v"; return ;;
     HEAT_SOURCE)     re='^(off|time|pressure|weather)$';     hint='off|time|pressure|weather' ;;

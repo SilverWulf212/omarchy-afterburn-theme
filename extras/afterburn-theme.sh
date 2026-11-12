@@ -138,6 +138,7 @@ ab_recolor_glow() {
 #   EMBER_STYLE  rise|fall|drift|spark|pulse|burst             (base: rise)
 AB_EDITION_KEYS="CURSOR_FX ROTATE DIM GLOW_RANGE EMBER_STYLE"
 AB_CURSOR_FX_NAMES="cyber lightning glitch neon phosphor embers shockwave katana teleport fireworks aurora mecha hologram"
+AB_EMBER_STYLES="rise fall drift spark pulse burst"
 
 # Sets AB_VAL to the base theme's value for an edition key.
 ab_base_default() {
@@ -155,7 +156,7 @@ ab_valid() {
     ROTATE)      [[ $v =~ ^(off|slow|medium|fast)$ ]] ;;
     DIM)         [[ $v =~ ^(0|1|0?\.[0-9]+|1\.0*)$ ]] ;;
     GLOW_RANGE)  [[ $v =~ ^[1-9][0-9]?$ ]] && (( v >= 4 && v <= 30 )) ;;
-    EMBER_STYLE) [[ $v =~ ^(rise|fall|drift|spark|pulse|burst)$ ]] ;;
+    EMBER_STYLE) [[ $v =~ ^(${AB_EMBER_STYLES// /|})$ ]] ;;
     *) return 1 ;;
   esac
 }
