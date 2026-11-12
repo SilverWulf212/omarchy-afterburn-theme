@@ -462,9 +462,9 @@ cmd_level() {
   esac
   state_set level "$1"
   is_afterburn || return 0
-  effective_quiet && return 0
   load_conf
-  live_level "$1"
+  # Quiet and saver hold the glow still (apply_visuals re-applies it when they end); the wallpaper still follows the level.
+  effective_quiet || live_level "$1"
   if [[ $HEAT_WALLPAPERS == yes ]]; then swap_wallpaper "$1"; fi
 }
 
