@@ -182,10 +182,12 @@ class BuiltEdition(unittest.TestCase):
         for level in ("cool", "hot"):
             self.assertEqual(sorted(p.name for p in (BUILT / "heat-wallpapers" / level).glob("*.jpg")), stills)
         self.assertEqual([p.name for p in (BUILT / "backgrounds").glob("*.mp4")], ["live-heat-shield.mp4"])
-        for name in stills:
-            mean = float(subprocess.check_output(
-                ["magick", str(BUILT / "backgrounds" / name), "-colorspace", "Gray", "-format", "%[fx:mean]", "info:"]))
-            self.assertGreater(mean, 0.7, f"{name} is not a light wallpaper")
+        means = subprocess.check_output(
+            ["magick", "-define", "jpeg:size=480x270", *(str(BUILT / "backgrounds" / n) for n in stills),
+             "-colorspace", "Gray", "-format", "%[fx:mean]\n", "info:"], text=True).split()
+        self.assertEqual(len(means), len(stills))
+        for name, mean in zip(stills, means):
+            self.assertGreater(float(mean), 0.7, f"{name} is not a light wallpaper")
 
     def test_light_art_stays_out_of_the_dark_picker(self):
         self.assertEqual(list((REPO / "backgrounds").glob("lite-*")), [])
