@@ -1,6 +1,7 @@
 import os
 import pty
 import select
+import time
 import unittest
 
 from support import REPO, Sandbox
@@ -11,29 +12,32 @@ FAIL_BASH = REPO / "extras" / "afterburn-fail.bash"
 # Every flash frame starts with an erase-line escape; the glyph itself is not in every frame.
 def interactive(sb, keys, histcontrol="ignoreboth", after=""):
     """Run a real interactive bash in a pty; return the output after sourcing, then after each key line."""
-    env = sb.env(HISTCONTROL=histcontrol, PS1="> ")
+    env = sb.env(HISTCONTROL=histcontrol, PS1="PRMT> ")
     pid, fd = pty.fork()
     if pid == 0:
         os.execve(str(sb.bin / "bash"), ["bash", "--norc", "--noprofile", "-i"], env)
 
-    def read(wait=0.3):
+    def read():
+        """Everything up to the next prompt (which prints after PROMPT_COMMAND), at most 5 s."""
         out = b""
-        while select.select([fd], [], [], wait)[0]:
-            try:
-                chunk = os.read(fd, 65536)
-            except OSError:
-                break
-            if not chunk:
-                break
-            out += chunk
+        end = time.monotonic() + 5
+        while not out.endswith(b"PRMT> ") and (left := end - time.monotonic()) > 0:
+            if select.select([fd], [], [], left)[0]:
+                try:
+                    chunk = os.read(fd, 65536)
+                except OSError:
+                    break
+                if not chunk:
+                    break
+                out += chunk
         return out.decode(errors="replace")
 
     read()
     os.write(fd, f"source {FAIL_BASH}{after}\n".encode())
-    seen = [read(0.9)]   # [0] = what the first prompt after sourcing printed
+    seen = [read()]   # [0] = what the first prompt after sourcing printed
     for k in keys:
         os.write(fd, k.encode())
-        seen.append(read(0.9))
+        seen.append(read())
     os.write(fd, b"exit\n")
     os.waitpid(pid, 0)
     return seen
