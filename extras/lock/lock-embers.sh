@@ -74,12 +74,6 @@ find_anchor() {
   ' "$1"
 }
 
-# Net brace depth of a file. Insertion must leave it unchanged, since the block is
-# balanced.
-brace_depth() {
-  awk '{ n += gsub(/\{/, "{"); m += gsub(/\}/, "}") } END { print n - m + 0 }' "$1"
-}
-
 insert_layer() {
   local file="$1"
   if grep -q 'EmberLayer {' "$file"; then
@@ -90,10 +84,9 @@ insert_layer() {
   local line
   line=$(find_anchor "$file") || return 1
 
-  local block depth_before depth_after tmp
+  local block tmp
   block=$(mktemp)
   tmp=$(mktemp "$(dirname "$file")/.LockView.XXXXXX")
-  depth_before=$(brace_depth "$file")
   cat >"$block" <<'BLOCK'
     // Ember layer (lock-embers.sh): ambient, input-transparent, above the blur.
     EmberLayer {
@@ -110,11 +103,6 @@ BLOCK
   ' "$file" >"$tmp"
   rm -f "$block"
 
-  depth_after=$(brace_depth "$tmp")
-  if [[ $depth_before != "$depth_after" ]]; then
-    rm -f "$tmp"
-    return 2
-  fi
   chmod --reference="$file" "$tmp"
   mv "$tmp" "$file"
   say "inserted EmberLayer before line $line of $(basename "$file")"
@@ -199,10 +187,11 @@ user_manifest() {
 # plugins are skipped: omarchy.polkit also has the capability, and omarchy.lock itself is the built-in. An
 # enabled plugin whose manifest cannot be read counts as a lock when its id ends in "lock", else we cannot tell.
 other_lock_enabled() {
-  local rows id m doubt=0
-  rows=$(omarchy-plugin-list 2>/dev/null | awk 'NR > 1 && $2 == "enabled" { print $1 }') || return 2
+  local list rows id m doubt=0
+  list=$(omarchy-plugin-list 2>/dev/null) || return 2
+  rows=$(awk 'NR > 1 && $2 == "enabled" { print $1 }' <<<"$list")
   # An empty list is not "no lock": the list command may have failed.
-  omarchy-plugin-list 2>/dev/null | awk 'NR > 1 { n++ } END { exit n ? 0 : 1 }' || return 2
+  awk 'NR > 1 { n++ } END { exit n ? 0 : 1 }' <<<"$list" || return 2
   while IFS= read -r id; do
     [[ -n $id && $id != omarchy.* ]] || continue
     if m=$(user_manifest "$id") && jq -e . "$m" >/dev/null 2>&1; then
