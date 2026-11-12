@@ -178,6 +178,41 @@ class OtherLockDetectionTests(LockEmbersBase):
         self.assertFalse(any("omarchy-plugin-enable" in c for c in sb.call_log()))
 
 
+class UninstallLeavesOtherLocksTests(LockEmbersBase):
+    def enables(self, sb):
+        return [c for c in sb.call_log() if "omarchy-plugin-enable" in c]
+
+    def installed(self, user="alice"):
+        sb = self.make(user)
+        self.assertEqual(sb.lock("install").returncode, 0)
+        sb.set_plugin("afterburn.lock", "disabled")      # the user moved on from our clone
+        return sb
+
+    def test_third_party_lock_chosen_later_survives_uninstall(self):
+        sb = self.installed()
+        sb.add_user_plugin("hello.lock", "enabled", lock=True)
+        r = sb.lock("uninstall")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(sb.enabled_locks(), ["hello.lock"])
+        self.assertFalse(any("omarchy.lock" in c for c in self.enables(sb)), sb.call_log())
+        self.assertFalse((sb.plugins_dir / "afterburn.lock").exists())
+
+    def test_active_clone_gives_the_builtin_back(self):
+        sb = self.make("alice")
+        self.assertEqual(sb.lock("install").returncode, 0)
+        r = sb.lock("uninstall")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(sb.enabled_locks(), ["omarchy.lock"])
+
+    def test_cannot_tell_touches_no_lock(self):
+        sb = self.installed()
+        sb.add_user_plugin("lockscreen-x", "enabled", manifest="broken")
+        r = sb.lock("uninstall")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self.enables(sb), [], sb.call_log())
+        self.assertFalse((sb.plugins_dir / "afterburn.lock").exists())
+
+
 class BackwardsCompatTests(LockEmbersBase):
     """Installs made before the id change used ~/.config/omarchy/plugins/<user>.lock."""
 

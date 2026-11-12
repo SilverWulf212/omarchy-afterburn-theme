@@ -346,10 +346,17 @@ uninstall_layer() {
     return 0
   fi
 
-  # omarchy-plugin-remove switches back to omarchy.lock when the clone was active;
-  # make sure of it, since the clone could only be installed over omarchy.lock.
-  say "making $SOURCE_ID the active lock screen"
-  omarchy-plugin-enable "$SOURCE_ID"
+  # omarchy-plugin-remove switches back to omarchy.lock when the clone was active. Enable the built-in
+  # ourselves only when positively no lock is enabled: a lock you chose after our clone must stay yours
+  # (enabling omarchy.lock would switch it off).
+  local other rc=0
+  other=$(other_lock_enabled) || rc=$?
+  if (( rc == 1 )); then
+    say "no lock screen is enabled; making $SOURCE_ID the active lock screen"
+    omarchy-plugin-enable "$SOURCE_ID"
+  else
+    say "your lock screen is ${other:-one we cannot identify}; leaving it as it is"
+  fi
   rm -f "$MARKER"
   say "uninstalled"
 }
