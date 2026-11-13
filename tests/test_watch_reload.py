@@ -152,6 +152,25 @@ class SignatureReachesCallsTests(unittest.TestCase):
         self.assertEqual(self.sb.call_log(), ["afterburn level cool sig=live"])
 
 
+    def test_cpu_heat_turns_hot_after_two_10_second_checks(self):
+        conf = self.sb.home / ".config/afterburn/afterburn.conf"
+        conf.parent.mkdir(parents=True)
+        conf.write_text("HEAT_SOURCE=pressure\n")
+        psi = self.sb.root / "psi"
+        psi.write_text("some avg10=60.00 avg60=50.00 avg300=20.00 total=1\n")
+        r = self.sb.watch_func('n=0; sleep() { echo "slept $1" >> "$SB/calls.log"; n=$((n+1)); (( n < 2 )) || exit 0; }; '
+                               'watch_heat', PSI_FILE=str(psi), **self.env)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.sb.call_log(), ["slept 10", "afterburn level hot sig=live", "slept 10"])
+
+    def test_time_heat_still_checks_once_a_minute(self):
+        conf = self.sb.home / ".config/afterburn/afterburn.conf"
+        conf.parent.mkdir(parents=True)
+        conf.write_text("HEAT_SOURCE=off\n")
+        r = self.sb.watch_func('sleep() { echo "slept $1" >> "$SB/calls.log"; exit 0; }; watch_heat', **self.env)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.sb.call_log(), ["slept 60"])
+
 class ReconnectTests(unittest.TestCase):
     def test_the_fullscreen_state_is_read_again_after_a_reconnect(self):
         sb = Sandbox()

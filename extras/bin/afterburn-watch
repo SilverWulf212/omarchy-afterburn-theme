@@ -251,7 +251,8 @@ watch_heat() {
       fi
       prev=$cand
     fi
-    sleep 60
+    # CPU load is checked every 10 s, so the glow answers a busy machine in about 20 s; time and weather move slowly.
+    if [[ $HEAT_SOURCE == pressure ]]; then sleep 10; else sleep 60; fi
   done
 }
 

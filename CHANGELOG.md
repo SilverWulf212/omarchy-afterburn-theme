@@ -1,6 +1,11 @@
 # Changelog
 
-Dates are 2026. The theme installs from `main`, so the 2.0.3 section below is the current release.
+Dates are 2026. The theme installs from `main`, so the 2.0.4 section below is the current release.
+
+## 2.0.4 — 2026-11-13
+
+### Changed
+- The CPU heat source (`HEAT_SOURCE=pressure`) checks every 10 seconds instead of every minute, so the glow answers a busy machine in about 20 seconds instead of about 2 minutes. It still waits for two readings in a row to agree, so a short spike does not flicker it. The time and weather sources still check once a minute.
 
 ## 2.0.3 — 2026-11-12
 
