@@ -1,6 +1,11 @@
 # Changelog
 
-Dates are 2026. The theme installs from `main`, so the 2.0.4 section below is the current release.
+Dates are 2026. The theme installs from `main`, so the 2.0.5 section below is the current release.
+
+## 2.0.5 — 2026-11-13
+
+### Fixed
+- Moving old Ghostty backups out of your home folder can no longer stop the installer halfway. If a backup cannot be moved (for example, Afterburn's state folder is read-only), or an entry is a link rather than a folder, it is left where it is and the rest carries on.
 
 ## 2.0.4 — 2026-11-13
 

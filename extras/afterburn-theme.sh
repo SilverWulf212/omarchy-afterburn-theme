@@ -35,8 +35,10 @@ ab_move_savepoints() {
   local old="$HOME/ghostty-savepoints" d
   [[ -d $old && ! -L $old && $CURSOR_FX_SAVEPOINTS != "$old" ]] || return 0
   mkdir -p "$CURSOR_FX_SAVEPOINTS" || return 0
+  # A link is left where it is, and a move that fails leaves that savepoint in place: never stop the caller.
   for d in "$old"/*-before-*/; do
-    [[ -d $d && ! -e $CURSOR_FX_SAVEPOINTS/$(basename "$d") ]] && mv "$d" "$CURSOR_FX_SAVEPOINTS/"
+    [[ -d $d && ! -L ${d%/} && ! -e $CURSOR_FX_SAVEPOINTS/$(basename "$d") ]] || continue
+    mv "$d" "$CURSOR_FX_SAVEPOINTS/" || true
   done
   rmdir "$old" 2>/dev/null || true
 }

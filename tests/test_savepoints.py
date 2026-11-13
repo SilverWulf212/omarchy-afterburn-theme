@@ -63,5 +63,19 @@ class Savepoints(unittest.TestCase):
         self.assertIn("kept your Ghostty config backups", r.stdout)
 
 
+    def test_a_failed_move_or_a_link_never_stops_a_strict_caller(self):
+        from support import THEME_SH
+        self.savepoint(self.old, "20261105-213202-before-install")
+        target = self.savepoint(self.sb.root, "elsewhere")
+        (self.old / "20261106-000000-before-cursor-fx-katana").symlink_to(target)
+        self.new.mkdir(parents=True)
+        self.new.chmod(0o500)                      # the move fails: permission denied
+        self.addCleanup(self.new.chmod, 0o755)
+        r = self.sb.run(["/bin/bash", "-c", f'set -euo pipefail; . "{THEME_SH}"; ab_move_savepoints; echo AFTER'])
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("AFTER", r.stdout)
+        self.assertTrue((self.old / "20261105-213202-before-install").is_dir())
+        self.assertTrue((self.old / "20261106-000000-before-cursor-fx-katana").is_symlink())
+
 if __name__ == "__main__":
     unittest.main()
