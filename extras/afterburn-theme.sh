@@ -22,6 +22,25 @@
 AB_FAIL_SH='$HOME/.config/omarchy/themes/afterburn/extras/afterburn-fail.bash'
 AB_BASHRC_LINE="[[ -f \"$AB_FAIL_SH\" ]] && source \"$AB_FAIL_SH\"  # afterburn"
 
+# cursor-fx copies your Ghostty config into a savepoint folder before every switch, and Afterburn
+# switches it on every edition, quiet and saver change. Keep those out of your home folder (issue #7):
+# point cursor-fx at Afterburn's state folder unless you chose a place yourself.
+AB_SAVEPOINTS="${XDG_STATE_HOME:-$HOME/.local/state}/afterburn/ghostty-savepoints"
+export CURSOR_FX_SAVEPOINTS="${CURSOR_FX_SAVEPOINTS:-$AB_SAVEPOINTS}"
+
+# Move savepoint folders from ~/ghostty-savepoints (cursor-fx's own default, and where its installer
+# always writes) into CURSOR_FX_SAVEPOINTS. Each savepoint's rollback.sh finds its files relative to
+# itself, so a moved one still works. Nothing is overwritten; anything else in the old folder stays.
+ab_move_savepoints() {
+  local old="$HOME/ghostty-savepoints" d
+  [[ -d $old && ! -L $old && $CURSOR_FX_SAVEPOINTS != "$old" ]] || return 0
+  mkdir -p "$CURSOR_FX_SAVEPOINTS" || return 0
+  for d in "$old"/*-before-*/; do
+    [[ -d $d && ! -e $CURSOR_FX_SAVEPOINTS/$(basename "$d") ]] && mv "$d" "$CURSOR_FX_SAVEPOINTS/"
+  done
+  rmdir "$old" 2>/dev/null || true
+}
+
 # Theme name as Omarchy stores it (lowercase, dashes). Empty if unknown.
 ab_theme_name() {
   cat "$HOME/.local/state/omarchy/current/theme.name" 2>/dev/null || true

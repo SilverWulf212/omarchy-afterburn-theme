@@ -1,6 +1,11 @@
 # Changelog
 
-Dates are 2026. The theme installs from `main`, so the 2.0.2 section below is the current release.
+Dates are 2026. The theme installs from `main`, so the 2.0.3 section below is the current release.
+
+## 2.0.3 — 2026-11-12
+
+### Fixed
+- No more `~/ghostty-savepoints` folder in your home (#7). cursor-fx backs up your Ghostty config before every effect switch, and Afterburn switches it on edition, quiet and saver changes, so the folder kept coming back. Those backups now go to `~/.local/state/afterburn/ghostty-savepoints/`, and the existing ones move there on your next theme change or installer run. Each backup's `rollback.sh` still works after the move. Set `CURSOR_FX_SAVEPOINTS` yourself to choose another place. Uninstall keeps the backups.
 
 ## 2.0.2 — 2026-11-12
 

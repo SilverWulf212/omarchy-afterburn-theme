@@ -39,6 +39,8 @@ if [[ -f $EXTRAS/afterburn-theme.sh ]]; then
 else
   ab_is_afterburn() { [[ ${1:-} == afterburn ]]; }
 fi
+# Savepoints left in ~/ghostty-savepoints by an older Afterburn or a manual cursor-fx move out of your home folder.
+declare -F ab_move_savepoints >/dev/null && ab_move_savepoints
 
 if ab_is_afterburn "$THEME"; then
   # The edition's knobs: your afterburn.conf first, then its edition.conf, then the base default.

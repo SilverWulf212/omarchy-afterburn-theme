@@ -73,7 +73,7 @@ cat <<'EOF'
     to one tested commit, and runs its installer. It writes ~/.local/bin/cursor-fx,
     ~/.config/ghostty/shaders/ and cursor-effects/, edits ~/.config/ghostty/config,
     and, if ~/.pi/agent exists, adds a pi extension and turns on showHardwareCursor.
-    Anything it replaces is copied to ~/ghostty-savepoints/ first.
+    Anything it replaces is copied to ~/.local/state/afterburn/ghostty-savepoints/ first.
   • SYSTEM HOOK: adds ~/.config/omarchy/hooks/theme-set.d/50-afterburn-extras, which runs
     on every theme change: it adds the glow on Afterburn, swaps your cursor effect and
     applies the subtle pack's settings.
@@ -155,15 +155,20 @@ if command -v cursor-fx >/dev/null; then
 elif ! command -v ghostty >/dev/null; then
   skip "skipped cursor-fx (needs Ghostty)"
 elif ask "Install cursor-fx, animated Ghostty cursors by Avarce (MIT)?"; then
-  CHANGED+=("cursor-fx installed (its own installer edits Ghostty config; old config in ~/ghostty-savepoints/)")
+  CHANGED+=("cursor-fx installed (its own installer edits Ghostty config; old config in $AB_SAVEPOINTS/)")
   [[ -f $HOME/.config/ghostty/config ]] || omarchy refresh config ghostty/config >/dev/null
   rm -rf "$CFX_DIR"
   git clone -q "$CFX_REPO" "$CFX_DIR"
   git -C "$CFX_DIR" -c advice.detachedHead=false checkout -q "$CFX_PIN"
   (cd "$CFX_DIR" && ./install.sh >/dev/null)
-  ok "cursor-fx installed (old Ghostty config backed up in ~/ghostty-savepoints/)"
+  ok "cursor-fx installed (old Ghostty config backed up in $AB_SAVEPOINTS/)"
 else
   skip "skipped cursor-fx. Re-run this script any time to add it"
+fi
+# cursor-fx's installer always backs up to ~/ghostty-savepoints; older Afterburn left its savepoints there too.
+if [[ -d $HOME/ghostty-savepoints ]]; then
+  ab_move_savepoints
+  [[ -d $HOME/ghostty-savepoints ]] || ok "Ghostty savepoints moved out of your home folder to $CURSOR_FX_SAVEPOINTS/"
 fi
 
 # 3. Glow + cursor hook

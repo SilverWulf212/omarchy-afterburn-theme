@@ -11,7 +11,7 @@ D="$HOME/.config/omarchy/hooks/theme-set.d"
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/afterburn"
 CONF_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 BIN="$HOME/.local/bin"
-KEEP=(preview-backups)   # state files that stay: the manual undo in the README needs preview-backups; a failed restore adds its own
+KEEP=(preview-backups ghostty-savepoints)   # state files that stay: the manual undo in the README needs preview-backups; a failed restore adds its own
 RC=0
 # shellcheck disable=SC1091
 . "$HERE/afterburn-theme.sh"   # AB_BASHRC_LINE
@@ -198,6 +198,7 @@ find_keep=(); for k in "${KEEP[@]}"; do find_keep+=(! -name "$k"); done
 find "$STATE_DIR" -mindepth 1 -maxdepth 1 "${find_keep[@]}" -exec rm -rf {} + 2>/dev/null
 rmdir "$STATE_DIR" 2>/dev/null || true
 [[ -f $STATE_DIR/starship.toml.bak ]] && echo "  · kept a safety copy of your old starship.toml: $STATE_DIR/starship.toml.bak"
+[[ -d $STATE_DIR/ghostty-savepoints ]] && echo "  · kept your Ghostty config backups: $STATE_DIR/ghostty-savepoints"
 [[ -d $STATE_DIR/preview-backups ]] && echo "  · kept your preview backups: $STATE_DIR/preview-backups"
 echo "  ✓ Afterburn hook removed"
 cat <<'EOF'
