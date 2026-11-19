@@ -124,5 +124,39 @@ class InstallRecordsWhatItChanges(unittest.TestCase):
         self.assertFalse([c for c in self.sb.call_log() if " restart " in c], self.sb.call_log())
 
 
+class CursorFxDownloadFailureTests(unittest.TestCase):
+    def setUp(self):
+        self.sb = Sandbox()
+        self.addCleanup(self.sb.cleanup)
+        (self.sb.bin / "cursor-fx").unlink()
+        git = self.sb.bin / "git"
+        git.write_text(r'''#!/bin/bash
+echo "git $*" >> "$SB/calls.log"
+if [[ $1 == clone ]]; then
+  [[ ${STUB_GIT_FAIL:-} != clone ]] || exit 128
+  mkdir -p "${@: -1}"
+  exit 0
+fi
+[[ ${STUB_GIT_FAIL:-} != checkout ]] || exit 128
+''')
+        git.chmod(0o755)
+
+    def assert_other_extras_finish(self, failure):
+        r = self.sb.install(STUB_GIT_FAIL=failure)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("couldn't download the tested cursor-fx version; the rest of the install will continue", r.stdout)
+        self.assertTrue(any(c.startswith("omarchy hook install theme-set ") for c in self.sb.call_log()),
+                        self.sb.call_log())
+        self.assertIn("omarchy theme set afterburn", self.sb.call_log())
+        self.assertFalse((self.sb.home / ".local/share/afterburn/ghostty-cursor-fx").exists())
+        self.assertNotIn("cursor-fx installed", r.stdout)
+
+    def test_a_clone_failure_does_not_stop_the_rest_of_the_installer(self):
+        self.assert_other_extras_finish("clone")
+
+    def test_a_missing_pinned_commit_does_not_stop_the_rest_of_the_installer(self):
+        self.assert_other_extras_finish("checkout")
+
+
 if __name__ == "__main__":
     unittest.main()

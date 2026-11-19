@@ -169,13 +169,17 @@ if command -v cursor-fx >/dev/null; then
 elif ! command -v ghostty >/dev/null; then
   skip "skipped cursor-fx (needs Ghostty)"
 elif ask "Install cursor-fx, animated Ghostty cursors by Avarce (MIT)?"; then
-  CHANGED+=("cursor-fx installed (its own installer edits Ghostty config; old config in $AB_SAVEPOINTS/)")
   [[ -f $HOME/.config/ghostty/config ]] || omarchy refresh config ghostty/config >/dev/null
   rm -rf "$CFX_DIR"
-  git clone -q "$CFX_REPO" "$CFX_DIR"
-  git -C "$CFX_DIR" -c advice.detachedHead=false checkout -q "$CFX_PIN"
-  (cd "$CFX_DIR" && ./install.sh >/dev/null)
-  ok "cursor-fx installed (old Ghostty config backed up in $AB_SAVEPOINTS/)"
+  if git clone -q "$CFX_REPO" "$CFX_DIR" &&
+     git -C "$CFX_DIR" -c advice.detachedHead=false checkout -q "$CFX_PIN"; then
+    CHANGED+=("cursor-fx installed (its own installer edits Ghostty config; old config in $AB_SAVEPOINTS/)")
+    (cd "$CFX_DIR" && ./install.sh >/dev/null)
+    ok "cursor-fx installed (old Ghostty config backed up in $AB_SAVEPOINTS/)"
+  else
+    rm -rf "$CFX_DIR"
+    skip "couldn't download the tested cursor-fx version; the rest of the install will continue"
+  fi
 else
   skip "skipped cursor-fx. Re-run this script any time to add it"
 fi
