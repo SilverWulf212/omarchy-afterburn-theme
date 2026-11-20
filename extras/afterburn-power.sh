@@ -56,3 +56,21 @@ ab_on_ac() {
   done
   return 1
 }
+
+# power-profiles-daemon's active profile (power-saver, balanced or performance); empty without the daemon.
+# busctl, not powerprofilesctl: that one is a Python script, and Omarchy hit a CPython shutdown crash with it.
+ab_power_profile() {
+  local out
+  out=$(busctl --system get-property net.hadess.PowerProfiles /net/hadess/PowerProfiles \
+    net.hadess.PowerProfiles ActiveProfile 2>/dev/null) || return 0
+  out=${out#s \"}
+  printf '%s' "${out%\"}"
+}
+
+# Whether a laptop wants the saver: the power-saver profile when there is a profile daemon (Omarchy switches to
+# power-saver on battery and remembers your pick per power source), otherwise being on battery.
+ab_saver_wanted() {
+  local p
+  p=$(ab_power_profile)
+  if [[ -n $p ]]; then [[ $p == power-saver ]]; else ! ab_on_ac; fi
+}

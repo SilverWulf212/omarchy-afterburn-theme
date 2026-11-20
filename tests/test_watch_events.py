@@ -15,6 +15,7 @@ class FullscreenEventTests(unittest.TestCase):
         # Count load_conf calls with an in-shell counter (no fork needed to count).
         body = '''
             n=0; load_conf() { n=$((n+1)); FULLSCREEN_QUIET=yes; }; is_afterburn() { return 0; }
+            k=0; screen_fullscreen() { k=$((k+1)); [[ $k == 1 ]]; }   # fullscreen on entry, gone on leaving
             for l in 'activewindow>>kitty,~' 'focusedmon>>eDP-1,1' 'workspace>>2' 'windowtitle>>0xabc' \\
                      'fullscreen>>1' 'openwindow>>x' 'fullscreen>>0' 'fullscreen>>x'; do
               fullscreen_event "$l"
@@ -75,28 +76,37 @@ class ScreenFullscreenTests(unittest.TestCase):
         return [c for c in sb.call_log() if not c.startswith("hyprctl")]
 
     def test_leaving_fullscreen_on_one_monitor_keeps_quiet_while_the_other_is_fullscreen(self):
-        self.assertEqual(self.run_watch("fullscreen_event 'fullscreen>>0'", "on", two_monitors(fs_b=1)), [])
+        self.assertEqual(self.run_watch("fullscreen_event 'fullscreen>>0'", "on", two_monitors(fs_b=2)), [])
 
     def test_leaving_fullscreen_with_none_left_clears_quiet(self):
         self.assertEqual(self.run_watch("fullscreen_event 'fullscreen>>0'", "on", two_monitors()),
                          ["afterburn quiet off"])
 
     def test_a_fullscreen_window_on_a_hidden_workspace_does_not_hold_quiet(self):
-        self.assertEqual(self.run_watch("fullscreen_event 'fullscreen>>0'", "on", two_monitors(fs_b=1, ws_b=3)),
+        self.assertEqual(self.run_watch("fullscreen_event 'fullscreen>>0'", "on", two_monitors(fs_b=2, ws_b=3)),
                          ["afterburn quiet off"])
 
     def test_leaving_fullscreen_clears_quiet_when_the_setting_is_no_even_if_another_is_fullscreen(self):
-        self.assertEqual(self.run_watch("fullscreen_event 'fullscreen>>0'", "on", two_monitors(fs_b=1),
+        self.assertEqual(self.run_watch("fullscreen_event 'fullscreen>>0'", "on", two_monitors(fs_b=2),
                                         "FULLSCREEN_QUIET=no\n"), ["afterburn quiet off"])
 
     def test_startup_with_a_fullscreen_window_on_an_unfocused_monitor_turns_quiet_on(self):
-        self.assertEqual(self.run_watch("sync_quiet", "", two_monitors(fs_b=1)), ["afterburn quiet on"])
+        self.assertEqual(self.run_watch("sync_quiet", "", two_monitors(fs_b=2)), ["afterburn quiet on"])
+
+    def test_maximizing_a_window_does_not_enter_quiet(self):
+        # Hyprland sends fullscreen>>1 for maximize too (mode 1); only real fullscreen (mode 2+) is quiet.
+        self.assertEqual(self.run_watch("fullscreen_event 'fullscreen>>1'", "", two_monitors(fs_a=1)), [])
+        self.assertEqual(self.run_watch("sync_quiet", "", two_monitors(fs_a=1)), ["afterburn quiet off"])
+
+    def test_entering_real_fullscreen_enters_quiet(self):
+        self.assertEqual(self.run_watch("fullscreen_event 'fullscreen>>1'", "", two_monitors(fs_a=2)),
+                         ["afterburn quiet on"])
 
     def test_startup_with_nothing_fullscreen_turns_quiet_off(self):
         self.assertEqual(self.run_watch("sync_quiet", "", two_monitors()), ["afterburn quiet off"])
 
     def test_startup_with_the_setting_no_never_turns_quiet_on(self):
-        self.assertEqual(self.run_watch("sync_quiet", "", two_monitors(fs_b=1), "FULLSCREEN_QUIET=no\n"),
+        self.assertEqual(self.run_watch("sync_quiet", "", two_monitors(fs_b=2), "FULLSCREEN_QUIET=no\n"),
                          ["afterburn quiet off"])
 
 

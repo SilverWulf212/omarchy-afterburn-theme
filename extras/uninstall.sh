@@ -110,6 +110,10 @@ fi
 if [[ -f $STATE_DIR/subtle-by-afterburn ]] && command -v cursor-fx >/dev/null; then
   cursor-fx subtle off >/dev/null 2>&1 && echo "  ✓ cursor subtle mode restored"
 fi
+# Battery saver's no-animation line in the Ghostty config.
+if grep -qF -e "$AB_STILL_MARK" -e "$AB_STILL_LINE  # afterburn battery saver" "$(ab_ghostty_config)" 2>/dev/null; then
+  ab_ghostty_still off && echo "  ✓ Ghostty shader animation restored"
+fi
 
 # cursor-fx: only if the installer put it there (its checkout in ~/.local/share/afterburn is the proof: install.sh
 # only clones it when it installs cursor-fx). Everything is moved into one backup folder, so it can be put back.
@@ -203,10 +207,12 @@ esac
 # $1 the line, $2 its marker (a newline was added before it), $3 what to call it. Reverse install order (the
 # cursor-fx step runs before the subtle pack), so a line whose newline the installer added is the last one left.
 BASHRC_REAL=$(readlink -f "$HOME/.bashrc")
+# $4: the rc file (default ~/.bashrc). Symlinks are followed, so a dotfiles-managed rc keeps its link.
 remove_bashrc_line() {
+  local BASHRC_REAL=${4:-$BASHRC_REAL} name=${5:-.bashrc}
   grep -qxF "$1" "$BASHRC_REAL" 2>/dev/null || return 0
   local tmp
-  tmp=$(mktemp "$(dirname "$BASHRC_REAL")/.bashrc.XXXXXX")
+  tmp=$(mktemp "$(dirname "$BASHRC_REAL")/$name.XXXXXX")
   # Write, then chmod, then move (as for starship above). awk, not grep -v: grep exits 1 when nothing is left.
   if {
     if [[ -f $STATE_DIR/$2 && $(tail -n1 "$BASHRC_REAL") == "$1" ]]; then
@@ -217,14 +223,16 @@ remove_bashrc_line() {
       LINE="$1" awk '$0 != ENVIRON["LINE"]' "$BASHRC_REAL" > "$tmp"
     fi
   } && chmod --reference="$BASHRC_REAL" "$tmp" && mv "$tmp" "$BASHRC_REAL"; then
-    echo "  ✓ ~/.bashrc $3 line removed"
+    echo "  ✓ ~/$name $3 line removed"
   else
     rm -f "$tmp"; KEEP+=("$2" bashrc-created); RC=1
-    echo "  ✗ ~/.bashrc $3 line not restored (your file is unchanged); remove the line ending in '# afterburn' yourself"
+    echo "  ✗ ~/$name $3 line not restored (your file is unchanged); remove the line ending in '# afterburn' yourself"
   fi
 }
 remove_bashrc_line "$AB_BASHRC_LINE" bashrc-newline "fail-effect"
 remove_bashrc_line "$AB_CFX_BASHRC_LINE" cfx-bashrc-newline "cursor-fx Enter"
+ZSHRC_REAL=$(readlink -f "${ZDOTDIR:-$HOME}/.zshrc")
+[[ -f $ZSHRC_REAL ]] && remove_bashrc_line "$AB_ZSHRC_LINE" zshrc-newline "fail-effect" "$ZSHRC_REAL" .zshrc
 # The installer made this file (there was none): take it away again if nothing else is in it.
 if [[ -f $STATE_DIR/bashrc-created && -f $BASHRC_REAL && ! -s $BASHRC_REAL ]]; then
   rm -f "$BASHRC_REAL" && echo "  ✓ ~/.bashrc removed (the installer had created it, and it is empty)"

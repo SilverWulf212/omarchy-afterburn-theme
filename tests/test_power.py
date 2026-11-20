@@ -21,6 +21,46 @@ class PowerBase(unittest.TestCase):
         return [c for c in sb.call_log() if c in SAVER_CALLS]
 
 
+class ProfileTests(PowerBase):
+    """With power-profiles-daemon the saver follows the power-saver profile, not the power source."""
+    def laptop(self, profile, ac_online):
+        sb = self.make()
+        sb.supply("BAT0", "Battery", scope="System", status="Discharging", capacity=70)
+        sb.supply("AC", "Mains", online=ac_online)
+        (sb.root / "profile").write_text(profile + "\n")
+        return sb
+
+    def test_power_saver_on_ac_turns_saver_on(self):
+        self.assertEqual(self.tick(self.laptop("power-saver", 1)), ["afterburn saver on"])
+
+    def test_balanced_on_battery_keeps_the_animation(self):
+        self.assertEqual(self.tick(self.laptop("balanced", 0), saver="on"), ["afterburn saver off"])
+
+    def test_performance_on_battery_keeps_the_animation(self):
+        self.assertEqual(self.tick(self.laptop("performance", 0)), ["afterburn saver off"])
+
+    def test_desktop_in_power_saver_is_still_not_a_laptop(self):
+        sb = self.make()
+        sb.supply("hidpp_battery_0", "Battery", scope="Device", status="Discharging", capacity=15)
+        (sb.root / "profile").write_text("power-saver\n")
+        self.assertEqual(self.tick(sb), [])
+
+    def test_status_names_the_profile(self):
+        sb = self.laptop("power-saver", 1)
+        sb.write_state_text(sb.state_dir / "saver", "on\n")
+        r = sb.afterburn("status")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertRegex(r.stdout, r"saver:\s+on.*power profile is power-saver")
+
+    def test_laptop_auto_follows_the_profile(self):
+        sb = self.laptop("balanced", 0)
+        (sb.home / ".local/state/omarchy/current/theme").mkdir(parents=True)
+        for mode in ("on", "auto"):   # on battery with saver on, then auto: balanced turns it off
+            r = sb.afterburn("laptop", mode)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual((sb.state_dir / "saver").read_text().strip(), "off")
+
+
 class WatcherTests(PowerBase):
     def test_desktop_with_only_a_mouse_battery_is_not_a_laptop(self):  # issues #3 and #4
         sb = self.make()

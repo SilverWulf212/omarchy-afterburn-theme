@@ -28,7 +28,7 @@ OURS_FX="$STATE_DIR/cursor-fx-set"
 # dark|light of the Afterburn theme this hook last set. cursor-fx reads the terminal background only
 # when it switches effects, so going dark -> light (or back) has to switch even if the effect is the same.
 FX_MODE="$STATE_DIR/cursor-fx-mode"
-# Written by `afterburn saver on` when it turned `cursor-fx subtle` on from off. Not the user's own setting.
+# Written by an older `afterburn saver on` when it turned `cursor-fx subtle` on from off. Not the user's own setting.
 SUBTLE_REC="$STATE_DIR/subtle-by-afterburn"
 GHOSTTY=${XDG_CONFIG_HOME:-$HOME/.config}/ghostty/config; [[ -e $GHOSTTY ]] || GHOSTTY+=.ghostty
 LOCK_SH="$EXTRAS/lock/lock-embers.sh"
@@ -138,6 +138,8 @@ else
     cursor-fx subtle off >/dev/null 2>&1 || true
   fi
   rm -f "$SUBTLE_REC"
+  # Battery saver's no-animation line is Afterburn's: other themes animate as you set Ghostty up.
+  declare -F ab_ghostty_still >/dev/null && ab_ghostty_still off
   # Drop the fullscreen and battery flags: the watcher is stopped, so it can't clear them later.
   rm -f "$STATE_DIR/quiet" "$STATE_DIR/saver" "$PRE_QUIET"
   still_current || exit 0

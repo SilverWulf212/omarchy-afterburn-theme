@@ -257,7 +257,7 @@ class UninstallLeavesOtherLocksTests(LockEmbersBase):
 
 
 class FailedWriteTests(LockEmbersBase):
-    """A write that fails (a full disk; `ulimit -f 1` caps every file at 1 KiB) leaves the active lock as it was."""
+    """A write that fails (a full disk; `ulimit -f 1` caps every file at 1 KiB; XFSZ ignored so writes fail with EFBIG instead of dumping core) leaves the active lock as it was."""
 
     def files(self, d):
         return {str(p.relative_to(d)): p.read_bytes() for p in d.rglob("*") if p.is_file()}
@@ -268,7 +268,7 @@ class FailedWriteTests(LockEmbersBase):
         self.assertEqual(sb.lock("recolor", "aaaaaa", "bbbbbb", "cccccc", "spark").returncode, 0)
         clone = sb.plugins_dir / "afterburn.lock"
         before = self.files(clone)
-        r = sb.run(["/bin/bash", "-c", f'ulimit -f 1; exec /bin/bash "{LOCK_SH}" install'])   # writes the orange back
+        r = sb.run(["/bin/bash", "-c", f'trap "" XFSZ; ulimit -f 1; exec /bin/bash "{LOCK_SH}" install'])   # writes the orange back
         self.assertNotEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertEqual(self.files(clone), before, "no file changed and no temp file left")
         self.assertEqual(sb.enabled_locks(), ["afterburn.lock"])
@@ -279,7 +279,7 @@ class FailedWriteTests(LockEmbersBase):
         view.parent.mkdir()
         view.write_text(LOCK_VIEW.replace("Item {\n", "Item {\n" + "    // a long lock view\n" * 80))
         before = self.files(view.parent)
-        r = sb.run(["/bin/bash", "-c", f'source "{LOCK_SH}"; ulimit -f 1; insert_layer "{view}" && echo INSERTED'])
+        r = sb.run(["/bin/bash", "-c", f'source "{LOCK_SH}"; trap "" XFSZ; ulimit -f 1; insert_layer "{view}" && echo INSERTED'])
         self.assertNotIn("INSERTED", r.stdout, r.stdout + r.stderr)
         self.assertEqual(self.files(view.parent), before, "LockView.qml unchanged and no temp file left")
 

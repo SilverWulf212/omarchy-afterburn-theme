@@ -140,6 +140,9 @@ exit 0
 ''',
     "cursor-fx": "#!/bin/bash\necho \"cursor-fx $*\" >> \"$SB/calls.log\"\n",
     "ghostty": "#!/bin/bash\nexit 0\n",
+    # power-profiles-daemon: the profile in $SB/profile; no file = no daemon (afterburn falls back to the power source)
+    "busctl": "#!/bin/bash\n[[ -f $SB/profile ]] || exit 1\nprintf 's \"%s\"\\n' \"$(cat \"$SB/profile\")\"\n",
+    "pkill": "#!/bin/bash\necho \"pkill $*\" >> \"$SB/calls.log\"\n",   # the Ghostty reload: never a real signal
     # `afterburn` as the watcher calls it: just record it.
     "afterburn": "#!/bin/bash\necho \"afterburn $*\" >> \"$SB/calls.log\"\n",
 }

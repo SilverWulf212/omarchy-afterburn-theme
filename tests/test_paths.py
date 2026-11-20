@@ -69,7 +69,7 @@ class OmarchyStatePaths(unittest.TestCase):
 
     def test_watcher_reads_fixed_omarchy_theme_name_with_custom_state_home(self):
         self.sb.use_stubs(["afterburn"])
-        r = self.sb.watch_func("fullscreen_event 'fullscreen>>1'", **self.env)
+        r = self.sb.watch_func("screen_fullscreen() { return 0; }; fullscreen_event 'fullscreen>>1'", **self.env)
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(self.sb.call_log(), ["afterburn quiet on"])
 

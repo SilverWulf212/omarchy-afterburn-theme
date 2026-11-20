@@ -1,8 +1,12 @@
-"""Quiet and saver each own one thing: quiet holds the cursor effect off (and saves it in cursor-pre-quiet),
-saver only turns `cursor-fx subtle` on. They overlap in any order, and neither may leave the effect off."""
+"""Quiet and saver each own one thing: quiet holds the cursor effect off (and saves it in cursor-pre-quiet), saver
+only stops Ghostty animating shaders (one marked line in its config). They overlap in any order, and neither may
+leave the effect off. A subtle-by-afterburn record left by an older saver is undone once."""
 import unittest
 
 from support import REPO, Sandbox
+
+MARK = "# afterburn battery saver: shaders draw only when the terminal changes (removed when you plug in)"
+STILL = "custom-shader-animation = false"   # no comment after the value: Ghostty rejects the whole line
 
 HOOK = REPO / "extras" / "afterburn-theme-set-hook"
 
@@ -56,38 +60,85 @@ class CursorBookkeeping(unittest.TestCase):
         self.ab("quiet", "off")
         self.assertEqual((self.effect(), self.pre.exists()), ("lightning", False))
 
-    def test_saver_alone_never_holds_the_effect_off(self):
-        self.ab("saver", "on")
-        self.assertEqual((self.effect(), self.subtle(), self.pre.exists()), ("lightning", "on", False))
-        self.ab("saver", "off")
-        self.assertEqual((self.effect(), self.subtle(), self.pre.exists()), ("lightning", "off", False))
+    def still(self):
+        return self.ghostty.read_text().splitlines().count(STILL)
 
-    def test_saver_preserves_mixed_or_already_on_subtle_preferences(self):
-        for subtle in ("mixed", "on"):
+    def test_saver_stops_animation_and_keeps_the_effect(self):
+        self.ghostty.write_text("font-size = 9\ncustom-shader = shaders/mine.glsl\nconfig-file = cursor-effects/lightning.conf\n")
+        self.ab("saver", "on")
+        self.assertEqual((self.effect(), self.still(), self.pre.exists()), ("lightning", 1, False))
+        self.assertTrue(self.ghostty.read_text().endswith(MARK + "\n" + STILL + "\n"))   # last, so it wins
+        self.ab("saver", "on")                                                # again: still one line, no reload
+        self.assertEqual(self.still(), 1)
+        self.assertEqual(self.sb.call_log().count("pkill -USR2 -x ghostty"), 1)
+        self.ab("saver", "off")
+        self.assertEqual(self.ghostty.read_text(),
+                         "font-size = 9\ncustom-shader = shaders/mine.glsl\nconfig-file = cursor-effects/lightning.conf\n")
+        self.assertEqual(self.sb.call_log().count("pkill -USR2 -x ghostty"), 2)
+
+    def test_the_one_line_form_an_earlier_version_wrote_is_cleaned_up(self):
+        old = STILL + "  # afterburn battery saver (removed when you plug in)"
+        self.ghostty.write_text("font-size = 9\n" + old + "\n")
+        self.ab("apply")                                       # saver off
+        self.assertEqual(self.ghostty.read_text(), "font-size = 9\n")
+        self.ghostty.write_text("font-size = 9\n" + old + "\n")
+        self.ab("saver", "on")
+        self.assertEqual(self.ghostty.read_text(), "font-size = 9\n" + MARK + "\n" + STILL + "\n")
+
+    def test_your_own_animation_line_is_never_touched(self):
+        self.ghostty.write_text("font-size = 9\n" + STILL + "\n")
+        self.ab("saver", "on")
+        self.ab("saver", "off")
+        self.assertEqual(self.ghostty.read_text(), "font-size = 9\n" + STILL + "\n")
+
+    def test_saver_keeps_a_symlinked_config_a_symlink(self):
+        real = self.sb.home / "dotfiles-ghostty"
+        real.write_text("font-size = 9\n")
+        self.ghostty.unlink()
+        self.ghostty.symlink_to(real)
+        self.ab("saver", "on")
+        self.ab("saver", "off")
+        self.assertTrue(self.ghostty.is_symlink())
+        self.assertEqual(real.read_text(), "font-size = 9\n")
+
+    def test_leaving_afterburn_drops_the_saver_line(self):
+        self.hook("afterburn")
+        self.ab("saver", "on")
+        self.assertEqual(self.still(), 1)
+        self.hook("nord")
+        self.assertEqual(self.still(), 0)
+
+    def test_saver_never_touches_your_subtle_setting(self):
+        for subtle in ("off", "mixed", "on"):
             with self.subTest(subtle=subtle):
                 self.sb.write_state_text(self.sb.state_dir / "saver", "off\n")
                 self.sb.write_state_text(self.sb.root / "subtle", subtle + "\n")
                 self.sb.calls.write_text("")
                 self.ab("saver", "on")
-                self.assertEqual(self.subtle(), subtle)
-                self.assertFalse((self.sb.state_dir / "subtle-by-afterburn").exists())
                 self.ab("saver", "off")
                 self.assertEqual(self.subtle(), subtle)
-                self.assertFalse([c for c in self.sb.call_log() if c.startswith("cursor-fx subtle ")])
+                self.assertFalse([c for c in self.sb.call_log() if c.startswith("cursor-fx subtle")])
+
+    def test_a_subtle_an_older_saver_turned_on_is_turned_off_once(self):
+        self.sb.write_state_text(self.sb.root / "subtle", "on\n")
+        self.sb.write_state_text(self.sb.state_dir / "subtle-by-afterburn", "")
+        self.ab("apply")
+        self.assertEqual(self.subtle(), "off")
+        self.assertFalse((self.sb.state_dir / "subtle-by-afterburn").exists())
 
     def test_quiet_ending_while_saver_is_on_brings_the_effect_back(self):  # spec bug 1
         self.ab("saver", "on")
         self.ab("quiet", "on")
         self.assertEqual((self.effect(), self.pre.read_text().strip()), ("off", "lightning"))
         self.ab("quiet", "off")
-        self.assertEqual((self.effect(), self.subtle(), self.pre.exists()), ("lightning", "on", False))
+        self.assertEqual((self.effect(), self.pre.exists(), self.still()), ("lightning", False, 1))
         self.assertIn("cursor-fx lightning", self.sb.call_log())
 
     def test_saver_ending_while_quiet_is_on_leaves_the_effect_off_until_quiet_ends(self):
         self.ab("quiet", "on")
         self.ab("saver", "on")
         self.ab("saver", "off")
-        self.assertEqual((self.effect(), self.subtle(), self.pre.read_text().strip()), ("off", "off", "lightning"))
+        self.assertEqual((self.effect(), self.pre.read_text().strip()), ("off", "lightning"))
         self.ab("quiet", "off")
         self.assertEqual((self.effect(), self.pre.exists()), ("lightning", False))
 
@@ -103,6 +154,15 @@ class CursorBookkeeping(unittest.TestCase):
         self.assertEqual((self.effect(), self.pre.read_text().strip()), ("off", "cyber"))
         self.ab("quiet", "off")
         self.assertEqual(self.effect(), "cyber")
+
+    def test_cursor_fx_off_keeps_the_effect_off_through_theme_changes_and_saver(self):
+        self.ab("set", "CURSOR_FX", "off")
+        self.assertEqual(self.effect(), "off")
+        self.hook("afterburn")
+        self.assertEqual(self.effect(), "off")
+        self.ab("saver", "on")
+        self.ab("saver", "off")
+        self.assertEqual(self.effect(), "off")
 
     def test_the_hook_switches_the_effect_under_saver(self):  # spec bug 2
         self.sb.write_state_text(self.sb.home / ".config/afterburn/afterburn.conf", "CURSOR_FX=neon\n")
@@ -170,13 +230,6 @@ class CursorBookkeeping(unittest.TestCase):
         self.assertEqual(self.effect(), "off")
         self.hook("nord")
         self.assertEqual(self.effect(), "lightning")
-
-    def test_a_stale_pre_quiet_from_an_older_version_is_cleared_while_only_saver_is_on(self):
-        self.sb.write_state_text(self.sb.state_dir / "saver", "on\n")
-        self.sb.write_state_text(self.pre, "lightning\n")
-        self.start("off")
-        self.ab("apply")
-        self.assertEqual((self.effect(), self.subtle(), self.pre.exists()), ("lightning", "on", False))
 
     def test_apply_recovers_a_cursor_left_off_by_interrupted_quiet_exit(self):
         self.sb.write_state_text(self.sb.state_dir / "quiet", "off\n")

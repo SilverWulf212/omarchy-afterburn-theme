@@ -21,6 +21,9 @@
 # that merely ends in "# afterburn" is never touched). $HOME stays literal in the file.
 AB_FAIL_SH='$HOME/.config/omarchy/themes/afterburn/extras/afterburn-fail.bash'
 AB_BASHRC_LINE="[[ -f \"$AB_FAIL_SH\" ]] && source \"$AB_FAIL_SH\"  # afterburn"
+# Its zsh twin, for ~/.zshrc (added only when zsh is your shell or you have a ~/.zshrc).
+AB_FAIL_ZSH='$HOME/.config/omarchy/themes/afterburn/extras/afterburn-fail.zsh'
+AB_ZSHRC_LINE="[[ -f \"$AB_FAIL_ZSH\" ]] && source \"$AB_FAIL_ZSH\"  # afterburn"
 # The cursor-fx step's own line: Enter and done moments in bash (cursor-fx ships a zsh hook only).
 AB_CFX_ENTER_SH='$HOME/.config/omarchy/themes/afterburn/extras/cursor-fx-enter.bash'
 AB_CFX_BASHRC_LINE="[[ -f \"$AB_CFX_ENTER_SH\" ]] && source \"$AB_CFX_ENTER_SH\"  # afterburn cursor-fx"
@@ -37,6 +40,33 @@ ab_cursor_now() {
   v=$(sed -nE 's/^[[:space:]]*config-file[[:space:]]*=[[:space:]]*\??"?\??cursor-effects\/([^."/]+)\.conf.*$/\1/p' \
       "$(ab_ghostty_config)" 2>/dev/null | tail -n1)
   printf '%s\n' "${v:-off}"
+}
+
+# Battery saver keeps the cursor shaders but stops Ghostty animating them: any animated custom shader makes Ghostty
+# redraw every frame, ~22 W on a 120 Hz laptop panel whatever the shader. Without animation a shader draws only when
+# the terminal changes (typing, output), so effects play choppier but cost next to nothing. Two lines, last in the
+# file so the setting wins: a marker comment and the setting (Ghostty has no end-of-line comments: a "# ..." after
+# the value makes the whole line invalid). Written in place, so a symlinked config stays a symlink.
+AB_STILL_MARK='# afterburn battery saver: shaders draw only when the terminal changes (removed when you plug in)'
+AB_STILL_LINE='custom-shader-animation = false'
+# ab_ghostty_still on|off: add or remove those lines, and reload Ghostty when the file changed.
+ab_ghostty_still() {
+  local c rest
+  c=$(ab_ghostty_config)
+  [[ -f $c ]] || return 0
+  # Everything but ours: the marker, the setting right after it, and the one-line form an earlier version wrote.
+  rest=$(awk -v m="$AB_STILL_MARK" -v l="$AB_STILL_LINE" '
+    skip { skip = 0; if ($0 == l) next }
+    $0 == m { skip = 1; next }
+    index($0, l "  # afterburn battery saver") == 1 { next }
+    { print }' "$c") || return 0
+  if [[ ${1:-} == on ]]; then
+    [[ -z $rest ]] || rest+=$'\n'
+    rest+="$AB_STILL_MARK"$'\n'"$AB_STILL_LINE"
+  fi
+  [[ $rest == "$(cat "$c")" ]] && return 0
+  printf '%s\n' "$rest" > "$c" || return 0
+  pkill -USR2 -x ghostty >/dev/null 2>&1 || true
 }
 
 # cursor-fx copies your Ghostty config into a savepoint folder before every switch, and Afterburn
@@ -273,7 +303,7 @@ ab_recolor_glow() {
 # Hyprland, cursor-fx or the lock screen. edition.conf is parsed as data (KEY=VALUE lines), never
 # sourced. The lines `ROTATE=slow ...` and `DIM=0.08 ...` exactly as the first-run conf wrote them
 # are not choices, so an older conf follows the edition too.
-#   CURSOR_FX    a cursor-fx effect name                       (base: embers)
+#   CURSOR_FX    a cursor-fx effect name, or off               (base: embers)
 #   ROTATE       off|slow|medium|fast                          (base: slow)
 #   DIM          0 to 1                                        (base: 0.08)
 #   GLOW_RANGE   4 to 30, the shadow range at the normal level (base: 14)
@@ -294,7 +324,7 @@ ab_base_default() {
 ab_valid() {
   local k=${1:-} v=${2:-}
   case $k in
-    CURSOR_FX)   [[ $v =~ ^(${AB_CURSOR_FX_NAMES// /|})$ ]] ;;
+    CURSOR_FX)   [[ $v =~ ^(off|${AB_CURSOR_FX_NAMES// /|})$ ]] ;;
     ROTATE)      [[ $v =~ ^(off|slow|medium|fast)$ ]] ;;
     DIM)         [[ $v =~ ^(0|1|0?\.[0-9]+|1\.0*)$ ]] ;;
     GLOW_RANGE)  [[ $v =~ ^[1-9][0-9]?$ ]] && (( v >= 4 && v <= 30 )) ;;

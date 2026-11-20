@@ -9,7 +9,7 @@
 #   afterburn apply                   regenerate hyprland.lua from the conf and reload Hyprland
 #   afterburn level cool|normal|hot   heat level (border, shadow, optional wallpaper swap)
 #   afterburn quiet on|off            fullscreen mode: no shadow, no spin, cursor-fx off
-#   afterburn saver on|off            battery mode: no shadow, no spin, cursor-fx subtle
+#   afterburn saver on|off            battery mode: no shadow, no spin, cursor shaders not animated
 #   afterburn laptop auto|on|off      LAPTOP_MODE; on/off also switch saver
 #   afterburn colors [--menu]         palette: swatches on a tty, Omarchy menu otherwise
 #   afterburn locate ZIP              US ZIP -> LAT/LON for the weather heat source
@@ -282,35 +282,30 @@ cmd_apply() {
 #   quiet holds the effect off. The one that was running is saved in cursor-pre-quiet (the file exists only
 #   while quiet holds it off) and put back when quiet ends. (prev-cursor-fx is a different thing: the effect
 #   from before Afterburn took over, kept by the theme-set hook and restored when you leave it.)
-#   saver turns `cursor-fx subtle` on and never touches the effect itself. subtle-by-afterburn is its record:
-#   it exists only when saver turned subtle on from off, so only that case is turned off again. A subtle you
-#   had on yourself is never touched.
+#   saver stops Ghostty animating shaders (ab_ghostty_still) and never touches the effect itself. It used to turn
+#   `cursor-fx subtle` on, which still redraws every frame; subtle-by-afterburn, the record an older saver left
+#   when it did, is undone once.
 CFX_PRE="$STATE/cursor-pre-quiet"
 SUBTLE_REC="$STATE/subtle-by-afterburn"
 cfx_now() { ab_cursor_now; }
 
-# on, off, mixed or n/a, as `cursor-fx subtle` reports it ("Subtle version: off (cursor-fx subtle on|off)"); empty if unreadable.
-cfx_subtle_state() {
-  cursor-fx subtle 2>/dev/null | sed -n 's/^[^:]*: \(on\|off\|mixed\|n\/a\) (.*/\1/p' | head -n1
-}
-
 cfx_sync() {
-  command -v cursor-fx >/dev/null 2>&1 || return 0
   mkdir -p "$STATE"
-  if flag_on quiet; then
-    [[ -f $CFX_PRE ]] || cfx_now > "$CFX_PRE"
-    cursor-fx off >/dev/null 2>&1 || true
-  elif [[ -f $CFX_PRE ]]; then
-    cursor-fx "$(cat "$CFX_PRE")" >/dev/null 2>&1 || true
-    rm -f "$CFX_PRE"
+  if command -v cursor-fx >/dev/null 2>&1; then
+    if flag_on quiet; then
+      [[ -f $CFX_PRE ]] || cfx_now > "$CFX_PRE"
+      cursor-fx off >/dev/null 2>&1 || true
+    elif [[ -f $CFX_PRE ]]; then
+      cursor-fx "$(cat "$CFX_PRE")" >/dev/null 2>&1 || true
+      rm -f "$CFX_PRE"
+    fi
+    if [[ -f $SUBTLE_REC ]]; then
+      cursor-fx subtle off >/dev/null 2>&1 || true
+      rm -f "$SUBTLE_REC"
+    fi
   fi
-  if flag_on saver; then
-    if [[ ! -f $SUBTLE_REC && $(cfx_subtle_state) == off ]]; then : > "$SUBTLE_REC"; fi
-    [[ -f $SUBTLE_REC ]] && cursor-fx subtle on >/dev/null 2>&1 || true
-  elif [[ -f $SUBTLE_REC ]]; then
-    cursor-fx subtle off >/dev/null 2>&1 || true
-    rm -f "$SUBTLE_REC"
-  fi
+  # After any switch above, so the saver line is checked against the config as cursor-fx left it.
+  if flag_on saver; then ab_ghostty_still on; else ab_ghostty_still off; fi
 }
 
 # CURSOR_FX and EMBER_STYLE act outside Hyprland, so `set` pushes them out at once. (A hand edit of the
@@ -383,13 +378,15 @@ mode_line() {
   esac
 }
 
-# Why saver is on, from what the watcher looks at (LAPTOP_MODE and the system battery). Needs LAPTOP_MODE set.
+# Why saver is on, from what the watcher looks at (LAPTOP_MODE, the power profile and the system battery). Needs LAPTOP_MODE set.
 saver_reason() {
   local bat
   bat=$(ab_system_batteries | head -n1)
   if [[ $LAPTOP_MODE == on ]]; then
     echo "LAPTOP_MODE=on forces it; follow the power source again with: afterburn laptop auto"
-  elif [[ $LAPTOP_MODE == auto && -n $bat ]] && ! ab_on_ac; then
+  elif [[ $LAPTOP_MODE == auto && -n $bat && -n $(ab_power_profile) ]] && ab_saver_wanted; then
+    echo "power profile is power-saver; pick balanced or performance (Omarchy's power menu) to animate again"
+  elif [[ $LAPTOP_MODE == auto && -n $bat ]] && ab_saver_wanted; then
     echo "on battery: $bat is $(ab_ps_attr "$POWER_DIR/$bat" status | tr '[:upper:]' '[:lower:]'), no AC adapter online"
   elif [[ $LAPTOP_MODE == auto && -z $bat ]]; then
     echo "no system battery found (wireless mouse and keyboard batteries do not count), so power is not the cause; left over or set by hand. Turn it off: afterburn saver off"
@@ -421,6 +418,15 @@ doctor_lock() {
   local id dir list cs os newest loader="$THEME_DIR/extras/lock/EmberLoader.qml"
   if [[ ! -f $STATE/lock-embers ]]; then
     echo "lock:       embers not installed (Omarchy's own lock screen)"
+    return 0
+  fi
+  if grep -qx 'mode=explorer' "$STATE/lock-embers"; then
+    local designs="$HOME/.config/omarchy/lock-designs" cur
+    cur=$(omarchy-shell lock design 2>/dev/null) || cur=""
+    echo "lock:       Lock Screen Explorer, design ${cur:-unknown} (Afterburn's is my-afterburn)$([[ -f $STATE/lock-parked ]] && echo "  (parked: it comes back when you switch to Afterburn)")"
+    newest=$(find "$designs/afterburn" -mindepth 1 -maxdepth 1 -type d -name 'embers.*' 2>/dev/null | sort | tail -n1)
+    echo "  design:   $([[ -f $designs/Afterburn.qml ]] && echo "$designs/Afterburn.qml" || echo "MISSING: re-run extras/install.sh")"
+    echo "  embers:   $([[ -n $newest ]] && basename "$newest" || echo "none")"
     return 0
   fi
   id=$(sed -n 's/^clone_id=//p' "$STATE/lock-embers" | head -n1)
@@ -539,7 +545,7 @@ cmd_laptop() {
     auto)
       echo "laptop: auto (afterburn-watch decides from the power source)"
       # Put saver in line with the power source now, not at the watcher's next change.
-      if ab_has_battery && ! ab_on_ac; then cmd_mode saver on; else cmd_mode saver off; fi ;;
+      if ab_has_battery && ab_saver_wanted; then cmd_mode saver on; else cmd_mode saver off; fi ;;
   esac
 }
 

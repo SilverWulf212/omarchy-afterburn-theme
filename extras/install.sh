@@ -26,8 +26,9 @@ fi
 . "$HERE/afterburn-theme.sh"   # AB_BASHRC_LINE
 HOOK_NAME=50-afterburn-extras
 HOOKS="$HOME/.config/omarchy/hooks/theme-set.d"
-CFX_REPO=https://github.com/Avarce/ghostty-cursor-fx.git
-CFX_PIN=252df6c6344fe68ab8715d3e4a57f73ad91ed7ed   # version tested with Afterburn
+# Vendored copy of ghostty-cursor-fx by Avarce (MIT) at commit 252df6c6344fe68ab8715d3e4a57f73ad91ed7ed, the
+# version tested with Afterburn (the upstream repo was taken down; the commit survives in its forks).
+CFX_SRC="$HERE/ghostty-cursor-fx"
 CFX_DIR="$HOME/.local/share/afterburn/ghostty-cursor-fx"
 YES=false; [[ ${1:-} == --yes || ${1:-} == -y ]] && YES=true
 
@@ -44,16 +45,19 @@ BASHRC="$HOME/.bashrc"
 
 # Append one guarded line ($1) to ~/.bashrc unless it is there already. $2 names the marker that tells
 # uninstall.sh a newline was added before it (the file did not end in one), so it can drop that again.
+# $3 is the rc file (default ~/.bashrc; the zsh line passes ~/.zshrc, which it only touches when it exists).
 add_bashrc_line() {
-  grep -qxF "$1" "$BASHRC" 2>/dev/null && return 0
+  local rc=${3:-$BASHRC}
+  grep -qxF "$1" "$rc" 2>/dev/null && return 0
   mkdir -p "$STATE_DIR"
-  [[ -e $BASHRC ]] || : > "$STATE_DIR/bashrc-created"   # no .bashrc yet: uninstall.sh removes ours again if it ends up empty
-  if [[ -s $BASHRC && -n $(tail -c1 "$BASHRC") ]]; then
-    echo >> "$BASHRC"
+  [[ -e $rc ]] || : > "$STATE_DIR/bashrc-created"   # no .bashrc yet: uninstall.sh removes ours again if it ends up empty
+  if [[ -s $rc && -n $(tail -c1 "$rc") ]]; then
+    echo >> "$rc"
     : > "$STATE_DIR/$2"
   fi
-  echo "$1" >> "$BASHRC"
+  echo "$1" >> "$rc"
 }
+ZSHRC="${ZDOTDIR:-$HOME}/.zshrc"
 
 # Each step records here just before it changes something, so a failure can say what was touched.
 CHANGED=()
@@ -83,8 +87,8 @@ cat <<'EOF'
     "open in terminal" action. uninstall.sh puts your old default back.
   • FONT: switches your system font to JetBrainsMono Nerd Font (terminals, bar, menus).
     uninstall.sh puts your old font back.
-  • THIRD-PARTY CODE: downloads ghostty-cursor-fx by Avarce (MIT) from GitHub, pinned
-    to one tested commit, and runs its installer. It writes ~/.local/bin/cursor-fx,
+  • THIRD-PARTY CODE: copies ghostty-cursor-fx by Avarce (MIT, bundled with this theme at
+    one tested commit) and runs its installer. It writes ~/.local/bin/cursor-fx,
     ~/.config/ghostty/shaders/ and cursor-effects/, edits ~/.config/ghostty/config,
     and, if ~/.pi/agent exists, adds a pi extension and turns on showHardwareCursor.
     Anything it replaces is copied to ~/.local/state/afterburn/ghostty-savepoints/ first.
@@ -172,8 +176,8 @@ elif ask "Install cursor-fx, animated Ghostty cursors by Avarce (MIT)?"; then
   CHANGED+=("cursor-fx installed (its own installer edits Ghostty config; old config in $AB_SAVEPOINTS/)")
   [[ -f $HOME/.config/ghostty/config ]] || omarchy refresh config ghostty/config >/dev/null
   rm -rf "$CFX_DIR"
-  git clone -q "$CFX_REPO" "$CFX_DIR"
-  git -C "$CFX_DIR" -c advice.detachedHead=false checkout -q "$CFX_PIN"
+  mkdir -p "$(dirname "$CFX_DIR")"
+  cp -a "$CFX_SRC" "$CFX_DIR"
   (cd "$CFX_DIR" && ./install.sh >/dev/null)
   ok "cursor-fx installed (old Ghostty config backed up in $AB_SAVEPOINTS/)"
 else
@@ -283,6 +287,13 @@ elif ask "Add the subtle pack? (slow-turning border, dimmed background windows, 
   grep -qxF "$AB_BASHRC_LINE" "$BASHRC" 2>/dev/null || CHANGED+=("~/.bashrc: fail-effect line appended")
   add_bashrc_line "$AB_BASHRC_LINE" bashrc-newline
   ok "~/.bashrc: one guarded line sources the fail effect"
+  # zsh users get the zsh twin. Only into a ~/.zshrc that exists: a missing one would make zsh skip its
+  # first-run setup, and an absent file means zsh is not what you use.
+  if [[ -f $ZSHRC ]]; then
+    grep -qxF "$AB_ZSHRC_LINE" "$ZSHRC" 2>/dev/null || CHANGED+=("~/.zshrc: fail-effect line appended")
+    add_bashrc_line "$AB_ZSHRC_LINE" zshrc-newline "$ZSHRC"
+    ok "~/.zshrc: one guarded line sources the fail effect"
+  fi
 
   # User service: the watcher handles fullscreen quiet, battery saver and the heat level.
   CHANGED+=("afterburn-watch user service enabled")
@@ -308,11 +319,18 @@ LOCK="$HERE/lock/lock-embers.sh"
 echo
 if [[ ! -f $LOCK ]]; then
   skip "lock screen: $LOCK not found, skipped"
-elif ask "Animate the lock screen with embers? (clones Omarchy's lock plugin; it stops getting Omarchy's lock-screen updates until you uninstall)"; then
+elif [[ $(bash "$LOCK" target 2>/dev/null) == explorer ]]; then
+  LOCK_Q="Add an Afterburn lock design with embers to Lock Screen Explorer? (a design file in ~/.config/omarchy/lock-designs; the explorer itself is not changed)"
+  LOCK_CHANGE="Afterburn design in ~/.config/omarchy/lock-designs (uninstall.sh removes it)"
+else
+  LOCK_Q="Animate the lock screen with embers? (clones Omarchy's lock plugin; it stops getting Omarchy's lock-screen updates until you uninstall)"
+  LOCK_CHANGE="lock screen clone in ~/.config/omarchy/plugins (afterburn.lock; uninstall.sh removes it)"
+fi
+if [[ -n ${LOCK_Q:-} ]] && ask "$LOCK_Q"; then
   # lock-embers.sh picks the clone id (afterburn.lock; an older install keeps its <user>.lock) and writes
   # the marker $STATE_DIR/lock-embers with it as soon as the clone exists. If a step fails after the
   # built-in lock was switched off, it puts the built-in lock back before it exits.
-  CHANGED+=("lock screen clone in ~/.config/omarchy/plugins (afterburn.lock; uninstall.sh removes it)")
+  CHANGED+=("$LOCK_CHANGE")
   rc=0
   bash "$LOCK" install || rc=$?
   if (( rc == 0 )); then
@@ -322,7 +340,7 @@ elif ask "Animate the lock screen with embers? (clones Omarchy's lock plugin; it
   else
     skip "lock screen: the install did not finish (see the messages above)"
   fi
-else
+elif [[ -n ${LOCK_Q:-} ]]; then
   skip "kept the stock lock screen"
 fi
 

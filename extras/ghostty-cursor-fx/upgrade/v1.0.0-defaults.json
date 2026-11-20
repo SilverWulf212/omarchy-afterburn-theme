@@ -1,0 +1,1668 @@
+{
+ "shaders": {
+  "aurora-cursor.glsl": {
+   "TYPE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "PHRASE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "ENTER_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "DONE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "CURTAIN_HEIGHT": [
+    "float",
+    "1.15"
+   ],
+   "ENTER_TIME": [
+    "float",
+    "1.3"
+   ],
+   "JUMP_EFFECTS": [
+    "bool",
+    "true"
+   ],
+   "CURSOR_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "IDLE_EFFECTS": [
+    "bool",
+    "true"
+   ],
+   "PROMPT_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "LINE_TINT": [
+    "bool",
+    "true"
+   ],
+   "LINE_COLOR": [
+    "float",
+    "0.42"
+   ],
+   "LINE_EFFECT": [
+    "bool",
+    "false"
+   ],
+   "BRIGHTNESS": [
+    "float",
+    "1.63"
+   ],
+   "COLOR_SPEED": [
+    "float",
+    "0.35"
+   ],
+   "WISP_TIME": [
+    "float",
+    "0.45"
+   ],
+   "ENTER_SPREAD": [
+    "float",
+    "0.3"
+   ],
+   "SWEEP_TIME": [
+    "float",
+    "0.5"
+   ],
+   "CURSOR_STRENGTH": [
+    "float",
+    "1.0"
+   ],
+   "IDLE_PERIOD": [
+    "float",
+    "4.0"
+   ],
+   "IDLE_CHANCE": [
+    "float",
+    "0.5"
+   ],
+   "IDLE_DURATION": [
+    "float",
+    "1.2"
+   ],
+   "LINE_STRENGTH": [
+    "float",
+    "1.0"
+   ],
+   "SETTLE": [
+    "float",
+    "0.04"
+   ],
+   "JUMP_SETTLE": [
+    "float",
+    "0.12"
+   ]
+  },
+  "cyber-cursor.glsl": {
+   "TYPE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "PHRASE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "DECODE_STYLE": [
+    "int",
+    "0"
+   ],
+   "WORD_DECODE": [
+    "bool",
+    "false"
+   ],
+   "TYPE_PULSE": [
+    "bool",
+    "false"
+   ],
+   "TYPE_BEAM": [
+    "bool",
+    "false"
+   ],
+   "TYPE_KICK": [
+    "bool",
+    "true"
+   ],
+   "ENTER_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "DONE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "ENTER_TIME": [
+    "float",
+    "1.5"
+   ],
+   "JUMP_EFFECTS": [
+    "bool",
+    "true"
+   ],
+   "CURSOR_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "IDLE_EFFECTS": [
+    "bool",
+    "true"
+   ],
+   "CURSOR_GLOW": [
+    "float",
+    "0.6"
+   ],
+   "PROMPT_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "LINE_TINT": [
+    "bool",
+    "true"
+   ],
+   "LINE_COLOR": [
+    "float",
+    "0.42"
+   ],
+   "LINE_EFFECT": [
+    "bool",
+    "false"
+   ],
+   "TEXT_COLOR": [
+    "bool",
+    "true"
+   ],
+   "RAIN_COLOR": [
+    "vec3",
+    "vec3(0.35, 1.0, 0.55)"
+   ],
+   "TRAIL_COLOR": [
+    "vec3",
+    "vec3(0.0, 0.55, 0.45)"
+   ],
+   "BRIGHTNESS": [
+    "float",
+    "1.0"
+   ],
+   "DECODE_TIME": [
+    "float",
+    "0.22"
+   ],
+   "TYPE_TIME": [
+    "float",
+    "0.45"
+   ],
+   "PULSE_REACH": [
+    "float",
+    "7.0"
+   ],
+   "WORD_WAVE": [
+    "float",
+    "0.035"
+   ],
+   "PHRASE_TIME": [
+    "float",
+    "0.16"
+   ],
+   "ENTER_SPREAD": [
+    "float",
+    "0.35"
+   ],
+   "RAIN_SPEED": [
+    "float",
+    "6.0"
+   ],
+   "TRAIL": [
+    "float",
+    "6.0"
+   ],
+   "DENSITY": [
+    "float",
+    "0.5"
+   ],
+   "DEPTH": [
+    "float",
+    "0.0"
+   ],
+   "GLYPH_SIZE": [
+    "float",
+    "0.62"
+   ],
+   "RAIN_HEIGHT": [
+    "float",
+    "0.0"
+   ],
+   "DISSOLVE_TIME": [
+    "float",
+    "0.7"
+   ],
+   "GLOW_SIZE": [
+    "float",
+    "0.10"
+   ],
+   "GLOW_CORE": [
+    "float",
+    "0.7"
+   ],
+   "CURSOR_RAIN": [
+    "float",
+    "1.2"
+   ],
+   "CURSOR_SHADE": [
+    "float",
+    "0.3"
+   ],
+   "SCAN_PERIOD": [
+    "float",
+    "2.6"
+   ],
+   "BREATH_PERIOD": [
+    "float",
+    "3.0"
+   ],
+   "LINE_STRENGTH": [
+    "float",
+    "1.0"
+   ],
+   "TEXT_TINT": [
+    "float",
+    "1.0"
+   ],
+   "SETTLE": [
+    "float",
+    "0.04"
+   ],
+   "JUMP_SETTLE": [
+    "float",
+    "0.12"
+   ]
+  },
+  "ember-cursor.glsl": {
+   "TYPE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "PHRASE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "TYPE_EMBERS": [
+    "float",
+    "7.0"
+   ],
+   "LIFE": [
+    "float",
+    "0.9"
+   ],
+   "ENTER_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "DONE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "ENTER_EMBERS": [
+    "float",
+    "28.0"
+   ],
+   "ENTER_TIME": [
+    "float",
+    "1.45"
+   ],
+   "JUMP_EFFECTS": [
+    "bool",
+    "true"
+   ],
+   "CURSOR_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "IDLE_EFFECTS": [
+    "bool",
+    "true"
+   ],
+   "COAL_GLOW": [
+    "float",
+    "0.25"
+   ],
+   "IDLE_CHANCE": [
+    "float",
+    "0.6"
+   ],
+   "PROMPT_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "LINE_TINT": [
+    "bool",
+    "true"
+   ],
+   "LINE_COLOR": [
+    "float",
+    "0.42"
+   ],
+   "LINE_EFFECT": [
+    "bool",
+    "false"
+   ],
+   "RISE": [
+    "float",
+    "2.6"
+   ],
+   "SPREAD": [
+    "float",
+    "0.8"
+   ],
+   "EMBER_SIZE": [
+    "float",
+    "0.07"
+   ],
+   "GLOW_SIZE": [
+    "float",
+    "0.2"
+   ],
+   "ENTER_SPREAD": [
+    "float",
+    "0.25"
+   ],
+   "JUMP_EMBERS": [
+    "float",
+    "16.0"
+   ],
+   "IDLE_PERIOD": [
+    "float",
+    "2.5"
+   ],
+   "IDLE_LIFE": [
+    "float",
+    "1.6"
+   ],
+   "LINE_STRENGTH": [
+    "float",
+    "1.0"
+   ],
+   "SETTLE": [
+    "float",
+    "0.04"
+   ],
+   "JUMP_SETTLE": [
+    "float",
+    "0.12"
+   ]
+  },
+  "firework-cursor.glsl": {
+   "TYPE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "PHRASE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "ENTER_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "DONE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "ENTER_TIME": [
+    "float",
+    "1.7"
+   ],
+   "JUMP_EFFECTS": [
+    "bool",
+    "true"
+   ],
+   "CURSOR_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "IDLE_EFFECTS": [
+    "bool",
+    "true"
+   ],
+   "PROMPT_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "LINE_TINT": [
+    "bool",
+    "true"
+   ],
+   "LINE_COLOR": [
+    "float",
+    "0.42"
+   ],
+   "LINE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "RISE_HEIGHT": [
+    "float",
+    "2.6"
+   ],
+   "BURST_RADIUS": [
+    "float",
+    "2.2"
+   ],
+   "SPARKS": [
+    "float",
+    "28.0"
+   ],
+   "POP_TIME": [
+    "float",
+    "0.25"
+   ],
+   "ENTER_FUSE": [
+    "float",
+    "0.35"
+   ],
+   "LAUNCH_MIN": [
+    "float",
+    "3.0"
+   ],
+   "RISE_TIME": [
+    "float",
+    "0.3"
+   ],
+   "CURSOR_STRENGTH": [
+    "float",
+    "1.0"
+   ],
+   "LINE_STRENGTH": [
+    "float",
+    "1.0"
+   ],
+   "BURST_TIME": [
+    "float",
+    "1.0"
+   ],
+   "GRAVITY": [
+    "float",
+    "2.5"
+   ],
+   "SETTLE": [
+    "float",
+    "0.04"
+   ],
+   "JUMP_SETTLE": [
+    "float",
+    "0.12"
+   ]
+  },
+  "glitch-cursor.glsl": {
+   "TYPE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "PHRASE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "TYPE_STRENGTH": [
+    "float",
+    "0.35"
+   ],
+   "ENTER_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "DONE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "ENTER_TIME": [
+    "float",
+    "0.45"
+   ],
+   "JUMP_EFFECTS": [
+    "bool",
+    "true"
+   ],
+   "CURSOR_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "IDLE_EFFECTS": [
+    "bool",
+    "true"
+   ],
+   "IDLE_CHANCE": [
+    "float",
+    "0.5"
+   ],
+   "PROMPT_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "LINE_TINT": [
+    "bool",
+    "true"
+   ],
+   "LINE_COLOR": [
+    "float",
+    "0.42"
+   ],
+   "LINE_EFFECT": [
+    "bool",
+    "false"
+   ],
+   "MOVE_DURATION": [
+    "float",
+    "0.25"
+   ],
+   "GHOST_ALPHA": [
+    "float",
+    "0.6"
+   ],
+   "ENTER_SPREAD": [
+    "float",
+    "0.12"
+   ],
+   "ENTER_JUMP": [
+    "float",
+    "0.3"
+   ],
+   "LINE_REACH": [
+    "float",
+    "0.8"
+   ],
+   "JUMP_CELLS": [
+    "float",
+    "6.0"
+   ],
+   "TRACE_ALPHA": [
+    "float",
+    "0.35"
+   ],
+   "CURSOR_STRENGTH": [
+    "float",
+    "1.0"
+   ],
+   "IDLE_PERIOD": [
+    "float",
+    "4.0"
+   ],
+   "IDLE_DURATION": [
+    "float",
+    "0.12"
+   ],
+   "IDLE_STRENGTH": [
+    "float",
+    "0.6"
+   ],
+   "LINE_STRENGTH": [
+    "float",
+    "1.0"
+   ],
+   "SLICES": [
+    "float",
+    "6.0"
+   ],
+   "SLICE_SHIFT": [
+    "float",
+    "0.5"
+   ],
+   "GHOST_SHIFT": [
+    "float",
+    "0.3"
+   ],
+   "NOISE_BLOCKS": [
+    "float",
+    "3.0"
+   ],
+   "STEP_RATE": [
+    "float",
+    "30.0"
+   ],
+   "SETTLE": [
+    "float",
+    "0.04"
+   ],
+   "JUMP_SETTLE": [
+    "float",
+    "0.12"
+   ]
+  },
+  "hologram-cursor.glsl": {
+   "TYPE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "PHRASE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "ENTER_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "DONE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "ENTER_TIME": [
+    "float",
+    "1.3"
+   ],
+   "GRID": [
+    "float",
+    "0.5"
+   ],
+   "JUMP_EFFECTS": [
+    "bool",
+    "true"
+   ],
+   "CURSOR_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "IDLE_EFFECTS": [
+    "bool",
+    "true"
+   ],
+   "PROMPT_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "LINE_TINT": [
+    "bool",
+    "true"
+   ],
+   "LINE_COLOR": [
+    "float",
+    "0.42"
+   ],
+   "LINE_EFFECT": [
+    "bool",
+    "false"
+   ],
+   "HOLO_COLOR": [
+    "vec3",
+    "vec3(0.35, 0.85, 1.0)"
+   ],
+   "BRIGHTNESS": [
+    "float",
+    "1.0"
+   ],
+   "PRINT_TIME": [
+    "float",
+    "0.2"
+   ],
+   "SCAN_TIME": [
+    "float",
+    "0.35"
+   ],
+   "GRID_SPACING": [
+    "float",
+    "2.0"
+   ],
+   "STREAK_TIME": [
+    "float",
+    "0.4"
+   ],
+   "CURSOR_ALPHA": [
+    "float",
+    "0.6"
+   ],
+   "SCANLINE_GAP": [
+    "float",
+    "3.0"
+   ],
+   "BAND_PERIOD": [
+    "float",
+    "3.5"
+   ],
+   "FLICKER_PERIOD": [
+    "float",
+    "4.5"
+   ],
+   "CURSOR_STRENGTH": [
+    "float",
+    "1.0"
+   ],
+   "LINE_STRENGTH": [
+    "float",
+    "1.0"
+   ],
+   "SETTLE": [
+    "float",
+    "0.04"
+   ],
+   "JUMP_SETTLE": [
+    "float",
+    "0.12"
+   ]
+  },
+  "katana-cursor.glsl": {
+   "TYPE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "PHRASE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "TYPE_SPLIT": [
+    "float",
+    "0.06"
+   ],
+   "ENTER_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "DONE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "ENTER_TIME": [
+    "float",
+    "0.5"
+   ],
+   "JUMP_EFFECTS": [
+    "bool",
+    "true"
+   ],
+   "SPLIT": [
+    "float",
+    "0.16"
+   ],
+   "SLIDE": [
+    "float",
+    "0.3"
+   ],
+   "CURSOR_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "IDLE_EFFECTS": [
+    "bool",
+    "true"
+   ],
+   "IDLE_PERIOD": [
+    "float",
+    "5.0"
+   ],
+   "PROMPT_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "LINE_TINT": [
+    "bool",
+    "true"
+   ],
+   "LINE_COLOR": [
+    "float",
+    "0.42"
+   ],
+   "LINE_EFFECT": [
+    "bool",
+    "false"
+   ],
+   "GLOW_RADIUS": [
+    "float",
+    "0.18"
+   ],
+   "TYPE_TIME": [
+    "float",
+    "0.22"
+   ],
+   "TYPE_SWEEP": [
+    "float",
+    "0.06"
+   ],
+   "ENTER_SWEEP": [
+    "float",
+    "0.1"
+   ],
+   "LINE_REACH": [
+    "float",
+    "0.7"
+   ],
+   "SLASH_MIN": [
+    "float",
+    "3.0"
+   ],
+   "SWEEP_TIME": [
+    "float",
+    "0.07"
+   ],
+   "SLASH_TIME": [
+    "float",
+    "0.45"
+   ],
+   "OVERSHOOT": [
+    "float",
+    "0.35"
+   ],
+   "MAX_OVERSHOOT": [
+    "float",
+    "3.0"
+   ],
+   "SPLIT_REACH": [
+    "float",
+    "1.6"
+   ],
+   "CURSOR_STRENGTH": [
+    "float",
+    "1.0"
+   ],
+   "GLINT_TIME": [
+    "float",
+    "0.14"
+   ],
+   "LINE_STRENGTH": [
+    "float",
+    "1.0"
+   ],
+   "LINE_WIDTH": [
+    "float",
+    "0.03"
+   ],
+   "SETTLE": [
+    "float",
+    "0.04"
+   ],
+   "JUMP_SETTLE": [
+    "float",
+    "0.12"
+   ]
+  },
+  "lightning-cursor.glsl": {
+   "TYPE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "PHRASE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "SPARKS": [
+    "float",
+    "4.0"
+   ],
+   "ENTER_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "DONE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "SEND_DURATION": [
+    "float",
+    "0.6"
+   ],
+   "JUMP_EFFECTS": [
+    "bool",
+    "true"
+   ],
+   "CURSOR_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "IDLE_EFFECTS": [
+    "bool",
+    "true"
+   ],
+   "IDLE_CHANCE": [
+    "float",
+    "0.5"
+   ],
+   "PROMPT_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "LINE_TINT": [
+    "bool",
+    "true"
+   ],
+   "LINE_COLOR": [
+    "float",
+    "0.42"
+   ],
+   "LINE_EFFECT": [
+    "bool",
+    "false"
+   ],
+   "BOLT_COLOR": [
+    "vec3",
+    "vec3(0.30, 0.62, 1.00)"
+   ],
+   "CORE_COLOR": [
+    "vec3",
+    "vec3(0.88, 0.95, 1.00)"
+   ],
+   "GLOW_RADIUS": [
+    "float",
+    "0.35"
+   ],
+   "SPARK_DURATION": [
+    "float",
+    "0.2"
+   ],
+   "TYPING_LINE_SPARK": [
+    "bool",
+    "false"
+   ],
+   "LINE_CRACKLE": [
+    "float",
+    "2.0"
+   ],
+   "SURGE_TIME": [
+    "float",
+    "0.3"
+   ],
+   "LINE_REACH": [
+    "float",
+    "0.8"
+   ],
+   "BOLT_MIN_CELLS": [
+    "float",
+    "3.0"
+   ],
+   "BOLT_DURATION": [
+    "float",
+    "0.35"
+   ],
+   "BOLT_JAGGED": [
+    "float",
+    "0.12"
+   ],
+   "MAX_JAGGED": [
+    "float",
+    "2.5"
+   ],
+   "BRANCHES": [
+    "float",
+    "2.0"
+   ],
+   "MAX_BRANCH": [
+    "float",
+    "4.0"
+   ],
+   "CURSOR_STRENGTH": [
+    "float",
+    "1.0"
+   ],
+   "IDLE_PERIOD": [
+    "float",
+    "3.0"
+   ],
+   "IDLE_DURATION": [
+    "float",
+    "0.15"
+   ],
+   "LINE_STRENGTH": [
+    "float",
+    "1.0"
+   ],
+   "BOLT_WIDTH": [
+    "float",
+    "0.06"
+   ],
+   "FLICKER_RATE": [
+    "float",
+    "30.0"
+   ],
+   "SETTLE": [
+    "float",
+    "0.04"
+   ],
+   "JUMP_SETTLE": [
+    "float",
+    "0.12"
+   ]
+  },
+  "mecha-cursor.glsl": {
+   "TYPE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "BACK_THRUST": [
+    "bool",
+    "true"
+   ],
+   "PHRASE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "ENTER_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "DONE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "ENTER_TIME": [
+    "float",
+    "1.0"
+   ],
+   "JUMP_EFFECTS": [
+    "bool",
+    "true"
+   ],
+   "CURSOR_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "IDLE_EFFECTS": [
+    "bool",
+    "true"
+   ],
+   "PROMPT_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "LINE_TINT": [
+    "bool",
+    "true"
+   ],
+   "LINE_COLOR": [
+    "float",
+    "0.42"
+   ],
+   "LINE_EFFECT": [
+    "bool",
+    "false"
+   ],
+   "BEAM_COLOR": [
+    "vec3",
+    "vec3(0.3608, 0.8392, 1.0)"
+   ],
+   "CORE_COLOR": [
+    "vec3",
+    "vec3(1.0, 0.92, 0.96)"
+   ],
+   "THRUST_COLOR": [
+    "vec3",
+    "vec3(0.62, 0.84, 1.0)"
+   ],
+   "BRIGHTNESS": [
+    "float",
+    "1.0"
+   ],
+   "THRUST_TIME": [
+    "float",
+    "0.2"
+   ],
+   "THRUST_LENGTH": [
+    "float",
+    "1.6"
+   ],
+   "IGNITE_TIME": [
+    "float",
+    "0.22"
+   ],
+   "BEAM_WIDTH": [
+    "float",
+    "0.05"
+   ],
+   "GLOW_RADIUS": [
+    "float",
+    "0.14"
+   ],
+   "CLASH_TIME": [
+    "float",
+    "0.4"
+   ],
+   "SHOT_TIME": [
+    "float",
+    "0.45"
+   ],
+   "ARMOR_BLUE": [
+    "vec3",
+    "vec3(0.24, 0.44, 0.86)"
+   ],
+   "ARMOR_RED": [
+    "vec3",
+    "vec3(0.86, 0.26, 0.30)"
+   ],
+   "ARMOR_YELLOW": [
+    "vec3",
+    "vec3(0.96, 0.76, 0.20)"
+   ],
+   "SHEEN_PERIOD": [
+    "float",
+    "5.0"
+   ],
+   "GLINT_PERIOD": [
+    "float",
+    "4.0"
+   ],
+   "CURSOR_STRENGTH": [
+    "float",
+    "1.0"
+   ],
+   "LINE_STRENGTH": [
+    "float",
+    "1.0"
+   ],
+   "SETTLE": [
+    "float",
+    "0.04"
+   ],
+   "JUMP_SETTLE": [
+    "float",
+    "0.12"
+   ]
+  },
+  "neon-cursor.glsl": {
+   "TYPE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "PHRASE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "ENTER_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "DONE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "ENTER_TIME": [
+    "float",
+    "0.9"
+   ],
+   "JUMP_EFFECTS": [
+    "bool",
+    "true"
+   ],
+   "CURSOR_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "IDLE_EFFECTS": [
+    "bool",
+    "true"
+   ],
+   "GLOW_RADIUS": [
+    "float",
+    "0.3"
+   ],
+   "GLOW_STRENGTH": [
+    "float",
+    "0.6"
+   ],
+   "BREATH_PERIOD": [
+    "float",
+    "2.4"
+   ],
+   "BREATH_DEPTH": [
+    "float",
+    "0.3"
+   ],
+   "PROMPT_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "LINE_TINT": [
+    "bool",
+    "true"
+   ],
+   "LINE_COLOR": [
+    "float",
+    "0.42"
+   ],
+   "LINE_EFFECT": [
+    "bool",
+    "false"
+   ],
+   "ENTER_SPREAD": [
+    "float",
+    "0.2"
+   ],
+   "LINE_GLOW": [
+    "float",
+    "0.3"
+   ],
+   "LINE_REACH": [
+    "float",
+    "0.9"
+   ],
+   "IGNITE_TIME": [
+    "float",
+    "0.35"
+   ],
+   "TUBE_INSET": [
+    "float",
+    "0.03"
+   ],
+   "TUBE_WIDTH": [
+    "float",
+    "0.035"
+   ],
+   "TUBE_STRENGTH": [
+    "float",
+    "0.9"
+   ],
+   "GLOW_SIDE": [
+    "float",
+    "1.0"
+   ],
+   "AFTERGLOW": [
+    "float",
+    "0.3"
+   ],
+   "LINE_STRENGTH": [
+    "float",
+    "1.0"
+   ],
+   "FLICKER_RATE": [
+    "float",
+    "30.0"
+   ],
+   "SETTLE": [
+    "float",
+    "0.04"
+   ],
+   "JUMP_SETTLE": [
+    "float",
+    "0.12"
+   ]
+  },
+  "phosphor-cursor.glsl": {
+   "TYPE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "PHRASE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "TRAIL_DECAY": [
+    "float",
+    "0.3"
+   ],
+   "ENTER_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "DONE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "ENTER_TIME": [
+    "float",
+    "0.8"
+   ],
+   "JUMP_EFFECTS": [
+    "bool",
+    "true"
+   ],
+   "CURSOR_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "IDLE_EFFECTS": [
+    "bool",
+    "true"
+   ],
+   "BLOOM_STRENGTH": [
+    "float",
+    "0.3"
+   ],
+   "SCANLINE_DEPTH": [
+    "float",
+    "0.35"
+   ],
+   "PROMPT_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "LINE_TINT": [
+    "bool",
+    "true"
+   ],
+   "LINE_COLOR": [
+    "float",
+    "0.42"
+   ],
+   "LINE_EFFECT": [
+    "bool",
+    "false"
+   ],
+   "TRAIL_SWEEP": [
+    "float",
+    "0.15"
+   ],
+   "TRAIL_ALPHA": [
+    "float",
+    "0.6"
+   ],
+   "ENTER_SWEEP": [
+    "float",
+    "0.35"
+   ],
+   "LINE_REACH": [
+    "float",
+    "0.7"
+   ],
+   "BLOOM_RADIUS": [
+    "float",
+    "0.3"
+   ],
+   "SCANLINE_PX": [
+    "float",
+    "4.0"
+   ],
+   "ROLL_PERIOD": [
+    "float",
+    "5.0"
+   ],
+   "ROLL_TIME": [
+    "float",
+    "0.5"
+   ],
+   "LINE_STRENGTH": [
+    "float",
+    "1.0"
+   ],
+   "SETTLE": [
+    "float",
+    "0.04"
+   ],
+   "JUMP_SETTLE": [
+    "float",
+    "0.12"
+   ]
+  },
+  "shockwave-cursor.glsl": {
+   "TYPE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "PHRASE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "ENTER_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "DONE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "ENTER_TIME": [
+    "float",
+    "0.9"
+   ],
+   "JUMP_EFFECTS": [
+    "bool",
+    "true"
+   ],
+   "WAVE_RADIUS": [
+    "float",
+    "9.0"
+   ],
+   "CURSOR_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "IDLE_EFFECTS": [
+    "bool",
+    "true"
+   ],
+   "PING_PERIOD": [
+    "float",
+    "5.0"
+   ],
+   "PROMPT_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "LINE_TINT": [
+    "bool",
+    "true"
+   ],
+   "LINE_COLOR": [
+    "float",
+    "0.42"
+   ],
+   "LINE_EFFECT": [
+    "bool",
+    "false"
+   ],
+   "BEND": [
+    "float",
+    "0.3"
+   ],
+   "RIM": [
+    "float",
+    "0.4"
+   ],
+   "TYPE_TIME": [
+    "float",
+    "0.3"
+   ],
+   "TYPE_RADIUS": [
+    "float",
+    "1.5"
+   ],
+   "LINE_REACH": [
+    "float",
+    "1.0"
+   ],
+   "WAVE_TIME": [
+    "float",
+    "0.6"
+   ],
+   "CURSOR_STRENGTH": [
+    "float",
+    "1.0"
+   ],
+   "PING_RADIUS": [
+    "float",
+    "2.5"
+   ],
+   "PING_TIME": [
+    "float",
+    "0.8"
+   ],
+   "PING_RIM": [
+    "float",
+    "0.18"
+   ],
+   "LINE_STRENGTH": [
+    "float",
+    "1.0"
+   ],
+   "RING_WIDTH": [
+    "float",
+    "0.5"
+   ],
+   "FRINGE": [
+    "float",
+    "0.25"
+   ],
+   "SETTLE": [
+    "float",
+    "0.04"
+   ],
+   "JUMP_SETTLE": [
+    "float",
+    "0.12"
+   ]
+  },
+  "teleport-cursor.glsl": {
+   "TYPE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "PHRASE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "ENTER_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "DONE_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "ENTER_PIXELS": [
+    "float",
+    "16.0"
+   ],
+   "ENTER_TIME": [
+    "float",
+    "1.2"
+   ],
+   "JUMP_EFFECTS": [
+    "bool",
+    "true"
+   ],
+   "TRAVEL_TIME": [
+    "float",
+    "0.28"
+   ],
+   "CURSOR_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "IDLE_EFFECTS": [
+    "bool",
+    "true"
+   ],
+   "PROMPT_EFFECT": [
+    "bool",
+    "true"
+   ],
+   "LINE_TINT": [
+    "bool",
+    "false"
+   ],
+   "LINE_COLOR": [
+    "float",
+    "0.42"
+   ],
+   "LINE_EFFECT": [
+    "bool",
+    "false"
+   ],
+   "PIXEL_SIZE": [
+    "float",
+    "0.11"
+   ],
+   "SHIMMER_TIME": [
+    "float",
+    "0.15"
+   ],
+   "ENTER_SPREAD": [
+    "float",
+    "0.2"
+   ],
+   "TELEPORT_MIN": [
+    "float",
+    "3.0"
+   ],
+   "BEAM_TIME": [
+    "float",
+    "0.22"
+   ],
+   "STAGGER": [
+    "float",
+    "0.12"
+   ],
+   "ARC": [
+    "float",
+    "0.25"
+   ],
+   "MAX_ARC": [
+    "float",
+    "3.0"
+   ],
+   "CURSOR_STRENGTH": [
+    "float",
+    "1.0"
+   ],
+   "LINE_STRENGTH": [
+    "float",
+    "1.0"
+   ],
+   "FLICKER_RATE": [
+    "float",
+    "30.0"
+   ],
+   "SETTLE": [
+    "float",
+    "0.04"
+   ],
+   "JUMP_SETTLE": [
+    "float",
+    "0.12"
+   ]
+  }
+ },
+ "presets": {
+  "aurora.conf": {
+   "cursor-color": "#7fe0c0",
+   "cursor-style-blink": "false"
+  },
+  "cyber.conf": {
+   "cursor-color": "#50e080",
+   "cursor-style-blink": "false"
+  },
+  "embers.conf": {
+   "cursor-color": "#ff8a3c",
+   "cursor-style-blink": "false"
+  },
+  "fireworks.conf": {
+   "cursor-color": "#ffc856",
+   "cursor-style-blink": "false"
+  },
+  "glitch.conf": {
+   "cursor-color": "#f85452",
+   "cursor-style-blink": "false"
+  },
+  "hologram.conf": {
+   "cursor-color": "#4cc8f0",
+   "cursor-style-blink": "false"
+  },
+  "katana.conf": {
+   "cursor-color": "#b8c4d4",
+   "cursor-style-blink": "false"
+  },
+  "lightning.conf": {
+   "cursor-color": "#9fd0fe",
+   "cursor-style-blink": "false"
+  },
+  "mecha.conf": {
+   "cursor-color": "#bcc8dc",
+   "cursor-style-blink": "false"
+  },
+  "neon.conf": {
+   "cursor-color": "#ff5ed2",
+   "cursor-style-blink": "false"
+  },
+  "phosphor.conf": {
+   "cursor-color": "#6be894",
+   "cursor-style-blink": "false"
+  },
+  "shockwave.conf": {
+   "cursor-color": "#b69cfe",
+   "cursor-style-blink": "false"
+  },
+  "teleport.conf": {
+   "cursor-color": "#3fd8c8",
+   "cursor-style-blink": "false"
+  }
+ }
+}
